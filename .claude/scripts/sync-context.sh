@@ -55,6 +55,12 @@ while IFS= read -r path; do
       check_path "$path" "3" "Arquitectura — cambio en capa controlada" ;;
   esac
 
+    # Art. 9 — Estrategia de ramas
+    case "$path" in
+      .claude/scripts/active-task.sh|.claude/scripts/diff-task.sh|.claude/commands/feature.md|.claude/commands/fix.md|.claude/commands/hotfix.md|.claude/commands/worktree.md)
+        check_path "$path" "9" "Estrategia de ramas/base — ¿sigue coherente con Art. 9?" ;;
+    esac
+
   # Art. 4 — Reglas de negocio
   case "$path" in
     src/domain/*/rules.ts|src/domain/*/rules.test.ts)
@@ -63,33 +69,39 @@ while IFS= read -r path; do
 
   # Art. 5 — Modelo de datos
   case "$path" in
-    src/domain/*/types.ts|src/infrastructure/insforge/*.ts|supabase/migrations/*)
+      src/domain/*/types.ts|src/domain/*/*.types.ts|src/infrastructure/insforge/*.ts|src/infrastructure/*/*.ts|src/mocks/handlers/*.ts|src/mocks/data/*.ts|supabase/migrations/*)
       check_path "$path" "5" "Modelo de datos — ¿nueva tabla, campo o relación?" ;;
   esac
 
   # Art. 6 — Rutas
   case "$path" in
-    src/pages/*|src/router*|src/routes*|src/App.tsx|src/main.tsx)
+      src/pages/*|src/pages/*/*|src/router*|src/routes*|src/App.tsx|src/main.tsx|src/components/auth/*|src/components/layout/*)
       check_path "$path" "6" "Rutas — ¿nueva ruta, AuthGuard nuevo o cambio de flujo de auth?" ;;
   esac
 
   # Art. 10 — Paleta de colores
   case "$path" in
-    src/*.css|tailwind.config*|*.css|src/styles/*)
+      src/*.css|src/*/*.css|src/*/*/*.css|tailwind.config*|components.json|*.css|src/styles/*)
       check_path "$path" "10" "Colores/estilos — ¿se usó un color o token nuevo?" ;;
   esac
 
   # Art. 11 — Rendimiento
   case "$path" in
-    src/pages/*.tsx|src/components/*.tsx)
+      src/pages/*.tsx|src/pages/*/*.tsx|src/components/*.tsx|src/components/*/*.tsx)
       check_path "$path" "11" "Rendimiento — ¿nuevo lazy(), memo o virtual?" ;;
   esac
 
   # Art. 13 — Variables de entorno
   case "$path" in
-    .env*|vite.config*|src/config*)
+      .env*|vite.config*|src/config*|src/lib/env*|.github/workflows/*.yml|.github/workflows/*.yaml|vercel.json)
       check_path "$path" "13" "Env vars — ¿nueva variable VITE_*?" ;;
   esac
+
+    # Art. 14 — Quality gates
+    case "$path" in
+      .claude/commands/check.md|.claude/commands/review.md|.claude/commands/done.md|.claude/workflows/review.md|.claude/workflows/refactor.md|package.json|.claude/settings.json)
+        check_path "$path" "14" "Quality gates — ¿se mantienen type-check/lint/test:run con pnpm?" ;;
+    esac
 
   # KNOWLEDGE.md
   case "$path" in
