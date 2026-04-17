@@ -7,9 +7,10 @@ Ejecuta todos los quality gates del proyecto y reporta el estado.
 Ejecuta estos comandos en secuencia y reporta el resultado de cada uno:
 
 ```bash
-npm run type-check
-npm run lint
-npm run test -- --run
+pnpm run type-check
+pnpm run lint
+pnpm run test:run
+bash .claude/scripts/validate-consistency.sh
 ```
 
 Formato del reporte:
@@ -18,6 +19,7 @@ Formato del reporte:
 ✅ TypeScript — sin errores
 ❌ ESLint — 3 errores en src/components/calendar/MonthCalendar.tsx
 ✅ Tests — 12 passed, 0 failed
+✅ Consistency — sin drift de quality gates ni reglas operativas
 ```
 
 Si hay errores, muéstralos completos y ofrécete a solucionarlos.
