@@ -1,0 +1,22 @@
+User-agent: *
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+Disallow: /calendar
+Disallow: /appointments
+Disallow: /profile
+Disallow: /admin
+
+User-agent: GPTBot
+Allow: /
+Allow: /llms.txt
+
+User-agent: ClaudeBot
+Allow: /
+Allow: /llms.txt
+
+User-agent: anthropic-ai
+Allow: /
+Allow: /llms.txt
+
+Sitemap: https://giobarber.shop/sitemap.xml

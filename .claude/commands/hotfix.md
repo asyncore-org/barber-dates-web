@@ -3,6 +3,7 @@
 Arranca un hotfix urgente a prod (base: `main`). Análisis rápido y PARAR.
 
 ## Uso
+
 ```
 /hotfix <slug> [síntoma en prod]
 ```

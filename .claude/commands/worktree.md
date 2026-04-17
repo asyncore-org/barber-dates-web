@@ -4,6 +4,7 @@ Crea un worktree git aislado para trabajar en paralelo en otra tarea sin afectar
 Solo usar cuando el usuario lo pida explícitamente.
 
 ## Uso
+
 ```
 /worktree <slug>   # crea worktree para feature/<slug>
 ```
@@ -17,13 +18,14 @@ Solo usar cuando el usuario lo pida explícitamente.
    ```
 3. Verificar que la carpeta se creó correctamente.
 4. Reportar al usuario:
+
    ```
    Worktree creado: ../barber-dates-web--<slug>
    Rama: feature/<slug>
-   
+
    Abre una segunda terminal en esa carpeta o una segunda ventana de Claude Code apuntando a:
    /Users/carlos/Library/Mobile Documents/com~apple~CloudDocs/Carlos/Negocios/Web citas barbería/barber-dates-web--<slug>
-   
+
    Para limpiar el worktree cuando termines:
      git worktree remove ../barber-dates-web--<slug>
    ```

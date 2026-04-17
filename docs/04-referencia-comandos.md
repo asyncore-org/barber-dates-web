@@ -7,14 +7,14 @@
 
 ## Índice rápido
 
-| Categoría | Comandos |
-|-----------|----------|
-| **Arranque** | `/feature` `/fix` `/refactor` `/chore` `/hotfix` `/spike` |
-| **Ciclo** | `/analyze` `/plan` `/revise` `/implement` `/next` `/change` `/review` `/done` |
-| **Sesión** | `/status` `/resume` `/pause` `/block` `/handoff` `/compact-task` |
-| **Contexto** | `/sync-context` `/learn` `/ask` `/worktree` |
-| **Scaffolding** | `/new-domain` `/new-infra` `/new-hook` `/new-component` `/new-page` |
-| **Diagnóstico** | `/check` `/phase` |
+| Categoría       | Comandos                                                                      |
+| --------------- | ----------------------------------------------------------------------------- |
+| **Arranque**    | `/feature` `/fix` `/refactor` `/chore` `/hotfix` `/spike`                     |
+| **Ciclo**       | `/analyze` `/plan` `/revise` `/implement` `/next` `/change` `/review` `/done` |
+| **Sesión**      | `/status` `/resume` `/pause` `/block` `/handoff` `/compact-task`              |
+| **Contexto**    | `/sync-context` `/learn` `/ask` `/worktree`                                   |
+| **Scaffolding** | `/new-domain` `/new-infra` `/new-hook` `/new-component` `/new-page`           |
+| **Diagnóstico** | `/check` `/phase`                                                             |
 
 ---
 
@@ -139,13 +139,13 @@ Ajusta el plan antes de implementar. Genera una versión nueva (v1 → v2...).
 
 **La única puerta al código de producción.** Ejecuta pasos del plan aprobado.
 
-| Variante | Qué hace |
-|----------|----------|
-| `/implement` | Siguiente paso pendiente |
-| `/implement next` | Igual |
-| `/implement 3` | Solo el paso 3 |
-| `/implement 2..4` | Pasos 2, 3 y 4 en secuencia |
-| `/implement all` | Todos (pide confirmación si son > 3) |
+| Variante          | Qué hace                             |
+| ----------------- | ------------------------------------ |
+| `/implement`      | Siguiente paso pendiente             |
+| `/implement next` | Igual                                |
+| `/implement 3`    | Solo el paso 3                       |
+| `/implement 2..4` | Pasos 2, 3 y 4 en secuencia          |
+| `/implement all`  | Todos (pide confirmación si son > 3) |
 
 Tras cada paso: commit + actualización de PROGRESS.md + pausa para que puedas revisar.
 
@@ -174,6 +174,7 @@ Flujo de corrección controlada. Cuando algo no quedó como querías.
 **Lo que NO hace**: tocar código directamente.
 
 **Lo que SÍ hace**:
+
 1. Analiza qué implica el cambio sin tocar nada.
 2. Crea `CHANGES/CHANGE-N.md` con diagnóstico y plan.
 3. Te lo muestra y para.
@@ -338,6 +339,7 @@ Crea un worktree git aislado para trabajar en paralelo en otra tarea. Solo cuand
 Genera: `../barber-dates-web--admin-settings` con la rama `feature/admin-settings`.
 
 Para limpiar cuando termines:
+
 ```bash
 git worktree remove ../barber-dates-web--admin-settings
 ```
@@ -351,6 +353,7 @@ Generan código siguiendo exactamente las convenciones del proyecto (capas, nami
 ### `/new-domain <entidad>`
 
 Genera en `src/domain/<entidad>/`:
+
 - `<entidad>.types.ts` — tipos puros (cero dependencias externas)
 - `<entidad>.rules.ts` — funciones puras de negocio
 - `<entidad>.rules.test.ts` — tests unitarios (sin mocks)
@@ -365,6 +368,7 @@ Genera en `src/domain/<entidad>/`:
 ### `/new-infra <entidad>`
 
 Genera `src/infrastructure/insforge/<entidad>.ts` con:
+
 - Mapper snake_case (DB) ↔ camelCase (dominio)
 - CRUD completo: fetch, fetchById, create, update, delete
 
@@ -400,6 +404,7 @@ Genera `src/components/<nombre>/<nombre>.tsx` con named export y props tipadas.
 ### `/new-page <nombre>`
 
 Genera `src/pages/<nombre>/<nombre>.tsx` con:
+
 - `export default`
 - Registro en router con `lazy()`
 - `AuthGuard` con el rol correcto

@@ -48,6 +48,7 @@ Plan quirúrgico: máximo 3 pasos. Sin refactor, sin cleanup.
 ## Fase CIERRE — invocada por `/done`
 
 **Doble merge obligatorio**:
+
 1. PR a `main` → deploy a prod.
 2. Cherry-pick / merge del fix también a `develop` (o se pierde en el siguiente deploy).
 

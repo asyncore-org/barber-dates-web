@@ -52,3 +52,5 @@ Thumbs.db
 .claude/tasks/*
 !.claude/tasks/_TEMPLATE/
 !.claude/tasks/.gitkeep
+
+PLAN_GIO_BARBER_SHOP.md

@@ -20,9 +20,11 @@ Genera un resumen ejecutivo de la tarea cuando `LOG.md` ha crecido mucho.
 3. Guarda el resumen al inicio de `LOG.md` bajo un nuevo heading:
    ```markdown
    ## RESUMEN EJECUTIVO (compactado YYYY-MM-DD HH:mm)
-   <resumen de 30 líneas>
-   ---
+
+   ## <resumen de 30 líneas>
+
    ## LOG (desde el inicio)
+
    <el log original completo sigue aquí>
    ```
 4. Actualiza `STATE.md` → sección "Notas para retomar" con el mismo resumen.

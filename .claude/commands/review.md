@@ -24,11 +24,11 @@ bash .claude/scripts/files-touched.sh        # archivos tocados
 Agent({
   subagent_type: "Explore",
   prompt: "Audita el diff de la rama actual contra develop (o main si es hotfix).
-  
+
   Contexto del proyecto: barber-dates-web usa Clean Architecture React (domain → infrastructure → hooks → components/pages). Reglas de Constitution en .claude/CONSTITUTION.md.
-  
+
   Archivos modificados: <lista de files-touched.sh>
-  
+
   Evalúa:
   1. Violaciones de arquitectura: ¿alguna capa importa de otra que no debería?
      (pages/components importando de infrastructure/ es prohibido)
@@ -38,7 +38,7 @@ Agent({
   5. TanStack Query hooks sin queryKeys correctos.
   6. Formularios sin validación Zod.
   7. Loading/error states omitidos en UI nueva.
-  
+
   Reporta: ✅ Cumple | ⚠️ Revisar | ❌ Bloquea
   Para cada hallazgo: file_path:line_number
   Responde en < 300 palabras."
@@ -63,18 +63,22 @@ Leer `PLAN.md` → Criterios de aceptación globales. Comprobar uno a uno.
 # REVIEW — TASK-<ID> · YYYY-MM-DD HH:mm
 
 ## Resultado del agente de review
+
 <output resumido del subagente>
 
 ## Quality gates
+
 - TypeScript: ✅/❌
 - ESLint: ✅/❌ (N errores)
 - Tests: ✅/❌ (N passed, M failed)
 
 ## Criterios de aceptación
+
 - [x] criterio 1
 - [ ] criterio 2 — PENDIENTE
 
 ## Veredicto: APROBADO | BLOQUEADO
+
 Motivo: <...>
 ```
 

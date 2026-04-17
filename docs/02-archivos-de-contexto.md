@@ -13,22 +13,22 @@ Estos archivos son la memoria persistente del proyecto. Claude los lee para ente
 
 14 artículos que cubren absolutamente todo lo que no puede cambiar sin consenso explícito:
 
-| Art. | Contenido |
-|------|-----------|
-| 1 | Identidad: nombre del proyecto, repo, plan maestro |
-| 2 | Stack tecnológico y restricciones |
-| 3 | Arquitectura Clean Architecture — la regla de capas |
-| 4 | Las 7 reglas de negocio (citas, cancelación, puntos, sesiones) |
-| 5 | Modelo de datos: tablas PostgreSQL y RLS |
-| 6 | Rutas y flujo de autenticación |
-| 7 | Convenciones de código (idioma, exports, imports) |
-| 8 | Convención de commits (Conventional Commits) |
-| 9 | Estrategia de ramas (main/develop/feature/hotfix) |
-| 10 | Paleta de colores y tipografía |
-| 11 | Objetivos de rendimiento (Lighthouse 95+) |
-| 12 | SEO: robots.txt, llms.txt, sitemap |
-| 13 | Variables de entorno (VITE_*) |
-| 14 | Quality gates obligatorios |
+| Art. | Contenido                                                      |
+| ---- | -------------------------------------------------------------- |
+| 1    | Identidad: nombre del proyecto, repo, plan maestro             |
+| 2    | Stack tecnológico y restricciones                              |
+| 3    | Arquitectura Clean Architecture — la regla de capas            |
+| 4    | Las 7 reglas de negocio (citas, cancelación, puntos, sesiones) |
+| 5    | Modelo de datos: tablas PostgreSQL y RLS                       |
+| 6    | Rutas y flujo de autenticación                                 |
+| 7    | Convenciones de código (idioma, exports, imports)              |
+| 8    | Convención de commits (Conventional Commits)                   |
+| 9    | Estrategia de ramas (main/develop/feature/hotfix)              |
+| 10   | Paleta de colores y tipografía                                 |
+| 11   | Objetivos de rendimiento (Lighthouse 95+)                      |
+| 12   | SEO: robots.txt, llms.txt, sitemap                             |
+| 13   | Variables de entorno (VITE\_\*)                                |
+| 14   | Quality gates obligatorios                                     |
 
 ### Cómo lo lee Claude
 
@@ -46,12 +46,14 @@ bash .claude/scripts/art.sh 4   # Reglas de negocio
 ### Cuándo y cómo actualizarlo
 
 **Con Claude** (lo normal):
+
 - Claude detecta que algo ha cambiado durante `/done → sync-context`.
 - Te avisa: _"Art. 4 posiblemente desactualizado. Propongo añadir regla 8 sobre X. ¿Apruebas?"_
 - Tú confirmas. Claude aplica el cambio y hace bump de versión.
 - **Nunca toca el Constitution sin tu confirmación explícita.**
 
 **Tú directamente**:
+
 1. Edita el artículo correspondiente.
 2. Actualiza la versión en la cabecera:
    - `1.0.0 → 1.1.0` para cambios que amplían sin romper.
@@ -97,6 +99,7 @@ Un diario técnico de lo que se ha aprendido durante el desarrollo: cosas que no
 ### Cómo se actualiza
 
 La forma correcta es con el comando `/learn`:
+
 ```
 /learn InsForge no soporta .rpc() con array args — usar .sql() directo
 /learn npm run dev no hot-reloada en iCloud Drive — reiniciar Vite
@@ -151,12 +154,12 @@ Un registro inmutable de decisiones técnicas importantes: por qué se eligió V
 
 ### ADRs existentes
 
-| ADR | Decisión |
-|-----|----------|
-| ADR-001 | Vite + React en lugar de Next.js |
+| ADR     | Decisión                                       |
+| ------- | ---------------------------------------------- |
+| ADR-001 | Vite + React en lugar de Next.js               |
 | ADR-002 | Clean Architecture estricta con `domain/` puro |
-| ADR-003 | InsForge como BaaS |
-| ADR-004 | Carpetas de tarea no commiteadas |
+| ADR-003 | InsForge como BaaS                             |
+| ADR-004 | Carpetas de tarea no commiteadas               |
 
 ---
 
@@ -186,10 +189,10 @@ El primer archivo que Claude lee en cada sesión. No contiene las reglas — apu
 
 ## Tabla resumen: quién actualiza qué
 
-| Archivo | Lo actualiza Claude | Lo actualizas tú | Cuándo |
-|---------|--------------------|--------------------|--------|
-| CONSTITUTION.md | Sí, con tu confirmación | Sí, directamente | Cuando el código introduce algo nuevo permanente |
-| CONSTITUTION-INDEX.md | Sí, junto con la Constitution | Sí | Cuando cambia un artículo |
-| KNOWLEDGE.md | Sí, vía `/learn` | Sí, directamente | Al descubrir un gotcha o workaround |
-| DECISIONS.md | Sí, cuando propone un ADR | Sí | Al tomar una decisión de arquitectura |
-| CLAUDE.md | Sí, con tu confirmación | Sí | Al cambiar de fase o añadir algo al sistema |
+| Archivo               | Lo actualiza Claude           | Lo actualizas tú | Cuándo                                           |
+| --------------------- | ----------------------------- | ---------------- | ------------------------------------------------ |
+| CONSTITUTION.md       | Sí, con tu confirmación       | Sí, directamente | Cuando el código introduce algo nuevo permanente |
+| CONSTITUTION-INDEX.md | Sí, junto con la Constitution | Sí               | Cuando cambia un artículo                        |
+| KNOWLEDGE.md          | Sí, vía `/learn`              | Sí, directamente | Al descubrir un gotcha o workaround              |
+| DECISIONS.md          | Sí, cuando propone un ADR     | Sí               | Al tomar una decisión de arquitectura            |
+| CLAUDE.md             | Sí, con tu confirmación       | Sí               | Al cambiar de fase o añadir algo al sistema      |

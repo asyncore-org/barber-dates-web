@@ -14,12 +14,12 @@ Claude Code es un agente muy capaz, pero sin estructura tiene problemas serios e
 
 Este sistema resuelve todos esos problemas con cuatro piezas:
 
-| Pieza | Qué aporta |
-|-------|------------|
-| **Archivos de contexto** (Constitution, KNOWLEDGE, DECISIONS) | Claude conoce el proyecto desde el primer mensaje, sin explorar el código desde cero |
-| **Flujo por fases** (analyze → plan → implement → review → done) | Nada se implementa sin un plan aprobado. Cada fase produce artefactos persistentes |
-| **Carpetas de tarea** (TASK-*) | El progreso queda documentado en tiempo real — retomar en otra sesión es trivial |
-| **Scripts de fetch parcial** | Claude carga solo el fragmento que necesita, no archivos completos — ahorra tokens |
+| Pieza                                                            | Qué aporta                                                                           |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **Archivos de contexto** (Constitution, KNOWLEDGE, DECISIONS)    | Claude conoce el proyecto desde el primer mensaje, sin explorar el código desde cero |
+| **Flujo por fases** (analyze → plan → implement → review → done) | Nada se implementa sin un plan aprobado. Cada fase produce artefactos persistentes   |
+| **Carpetas de tarea** (TASK-\*)                                  | El progreso queda documentado en tiempo real — retomar en otra sesión es trivial     |
+| **Scripts de fetch parcial**                                     | Claude carga solo el fragmento que necesita, no archivos completos — ahorra tokens   |
 
 ---
 

@@ -3,6 +3,7 @@
 Marca la tarea activa como bloqueada con un motivo.
 
 ## Uso
+
 ```
 /block <motivo corto>
 ```

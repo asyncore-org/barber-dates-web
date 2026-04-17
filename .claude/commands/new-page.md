@@ -3,11 +3,13 @@
 Crea una nueva página con routing, SEO y AuthGuard correctamente configurados.
 
 ## Uso
+
 ```
 /new-page <NombrePagina> <ruta> [rol]
 ```
 
 Ejemplos:
+
 - `/new-page CalendarPage /calendar client`
 - `/new-page DashboardPage /admin/dashboard admin`
 - `/new-page LandingPage / public`
@@ -23,6 +25,7 @@ Ejemplos:
 2. **Crear el archivo** `src/pages/[rol]/[NombrePagina].tsx` con esta estructura:
 
 **Página pública** (ej. LandingPage):
+
 ```tsx
 import { SeoHead } from '@/components/seo/SeoHead';
 
@@ -42,6 +45,7 @@ export default function [NombrePagina]() {
 ```
 
 **Página protegida** (client o admin):
+
 ```tsx
 import { SeoHead } from '@/components/seo/SeoHead';
 
@@ -75,6 +79,7 @@ const [NombrePagina] = lazy(() => import('@/pages/[rol]/[NombrePagina]'));
 ```
 
 ## Reglas que siempre debes aplicar
+
 - **`export default`** en páginas (única excepción a la regla de named exports)
 - **`<SeoHead noIndex />`** en TODAS las páginas protegidas (calendar, appointments, admin)
 - **`lazy()`** siempre para code splitting

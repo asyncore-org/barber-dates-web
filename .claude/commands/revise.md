@@ -4,11 +4,13 @@ Ajusta el plan en base a feedback del usuario y genera una nueva versión de `PL
 Úsalo cuando el plan inicial no encaja con lo que quieres.
 
 ## Uso
+
 ```
 /revise <qué cambiar>
 ```
 
 Ejemplos:
+
 - `/revise el paso 2 y 3 júntalos en uno solo`
 - `/revise antes del paso 1 añade un paso 0 que cree los tipos Zod en domain`
 - `/revise descarta el paso de loyalty, eso lo hacemos en otra tarea`
@@ -25,6 +27,7 @@ bash .claude/scripts/fetch.sh ANALYSIS.md
 ### 2. Procesar el cambio
 
 Analiza el cambio pedido y su impacto en el resto del plan:
+
 - ¿Rompe algún paso que depende del que se cambia?
 - ¿Genera inconsistencias con el ANALYSIS?
 - ¿Viola alguna regla del Constitution? (si hay duda: `bash .claude/scripts/art.sh N`)

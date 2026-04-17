@@ -13,6 +13,7 @@ npm outdated   # ver qué hay disponible
 ```
 
 Clasificar cada dep:
+
 - **patch/minor**: bajo riesgo, pocas preguntas.
 - **major**: leer breaking changes, generar preguntas para el usuario.
 

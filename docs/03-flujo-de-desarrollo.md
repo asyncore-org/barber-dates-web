@@ -128,13 +128,13 @@ Todo desarrollo no trivial sigue este ciclo. Los comandos son los puntos de cont
 
 ## Por qué cada fase es obligatoria
 
-| Si saltas... | Consecuencia |
-|--------------|-------------|
-| `/analyze` | Claude no sabe qué archivos existen, toma decisiones arquitectónicas a ciegas |
-| `/plan` | Sin contrato escrito, imposible retomar si se interrumpe. Claude improvisa |
-| `/implement` | No existe — es la puerta obligatoria al código. Sin ella no hay código |
-| `/review` | Los errores de capas (components importando de infrastructure) son silenciosos |
-| Context sync en `/done` | Constitution desactualizado → siguiente tarea trabaja con info falsa |
+| Si saltas...            | Consecuencia                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------ |
+| `/analyze`              | Claude no sabe qué archivos existen, toma decisiones arquitectónicas a ciegas  |
+| `/plan`                 | Sin contrato escrito, imposible retomar si se interrumpe. Claude improvisa     |
+| `/implement`            | No existe — es la puerta obligatoria al código. Sin ella no hay código         |
+| `/review`               | Los errores de capas (components importando de infrastructure) son silenciosos |
+| Context sync en `/done` | Constitution desactualizado → siguiente tarea trabaja con info falsa           |
 
 ---
 

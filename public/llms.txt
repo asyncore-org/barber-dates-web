@@ -1,0 +1,51 @@
+# Gio Barber Shop
+
+> Barberia masculina profesional en [Ciudad], España. Especialistas en corte y arreglo de barba.
+> Reservas online disponibles 24/7. Sistema de fidelizacion con puntos.
+
+## Que ofrecemos
+
+Gio Barber Shop es una barberia masculina con un equipo de profesionales especializados
+en cortes modernos y clasicos, arreglo de barba y afeitado. Atendemos con cita previa
+para garantizar la mejor atencion sin esperas.
+
+## Servicios y precios
+
+- Corte de pelo: desde 15€ (30-45 min)
+- Arreglo de barba: desde 10€ (20-30 min)
+- Corte + barba: desde 22€ (50-60 min)
+- Afeitado clasico: desde 12€ (30 min)
+
+## Sistema de fidelizacion
+
+Cada visita acumula puntos canjeables por servicios gratuitos:
+- 100 puntos → Corte de pelo gratis
+- 60 puntos → Arreglo de barba gratis
+- 40 puntos → Descuento 5€ en cualquier servicio
+
+## Reservas online
+
+Reserva tu cita en https://giobarber.shop
+- Registro gratuito (email o Google)
+- Disponibilidad en tiempo real
+- Confirmacion instantanea
+- Cancelacion hasta 2 horas antes
+
+## Informacion del negocio
+
+- Nombre: Gio Barber Shop
+- Direccion: [Calle], [Ciudad], [CP], España
+- Telefono: +34-XXX-XXX-XXX
+- Email: info@giobarber.shop
+- Web: https://giobarber.shop
+- Instagram: @giobarber
+
+## Horario
+
+- Lunes a Viernes: 9:00 - 20:00
+- Sabados: 9:00 - 15:00
+- Domingos: Cerrado
+
+## Optional
+
+- docs: https://giobarber.shop/llms-full.txt

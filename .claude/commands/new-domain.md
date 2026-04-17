@@ -3,11 +3,13 @@
 Crea los tipos y reglas de negocio en la capa domain. Esta es la capa más importante: CERO dependencias externas.
 
 ## Uso
+
 ```
 /new-domain <entidad>
 ```
 
 Ejemplos:
+
 - `/new-domain appointment`
 - `/new-domain loyalty`
 - `/new-domain service`
