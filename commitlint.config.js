@@ -17,6 +17,7 @@ export default {
         'deps',
         'ci',
         'seo',
+        'readme',
       ],
     ],
     'subject-max-length': [2, 'always', 72],
