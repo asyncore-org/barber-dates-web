@@ -8,7 +8,7 @@ Cada entrada debe tener: **Fecha · Contexto · Qué · Por qué importa**.
 
 ## Entorno y arranque
 
-*(vacío — se irá llenando)*
+_(vacío — se irá llenando)_
 
 ## Gotchas del stack
 
@@ -25,12 +25,12 @@ Cada entrada debe tener: **Fecha · Contexto · Qué · Por qué importa**.
 
 ## Errores conocidos pendientes
 
-*(vacío)*
+_(vacío)_
 
 ## Workarounds
 
-*(vacío)*
+_(vacío)_
 
 ## Tips útiles
 
-*(vacío)*
+_(vacío)_
