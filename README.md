@@ -6,7 +6,9 @@ Aplicación web de gestión de citas para una peluquería masculina. Dos roles: 
 
 ## Descripción del producto
 
-### Vista cliente
+> **Estado actual**: la aplicación está en desarrollo activo (Fase 1 en curso). Las funcionalidades descritas a continuación forman parte del alcance planificado — no están implementadas todavía.
+
+### Alcance planificado — Vista cliente
 
 - Login / Registro con email o Google OAuth
 - Calendario mensual para reservar citas
@@ -14,7 +16,7 @@ Aplicación web de gestión de citas para una peluquería masculina. Dos roles: 
 - Pestaña "Mis citas": próxima cita, historial, premios obtenidos
 - Perfil de usuario con ajustes y cierre de sesión
 
-### Vista admin
+### Alcance planificado — Vista admin
 
 - Calendario semanal estilo Microsoft Teams con detalle de citas
 - Panel lateral con próximas citas del día
@@ -24,23 +26,23 @@ Aplicación web de gestión de citas para una peluquería masculina. Dos roles: 
 
 ## Stack tecnológico
 
-| Capa             | Tecnología                | Restricción clave                                              |
-| ---------------- | ------------------------- | -------------------------------------------------------------- |
-| Framework        | React 19 + Vite           | No Next.js — el 95% del contenido está detrás de auth         |
-| Lenguaje         | TypeScript strict          | Sin `any`. Interfaces para objetos, types para uniones         |
-| Estilos          | TailwindCSS v4            | Sin CSS custom. Sin `style={{}}` salvo valores dinámicos       |
-| Componentes base | shadcn/ui (Radix UI)      | Copiados a `src/components/ui/`, no se instalan como librería  |
-| Routing          | React Router v7           | Layouts anidados, protección por rol con AuthGuard             |
-| Estado servidor  | TanStack Query v5         | Para todo dato del servidor; nunca Zustand para datos remotos  |
-| Virtualización   | TanStack Virtual          | Listas con más de ~30 elementos                                |
-| Fechas           | date-fns                  | Nunca moment.js                                                |
-| Estado global UI | Zustand                   | Solo estado UI (tema, sidebar)                                 |
-| Formularios      | React Hook Form + Zod     | Siempre juntos; Zod como fuente de tipos y validación          |
-| SEO              | react-helmet-async        | Meta tags dinámicos por página                                 |
-| Testing          | Vitest + RTL              | MSW v2 para mocks de red en tests e2e                          |
-| Backend          | InsForge                  | PostgreSQL + Auth + Storage + Edge Functions (como Supabase)   |
-| Despliegue       | Vercel dual               | PRO desde `main` · PRE desde cualquier otra rama               |
-| CI/CD            | GitHub Actions            | Quality gates automáticos antes de cada deploy                 |
+| Capa             | Tecnología                | Restricción clave                                                                                          |
+| ---------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Framework        | React 19 + Vite           | No Next.js — el 95% del contenido está detrás de auth                                                     |
+| Lenguaje         | TypeScript strict          | Sin `any`. Interfaces para objetos, types para uniones                                                    |
+| Estilos          | TailwindCSS v4            | Sin CSS custom salvo tokens globales en `src/styles/globals.css`. Sin `style={{}}` salvo valores dinámicos |
+| Componentes base | shadcn/ui (Radix UI)      | Copiados a `src/components/ui/`, no se instalan como librería                                              |
+| Routing          | React Router v7           | Layouts anidados, protección por rol con AuthGuard                                                         |
+| Estado servidor  | TanStack Query v5         | Para todo dato del servidor; nunca Zustand para datos remotos                                              |
+| Virtualización   | TanStack Virtual          | Listas con más de ~30 elementos                                                                            |
+| Fechas           | date-fns                  | Nunca moment.js                                                                                            |
+| Estado global UI | Zustand                   | Solo estado UI (tema, sidebar)                                                                             |
+| Formularios      | React Hook Form + Zod     | Siempre juntos; Zod como fuente de tipos y validación                                                      |
+| SEO              | react-helmet-async        | Meta tags dinámicos por página                                                                             |
+| Testing          | Vitest + RTL              | MSW v2 para mocks de red en tests de Vitest (unit/integration)                                             |
+| Backend          | InsForge                  | PostgreSQL + Auth + Storage + Edge Functions (como Supabase)                                               |
+| Despliegue       | Vercel dual               | PRO desde `main` · PRE desde cualquier otra rama                                                           |
+| CI/CD            | GitHub Actions            | Quality gates automáticos antes de cada deploy                                                             |
 
 ---
 
@@ -58,7 +60,7 @@ src/
 ├── pages/            # Pantallas con lazy() + AuthGuard + SeoHead
 ├── stores/           # Zustand — solo estado de UI
 ├── lib/              # Utilidades compartidas (cn, formatters)
-├── mocks/            # MSW handlers + fixtures (solo entorno de desarrollo)
+├── mocks/            # MSW handlers + fixtures (desarrollo + tests)
 │   ├── handlers/     # Un fichero por dominio: auth, appointments, services...
 │   └── data/         # Fixtures commiteados y compartidos por todo el equipo
 └── test/             # Setup global de Vitest
@@ -154,10 +156,12 @@ Cada push a cualquier rama ejecuta un pipeline de GitHub Actions con dos fases:
 ### Quality gates
 
 ```
-pnpm lint  →  pnpm type-check  →  pnpm test:run  →  pnpm build
+pnpm lint  →  pnpm type-check  →  pnpm test:run
 ```
 
 El pipeline se cancela si cualquier gate falla. Ningún deploy ocurre sin pasar todos.
+
+> El build se ejecuta en el job de deploy, no como gate independiente.
 
 ### Despliegue dual en Vercel
 
@@ -166,7 +170,7 @@ El pipeline se cancela si cualquier gate falla. Ningún deploy ocurre sin pasar 
 | **PRE**         | Cualquier rama (≠ `main`) | En cada push                |
 | **PRO**         | `main`                 | Al mergear un PR aprobado    |
 
-Cada PR genera automáticamente una URL de preview en el proyecto PRE. El proyecto PRO solo recibe código que ha pasado por `develop` y todos los quality gates.
+Cada PR genera automáticamente una URL de preview en el proyecto PRE. El proyecto PRO solo recibe código de `main` que ha pasado todos los quality gates.
 
 ---
 
@@ -196,7 +200,7 @@ docs(readme): update setup instructions
 test(hooks): add useAppointments unit tests
 ```
 
-Los commits inválidos son rechazados automáticamente por Husky + Commitlint antes de poder hacer push.
+Los commits inválidos son rechazados automáticamente por Husky + Commitlint antes de poder commitear.
 
 ---
 
@@ -215,4 +219,4 @@ Los commits inválidos son rechazados automáticamente por Husky + Commitlint an
 | 8    | Backend logic: Edge Functions (puntos, canje de premios)        | ⬜ Pendiente    |
 | 9    | Pulido, testing completo y auditoría de rendimiento (Lighthouse) | ⬜ Pendiente   |
 
-> Plan maestro completo en `PLAN_GIO_BARBER_SHOP.md`.
+> Para el detalle completo de cada fase, consultar el plan maestro del producto.
