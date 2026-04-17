@@ -23,4 +23,8 @@ export default defineConfig({
     },
     assetsInlineLimit: 4096,
   },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['src/test/setup.ts'],
+  },
 })
