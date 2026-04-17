@@ -1,0 +1,44 @@
+# Gio Barber Shop — Informacion Completa
+
+> Barberia masculina profesional en [Ciudad], España.
+
+## Que ofrecemos
+
+[Contenido extendido — completar con detalles reales del negocio]
+
+## Servicios y precios
+
+- Corte de pelo: desde 15€ (30-45 min)
+- Arreglo de barba: desde 10€ (20-30 min)
+- Corte + barba: desde 22€ (50-60 min)
+- Afeitado clasico: desde 12€ (30 min)
+
+## Sistema de fidelizacion
+
+Cada visita acumula puntos canjeables por servicios gratuitos:
+- 100 puntos → Corte de pelo gratis
+- 60 puntos → Arreglo de barba gratis
+- 40 puntos → Descuento 5€ en cualquier servicio
+
+## Preguntas frecuentes
+
+**¿Necesito cita previa?**
+Si, trabajamos siempre con cita previa para garantizar la mejor atencion.
+
+**¿Como cancelo una cita?**
+Puedes cancelar desde la app hasta 2 horas antes de tu cita sin coste alguno.
+
+**¿Como funciona el sistema de puntos?**
+Cada visita suma puntos segun el servicio. Cuando acumulas suficientes,
+puedes canjearlos por servicios gratuitos directamente desde la app.
+
+**¿Que metodos de pago aceptais?**
+Efectivo y tarjeta de credito/debito.
+
+## Informacion del negocio
+
+- Nombre: Gio Barber Shop
+- Direccion: [Calle], [Ciudad], [CP], España
+- Telefono: +34-XXX-XXX-XXX
+- Email: info@giobarber.shop
+- Web: https://giobarber.shop
