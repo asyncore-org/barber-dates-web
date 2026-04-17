@@ -3,11 +3,13 @@
 Crea un hook de TanStack Query que orquesta domain + infrastructure.
 
 ## Uso
+
 ```
 /new-hook <nombreHook> [entidad]
 ```
 
 Ejemplos:
+
 - `/new-hook useAppointments appointments`
 - `/new-hook useLoyalty loyalty`
 - `/new-hook useServices services`
@@ -46,12 +48,11 @@ export function useCreate[Entidad]() {
 ```
 
 2. **Convención de queryKeys** (seguir siempre este patrón):
+
 ```ts
-['appointments']                    // todas las citas
-['appointments', userId]            // citas de un usuario
-['appointments', userId, date]      // citas de un usuario en una fecha
-['rewards', 'public']               // datos públicos (sin auth)
-['loyalty', userId]                 // loyalty de un usuario específico
+;['appointments'][('appointments', userId)][('appointments', userId, date)][('rewards', 'public')][ // todas las citas // citas de un usuario // citas de un usuario en una fecha // datos públicos (sin auth)
+  ('loyalty', userId)
+] // loyalty de un usuario específico
 ```
 
 3. **Reglas que siempre debes aplicar**:
@@ -65,10 +66,10 @@ export function useCreate[Entidad]() {
 4. **Si la entidad tiene reglas de dominio** (ej. `canCancelAppointment`), importarlas de `src/domain/` y usarlas en la capa de UI a través del hook:
 
 ```ts
-import { canCancelAppointment } from '@/domain/appointment/appointment.rules';
+import { canCancelAppointment } from '@/domain/appointment/appointment.rules'
 
 export function useAppointmentActions(appointment: Appointment) {
-  const canCancel = canCancelAppointment(appointment, new Date());
+  const canCancel = canCancelAppointment(appointment, new Date())
   // ...
 }
 ```

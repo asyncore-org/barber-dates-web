@@ -113,9 +113,9 @@ No hacer `git push` ni `gh pr create` sin confirmación explícita del usuario.
 
 ## Si algo bloquea
 
-| Bloqueo | Acción |
-|---------|--------|
-| Review agent reporta ❌ | Arreglar antes de continuar |
-| Quality gate falla | Arreglar antes de continuar |
-| Criterio no cumplido | Volver al desarrollo |
+| Bloqueo                                | Acción                                              |
+| -------------------------------------- | --------------------------------------------------- |
+| Review agent reporta ❌                | Arreglar antes de continuar                         |
+| Quality gate falla                     | Arreglar antes de continuar                         |
+| Criterio no cumplido                   | Volver al desarrollo                                |
 | Usuario rechaza cambio de Constitution | No aplicarlo — anotar en LOG.md por qué se descartó |

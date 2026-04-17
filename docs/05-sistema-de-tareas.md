@@ -26,20 +26,20 @@ Lo que SÍ se commitea: el código producido, y los aprendizajes promovidos a `K
 
 ### Archivos de cada tarea
 
-| Archivo | Qué es | Cuándo se escribe | Inmutable |
-|---------|--------|-------------------|-----------|
-| `README.md` | Contrato: qué, por qué, criterios de aceptación, fuera de alcance | Al arrancar | Sí (salvo marcar criterios ✅) |
-| `ANALYSIS.md` | Diagnóstico del código existente, capas afectadas, riesgos | Durante `/analyze` | No |
-| `QUESTIONS.md` | Preguntas abiertas + respuestas del usuario | Durante `/analyze` y `/plan` | No |
-| `PLAN.md` | Pasos numerados con criterios por paso | Durante `/plan` | Versionado (v1, v2...) |
-| `PROGRESS.md` | Tabla de pasos: pending / in-progress / done | Con cada `/implement` | No |
-| `STATE.md` | Checkpoint actual + próximo paso (reescrito) | Continuamente | No |
-| `LOG.md` | Historial append-only (nunca se borra) | Con cada evento | Append-only |
-| `DECISIONS.md` | Decisiones de diseño locales a esta tarea | Cuando surge una decisión | Append-only |
-| `files.md` | Archivos tocados (rellena el hook automático) | Automático | Append-only |
-| `REVIEW.md` | Resultado de `/review`: veredicto + hallazgos | Con `/review` | No |
-| `handoff.md` | Contexto completo para retomar en otra sesión | Con `/handoff` | No |
-| `CHANGES/CHANGE-N.md` | Una por cada `/change` ejecutado | Con `/change` | No |
+| Archivo               | Qué es                                                            | Cuándo se escribe            | Inmutable                      |
+| --------------------- | ----------------------------------------------------------------- | ---------------------------- | ------------------------------ |
+| `README.md`           | Contrato: qué, por qué, criterios de aceptación, fuera de alcance | Al arrancar                  | Sí (salvo marcar criterios ✅) |
+| `ANALYSIS.md`         | Diagnóstico del código existente, capas afectadas, riesgos        | Durante `/analyze`           | No                             |
+| `QUESTIONS.md`        | Preguntas abiertas + respuestas del usuario                       | Durante `/analyze` y `/plan` | No                             |
+| `PLAN.md`             | Pasos numerados con criterios por paso                            | Durante `/plan`              | Versionado (v1, v2...)         |
+| `PROGRESS.md`         | Tabla de pasos: pending / in-progress / done                      | Con cada `/implement`        | No                             |
+| `STATE.md`            | Checkpoint actual + próximo paso (reescrito)                      | Continuamente                | No                             |
+| `LOG.md`              | Historial append-only (nunca se borra)                            | Con cada evento              | Append-only                    |
+| `DECISIONS.md`        | Decisiones de diseño locales a esta tarea                         | Cuando surge una decisión    | Append-only                    |
+| `files.md`            | Archivos tocados (rellena el hook automático)                     | Automático                   | Append-only                    |
+| `REVIEW.md`           | Resultado de `/review`: veredicto + hallazgos                     | Con `/review`                | No                             |
+| `handoff.md`          | Contexto completo para retomar en otra sesión                     | Con `/handoff`               | No                             |
+| `CHANGES/CHANGE-N.md` | Una por cada `/change` ejecutado                                  | Con `/change`                | No                             |
 
 ### Cómo retomar una tarea en cualquier sesión
 
@@ -57,6 +57,7 @@ Lo que SÍ se commitea: el código producido, y los aprendizajes promovidos a `K
 ```
 
 Claude al retomar:
+
 1. Lee `README.md` — el contrato (qué tenía que hacer).
 2. Lee `STATE.md` — dónde se quedó.
 3. Lee las últimas ~10 entradas de `LOG.md` — qué pasó.
@@ -79,66 +80,84 @@ Los scripts permiten extraer **solo el fragmento relevante** en cada momento:
 ### Referencia completa
 
 #### `constitution-index.sh`
+
 ```bash
 bash .claude/scripts/constitution-index.sh
 ```
+
 Muestra el índice de 15 líneas del Constitution. Claude lo usa primero para saber qué artículo cargar.
 
 #### `art.sh <N>`
+
 ```bash
 bash .claude/scripts/art.sh 3    # Art. 3 — Arquitectura
 bash .claude/scripts/art.sh 4    # Art. 4 — Reglas de negocio
 bash .claude/scripts/art.sh 14   # Art. 14 — Quality gates
 ```
+
 Extrae un artículo completo del Constitution.
 
 #### `section.sh <archivo> <heading>`
+
 ```bash
 bash .claude/scripts/section.sh .claude/CONSTITUTION.md "Art. 8"
 bash .claude/scripts/section.sh CLAUDE.md "Comandos disponibles"
 bash .claude/scripts/section.sh .claude/workflows/feature.md "Fase PLAN"
 ```
+
 Extrae una sección por su heading de cualquier archivo markdown. Útil para leer solo la fase PLAN del workflow feature, por ejemplo.
 
 #### `fetch.sh <archivo> [TASK-ID]`
+
 ```bash
 bash .claude/scripts/fetch.sh PLAN.md              # tarea activa
 bash .claude/scripts/fetch.sh STATE.md             # tarea activa
 bash .claude/scripts/fetch.sh ANALYSIS.md TASK-20260501-1430-feature-auth  # tarea específica
 ```
+
 Trae un archivo concreto de la carpeta de la tarea activa (o de una tarea específica).
 
 #### `plan-step.sh <N>`
+
 ```bash
 bash .claude/scripts/plan-step.sh 1
 bash .claude/scripts/plan-step.sh 3
 ```
+
 Extrae solo el paso N del PLAN.md de la tarea activa. Claude lo usa en `/implement 3` para no cargar todo el plan.
 
 #### `grep-task.sh <pattern>`
+
 ```bash
 bash .claude/scripts/grep-task.sh "InsForge"
 bash .claude/scripts/grep-task.sh "loyalty"
 ```
+
 Grep en todos los archivos `.md` de la tarea activa. Útil para encontrar una decisión o nota específica sin leer todo.
 
 #### `diff-task.sh [--stat]`
+
 ```bash
 bash .claude/scripts/diff-task.sh --stat    # solo estadísticas: 5 archivos, +120/-30
 bash .claude/scripts/diff-task.sh           # diff completo (excluye .claude/tasks/ y .md)
 ```
+
 Muestra el diff de la rama actual contra su base (develop o main según la convención de naming).
 
 #### `files-touched.sh`
+
 ```bash
 bash .claude/scripts/files-touched.sh
 ```
+
 Lista única y ordenada de todos los archivos tocados en la tarea activa (deduplicado de `files.md`). Claude lo usa en `/review` y `/sync-context`.
 
 #### `sync-context.sh`
+
 ```bash
 bash .claude/scripts/sync-context.sh
 ```
+
 Cruza los archivos tocados contra un mapa de "qué archivos afectan a qué artículos". Devuelve una lista de artículos que podrían haber quedado desactualizados.
 
 ---
@@ -154,6 +173,7 @@ Los hooks son scripts que se ejecutan automáticamente en respuesta a eventos de
 **Qué hace**: detecta si hay una tarea activa asociada a la rama git actual.
 
 **Qué ves**: si hay tarea activa, Claude recibe este mensaje antes de que empieces a hablar:
+
 ```
 [agentic-system] Rama actual: feature/loyalty-system
 [agentic-system] Tarea activa detectada: TASK-20260501-1430-feature-loyalty-system
@@ -170,6 +190,7 @@ Los hooks son scripts que se ejecutan automáticamente en respuesta a eventos de
 **Cuándo**: tras cada `Edit` o `Write` de Claude.
 
 **Qué hace**: añade una entrada a `files.md` de la tarea activa.
+
 ```
 - 2026-05-01 14:35  M  src/domain/loyalty/loyalty.rules.ts
 - 2026-05-01 14:36  C  src/domain/loyalty/loyalty.rules.test.ts
@@ -188,6 +209,7 @@ Los hooks son scripts que se ejecutan automáticamente en respuesta a eventos de
 **Qué hace**: si el archivo editado es "sensible" (reglas de dominio, infrastructure, routes, env vars, estilos), emite un aviso en stderr que Claude ve.
 
 **Qué ve Claude**:
+
 ```
 [context-watch] Editaste reglas de dominio → ¿cambió alguna regla de negocio? (Art. 4)
 [context-watch] Si hay cambio → anota [context-flag] en LOG.md. Se revisará en /done.
@@ -197,7 +219,7 @@ Los hooks son scripts que se ejecutan automáticamente en respuesta a eventos de
 
 ---
 
-### PostToolUse (Edit/Write *.ts/*.tsx) → type-check automático
+### PostToolUse (Edit/Write _.ts/_.tsx) → type-check automático
 
 **Cuándo**: tras cada edición de un archivo TypeScript.
 
@@ -212,6 +234,7 @@ Los hooks son scripts que se ejecutan automáticamente en respuesta a eventos de
 **Cuándo**: antes de cada `git commit`.
 
 **Qué hace**: si hay tarea activa, sugiere incluir el TASK-ID en el cuerpo del commit.
+
 ```
 [agentic-system] Commit en rama con tarea activa TASK-...
 [agentic-system] Considera mencionar TASK-... en el cuerpo del commit.
@@ -228,6 +251,7 @@ Los hooks son scripts que se ejecutan automáticamente en respuesta a eventos de
 ```
 /pause
 ```
+
 Claude actualiza `STATE.md` con el checkpoint y marca `paused`. Próxima sesión: `/resume`.
 
 ### Cierre inesperado
@@ -253,4 +277,5 @@ git checkout feature/<slug>
 ```
 /compact-task
 ```
+
 Genera un resumen ejecutivo de 30 líneas al principio del `LOG.md`. Las siguientes sesiones cargan el resumen, no el log completo.

@@ -3,11 +3,13 @@
 Crea el adaptador de infrastructure para una entidad (capa que habla con InsForge).
 
 ## Uso
+
 ```
 /new-infra <entidad>
 ```
 
 Ejemplos:
+
 - `/new-infra appointments`
 - `/new-infra loyalty`
 - `/new-infra services`
@@ -94,12 +96,12 @@ export async function delete[Entidad](id: string): Promise<void> {
 2. **Verificar que existe** `src/infrastructure/insforge/client.ts` con el singleton del cliente InsForge. Si no existe, crearlo:
 
 ```ts
-import { createClient } from '@insforge/js'; // o '@supabase/supabase-js' según la API de InsForge
+import { createClient } from '@insforge/js' // o '@supabase/supabase-js' según la API de InsForge
 
 export const insforgeClient = createClient(
   import.meta.env.VITE_INSFORGE_URL,
-  import.meta.env.VITE_INSFORGE_ANON_KEY,
-);
+  import.meta.env.VITE_INSFORGE_ANON_KEY
+)
 ```
 
 3. **Reglas críticas de la capa infrastructure**:

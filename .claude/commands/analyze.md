@@ -35,7 +35,7 @@ Usa subagente `Explore` para no cargar el contexto principal:
 ```
 Agent({
   subagent_type: "Explore",
-  prompt: "En el repo barber-dates-web/, busca todos los archivos relacionados con <tema>. 
+  prompt: "En el repo barber-dates-web/, busca todos los archivos relacionados con <tema>.
            Dime qué archivos existen, qué exportan y qué dependencias tienen entre sí.
            Responde en < 200 palabras."
 })
@@ -57,6 +57,7 @@ Rellena `.claude/tasks/<TASK-ID>/ANALYSIS.md` con:
 Si hay ambigüedades que el usuario debe resolver antes de planificar, escríbelas en `QUESTIONS.md`.
 
 Formato de cada pregunta:
+
 ```
 ### Q-N — <título>
 **Contexto**: por qué es necesario saber esto

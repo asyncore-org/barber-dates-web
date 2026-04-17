@@ -27,11 +27,13 @@ Escribe `.claude/tasks/<TASK-ID>/PLAN.md` con:
 
 ```markdown
 ## Resumen del plan
+
 <2-3 frases>
 
 ## Pasos
 
 ### Paso 1 — <título>
+
 - Capa(s): ...
 - Archivos nuevos: ...
 - Archivos modificados: ...
@@ -41,6 +43,7 @@ Escribe `.claude/tasks/<TASK-ID>/PLAN.md` con:
 ```
 
 **Criterios de un buen plan:**
+
 - Cada paso = 1 commit coherente (no demasiado pequeño, no demasiado grande).
 - Orden: domain → infrastructure → hooks → components → pages (de adentro hacia afuera).
 - Si un paso puede fallar de forma independiente, se separa en dos.

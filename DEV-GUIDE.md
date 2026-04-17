@@ -187,6 +187,7 @@ Estos son los archivos que Claude lee para entender el proyecto. Mantenerlos act
 **Versión actual**: v1.0.0
 
 **Cuándo actualizarlo**: cuando algo del proyecto cambia de forma permanente. Por ejemplo:
+
 - Se añade una nueva tabla a la DB → actualizar Art. 5
 - Se añade una nueva regla de negocio → actualizar Art. 4
 - Se añade una nueva ruta → actualizar Art. 6
@@ -215,6 +216,7 @@ Estos son los archivos que Claude lee para entender el proyecto. Mantenerlos act
 **Cuándo actualizarlo**: usa `/learn <insight>` en cualquier momento del desarrollo. El comando añade la entrada con formato correcto.
 
 **Formato de cada entrada**:
+
 ```markdown
 ### YYYY-MM-DD — Título corto
 
@@ -233,6 +235,7 @@ Estos son los archivos que Claude lee para entender el proyecto. Mantenerlos act
 **Cuándo actualizarlo**: cuando se toma una decisión de arquitectura que no es obvia y que puede afectar el futuro del proyecto.
 
 **Formato**:
+
 ```markdown
 ## ADR-NNN — Título · YYYY-MM-DD
 
@@ -323,12 +326,12 @@ Todo desarrollo en este proyecto sigue este ciclo sin excepción:
 
 ### Por qué cada fase es obligatoria
 
-| Fase | Si la saltas... |
-|------|----------------|
-| `/analyze` | Claude no sabe qué archivos existen, toma decisiones arquitectónicas a ciegas |
-| `/plan` | Claude implementa por intuición, no por contrato. Difícil saber qué viene luego |
-| `/implement` | No debería existir código sin pasar por esta puerta — es la regla fundamental |
-| `/review` | Los errores de capas (components importando de infrastructure) son silenciosos |
+| Fase                    | Si la saltas...                                                                         |
+| ----------------------- | --------------------------------------------------------------------------------------- |
+| `/analyze`              | Claude no sabe qué archivos existen, toma decisiones arquitectónicas a ciegas           |
+| `/plan`                 | Claude implementa por intuición, no por contrato. Difícil saber qué viene luego         |
+| `/implement`            | No debería existir código sin pasar por esta puerta — es la regla fundamental           |
+| `/review`               | Los errores de capas (components importando de infrastructure) son silenciosos          |
 | Context sync en `/done` | El Constitution queda desactualizado, la siguiente sesión trabaja con información falsa |
 
 ---
@@ -338,6 +341,7 @@ Todo desarrollo en este proyecto sigue este ciclo sin excepción:
 ### Cómo invocar un comando
 
 En Claude Code, los comandos slash se invocan escribiéndolos en el chat:
+
 ```
 /feature calendar-virtualization
 /plan
@@ -350,44 +354,57 @@ En Claude Code, los comandos slash se invocan escribiéndolos en el chat:
 ### Comandos de arranque de tareas
 
 #### `/feature <slug> [descripción]`
+
 Arranca una feature nueva.
+
 - Crea rama `feature/<slug>` desde `develop` (o rama actual si es sub-tarea).
 - Crea carpeta `.claude/tasks/TASK-YYYYMMDD-HHmm-feature-<slug>/`.
 - Ejecuta análisis y genera preguntas.
 - **Para aquí. No implementa nada.**
 
 Ejemplo:
+
 ```
 /feature loyalty-redeem-flow el cliente debe poder canjear puntos por premios
 ```
 
 #### `/fix <slug> [síntoma]`
+
 Arranca un bugfix.
+
 - Rama `fix/<slug>` desde `develop`.
 - Analiza el bug, intenta identificar causa raíz.
 - **Para con el diagnóstico. Espera confirmación antes de planificar.**
 
 Ejemplo:
+
 ```
 /fix appointment-overlap el sistema permite reservar dos citas a la misma hora
 ```
 
 #### `/refactor <slug> [descripción]`
+
 Refactor sin cambio funcional.
+
 - Rama `refactor/<slug>`.
 - Analiza cobertura de tests antes de tocar nada.
 - Si los tests son escasos, el primer paso del plan será añadirlos.
 
 #### `/chore <slug> [descripción]`
+
 Mantenimiento: deps, config, scripts.
+
 - Rama `chore/<slug>`.
 - Para deps major, lee breaking changes y genera preguntas.
 
 #### `/hotfix <slug> [síntoma]`
+
 Arreglo urgente a producción. **Base: `main`**, no `develop`.
+
 - Al cerrar, Claude recordará hacer el doble merge (main + develop).
 
 #### `/spike <slug> [pregunta]`
+
 Exploración time-boxed. La rama no se mergea — solo documenta la respuesta.
 
 ---
@@ -395,15 +412,20 @@ Exploración time-boxed. La rama no se mergea — solo documenta la respuesta.
 ### Comandos del ciclo de vida
 
 #### `/analyze`
+
 Re-ejecuta el análisis de la tarea activa. Útil cuando aportas nueva información que cambia el contexto.
 
 #### `/plan`
+
 Genera `PLAN.md` con pasos numerados. Requiere que `ANALYSIS.md` esté completo y `QUESTIONS.md` respondido.
+
 - Muestra el plan completo y para.
 - Responde "ok" para aprobarlo, o usa `/revise` para ajustarlo.
 
 #### `/revise <qué cambiar>`
+
 Ajusta el plan antes de implementar.
+
 ```
 /revise el paso 2 y 3 júntalos en uno
 /revise descarta el paso de loyalty, lo hacemos en otra tarea
@@ -411,46 +433,55 @@ Ajusta el plan antes de implementar.
 ```
 
 #### `/implement [opción]`
+
 **La única puerta de entrada al código de producción.**
 
-| Uso | Qué hace |
-|-----|----------|
-| `/implement` | Siguiente paso pendiente |
-| `/implement next` | Igual |
-| `/implement 3` | Solo el paso 3 |
-| `/implement 2..4` | Pasos 2, 3 y 4 |
-| `/implement all` | Todos los pendientes (pide confirmación si son > 3) |
+| Uso               | Qué hace                                            |
+| ----------------- | --------------------------------------------------- |
+| `/implement`      | Siguiente paso pendiente                            |
+| `/implement next` | Igual                                               |
+| `/implement 3`    | Solo el paso 3                                      |
+| `/implement 2..4` | Pasos 2, 3 y 4                                      |
+| `/implement all`  | Todos los pendientes (pide confirmación si son > 3) |
 
 Tras cada paso: commit + actualización de `PROGRESS.md` + pausa para que puedas revisar.
 
 #### `/next`
+
 Atajo para `/implement next`. Para flujo rápido cuando ya tienes el plan aprobado.
 
 #### `/change <descripción del ajuste>`
+
 Flujo de corrección controlada. Úsalo cuando algo no quedó como querías.
 
 **Lo que NO hace**: tocar código directamente.
 
 **Lo que SÍ hace**:
+
 1. Analiza qué implica el cambio.
 2. Crea un documento `CHANGES/CHANGE-N.md` con diagnóstico y plan de cambio.
 3. Te lo muestra y para.
 4. Espera a que tú ejecutes `/implement` para que se aplique.
 
 Ejemplo:
+
 ```
 /change el hook useAppointments debería recibir userId como parámetro, no leerlo del store
 ```
 
 #### `/review`
+
 Audita el resultado antes de cerrar:
+
 1. Lanza un subagente independiente que revisa el diff contra las reglas del Constitution.
 2. Ejecuta los quality gates (type-check + lint + tests).
 3. Verifica los criterios de aceptación del README.md de la tarea.
 4. Escribe `REVIEW.md` con el veredicto.
 
 #### `/done`
+
 Cierra la tarea:
+
 1. Review completo (si no se ha hecho).
 2. **Context sync obligatorio** — detecta si algún artículo del Constitution ha quedado desactualizado y propone actualizaciones.
 3. Propone el PR con título y body. **Para antes de hacer push.**
@@ -461,26 +492,33 @@ Cierra la tarea:
 ### Comandos de gestión de sesión
 
 #### `/status`
+
 Foto del estado actual: rama, tarea activa, commits recientes, próximo paso.
 Úsalo siempre al iniciar una sesión de trabajo.
 
 #### `/resume [TASK-ID]`
+
 Retoma una tarea en una sesión nueva.
+
 - Sin argumento: detecta la tarea asociada a la rama actual.
 - Con argumento: busca la tarea específica y hace checkout de su rama.
 - Lee README + STATE + LOG + DECISIONS y te da un resumen.
 - **Para antes de ejecutar el próximo paso. Espera tu confirmación.**
 
 #### `/pause`
+
 Persiste el estado actual y marca la tarea como `paused`. Úsalo antes de cerrar si no has terminado.
 
 #### `/block <motivo>`
+
 Marca la tarea como `blocked`. Úsalo cuando hay algo externo que te impide avanzar (una decisión pendiente, una dependencia no resuelta, etc.).
 
 #### `/handoff`
+
 Genera `handoff.md` con toda la información necesaria para retomar en otra máquina o compartir con alguien. Incluye: estado git, próximo paso, archivos clave, comandos para arrancar.
 
 #### `/compact-task`
+
 Resume `LOG.md` cuando ha crecido mucho (>50 entradas). Genera un resumen de 30 líneas al principio del log. Reduce el contexto necesario para retomar.
 
 ---
@@ -488,23 +526,29 @@ Resume `LOG.md` cuando ha crecido mucho (>50 entradas). Genera un resumen de 30 
 ### Comandos de contexto y aprendizaje
 
 #### `/sync-context`
+
 Revisa si algún archivo de contexto ha quedado desactualizado. Cruza los archivos tocados en la tarea contra el Constitution y propone actualizaciones. Se ejecuta automáticamente en `/done`, pero puedes invocarlo en cualquier momento.
 
 #### `/learn <insight>`
+
 Añade un aprendizaje a `KNOWLEDGE.md`.
+
 ```
 /learn InsForge no soporta .rpc() con array args — hay que usar .sql() directo
 /learn npm run dev no hot-reloada en iCloud — reiniciar Vite
 ```
 
 #### `/ask <pregunta>`
+
 Responde una pregunta sobre el proyecto sin crear tarea. Usa scripts de fetch parcial para no inflar el contexto.
+
 ```
 /ask ¿cuál es la regla exacta de cancelación de citas?
 /ask ¿cómo se estructura un hook con TanStack Query?
 ```
 
 #### `/worktree <slug>`
+
 Crea un worktree git aislado para trabajar en paralelo en otra tarea sin afectar la rama actual. Solo cuando lo pides explícitamente.
 
 ---
@@ -514,23 +558,30 @@ Crea un worktree git aislado para trabajar en paralelo en otra tarea sin afectar
 Estos generan código siguiendo exactamente las convenciones del proyecto.
 
 #### `/new-domain <entidad>`
+
 Genera:
+
 - `src/domain/<entidad>/<entidad>.types.ts` — tipos puros
 - `src/domain/<entidad>/<entidad>.rules.ts` — funciones puras de negocio
 - `src/domain/<entidad>/<entidad>.rules.test.ts` — tests unitarios
 
 #### `/new-infra <entidad>`
+
 Genera `src/infrastructure/insforge/<entidad>.ts` con:
+
 - Mapper snake_case (DB) ↔ camelCase (dominio)
 - CRUD básico: fetch, fetchById, create, update, delete
 
 #### `/new-hook <nombre>`
+
 Genera `src/hooks/use<Nombre>.ts` con TanStack Query y queryKeys correctas.
 
 #### `/new-component <nombre>`
+
 Genera `src/components/<nombre>/<nombre>.tsx` con named export.
 
 #### `/new-page <nombre>`
+
 Genera `src/pages/<nombre>/<nombre>.tsx` con `export default`, `lazy()`, `AuthGuard`, `SeoHead`.
 
 ---
@@ -538,15 +589,19 @@ Genera `src/pages/<nombre>/<nombre>.tsx` con `export default`, `lazy()`, `AuthGu
 ### Comandos de diagnóstico
 
 #### `/check`
+
 Ejecuta los tres quality gates:
+
 ```bash
 npm run type-check
 npm run lint
 npm run test -- --run
 ```
+
 Reporta el resultado y ofrece arreglar errores si los hay.
 
 #### `/phase`
+
 Compara el estado actual del código con el plan de fases (`../PLAN_GIO_BARBER_SHOP.md`) y reporta qué está hecho, en progreso y pendiente.
 
 ---
@@ -556,6 +611,7 @@ Compara el estado actual del código con el plan de fases (`../PLAN_GIO_BARBER_S
 ### Por qué existen
 
 Cuando Claude trabaja en una tarea larga o que se interrumpe, necesita saber:
+
 - Qué tenía que hacer exactamente.
 - Dónde se quedó.
 - Qué decisiones tomó y por qué.
@@ -577,20 +633,20 @@ Lo que SÍ se commitea: el código producido, y los aprendizajes promovidos a `K
 
 ### Archivos dentro de una carpeta de tarea
 
-| Archivo | Propósito | Cuándo se escribe |
-|---------|-----------|-------------------|
-| `README.md` | Contrato: qué, por qué, criterios de aceptación | Al arrancar con `/feature` etc. |
-| `ANALYSIS.md` | Diagnóstico del código y alcance real | Durante `/analyze` |
-| `QUESTIONS.md` | Preguntas abiertas + respuestas del usuario | Durante `/analyze` y `/plan` |
-| `PLAN.md` | Pasos numerados con criterios por paso | Durante `/plan` |
-| `PROGRESS.md` | Seguimiento de pasos (pending/in-progress/done) | Actualizado con cada `/implement` |
-| `STATE.md` | Estado vivo: checkpoint + próximo paso | Actualizado continuamente |
-| `LOG.md` | Historial append-only de eventos | Actualizado en cada paso |
-| `DECISIONS.md` | Decisiones locales de esta tarea | Cuando hay una decisión de diseño |
-| `files.md` | Archivos tocados (rellena el hook automático) | Automático con cada Edit/Write |
-| `REVIEW.md` | Resultado del `/review` | Al ejecutar `/review` |
-| `handoff.md` | Contexto para otra sesión | Al ejecutar `/handoff` |
-| `CHANGES/CHANGE-N.md` | Cada corrección solicitada con `/change` | Al ejecutar `/change` |
+| Archivo               | Propósito                                       | Cuándo se escribe                 |
+| --------------------- | ----------------------------------------------- | --------------------------------- |
+| `README.md`           | Contrato: qué, por qué, criterios de aceptación | Al arrancar con `/feature` etc.   |
+| `ANALYSIS.md`         | Diagnóstico del código y alcance real           | Durante `/analyze`                |
+| `QUESTIONS.md`        | Preguntas abiertas + respuestas del usuario     | Durante `/analyze` y `/plan`      |
+| `PLAN.md`             | Pasos numerados con criterios por paso          | Durante `/plan`                   |
+| `PROGRESS.md`         | Seguimiento de pasos (pending/in-progress/done) | Actualizado con cada `/implement` |
+| `STATE.md`            | Estado vivo: checkpoint + próximo paso          | Actualizado continuamente         |
+| `LOG.md`              | Historial append-only de eventos                | Actualizado en cada paso          |
+| `DECISIONS.md`        | Decisiones locales de esta tarea                | Cuando hay una decisión de diseño |
+| `files.md`            | Archivos tocados (rellena el hook automático)   | Automático con cada Edit/Write    |
+| `REVIEW.md`           | Resultado del `/review`                         | Al ejecutar `/review`             |
+| `handoff.md`          | Contexto para otra sesión                       | Al ejecutar `/handoff`            |
+| `CHANGES/CHANGE-N.md` | Cada corrección solicitada con `/change`        | Al ejecutar `/change`             |
 
 ### Cómo retomar una tarea
 
@@ -601,6 +657,7 @@ Si interrumpes el trabajo y vuelves mañana (o en una semana):
 ```
 
 Claude:
+
 1. Detecta la rama actual y busca la tarea asociada.
 2. Lee `README.md` (el contrato), `STATE.md` (dónde estaba), las últimas entradas de `LOG.md`.
 3. Te da un resumen y te pregunta si continúa.
@@ -619,23 +676,24 @@ Los scripts permiten cargar **solo el fragmento relevante** en cada momento.
 
 ### Lista de scripts
 
-| Script | Uso | Cuándo usarlo |
-|--------|-----|---------------|
-| `constitution-index.sh` | Muestra el índice de 15 líneas | Al inicio de cualquier análisis |
-| `art.sh <N>` | Extrae el artículo N del Constitution | Tras leer el índice, para cargar el art. relevante |
-| `section.sh <file> <heading>` | Extrae una sección de cualquier MD | Para leer solo parte de CLAUDE.md, workflows, etc. |
-| `fetch.sh <file>` | Trae un archivo de la tarea activa | Para leer PLAN.md, STATE.md, etc. sin leer toda la tarea |
-| `plan-step.sh <N>` | Extrae el paso N del plan | Al ejecutar `/implement 3` — solo lee ese paso |
-| `grep-task.sh <pattern>` | Grep en archivos de la tarea | Para buscar algo específico sin leer todo |
-| `diff-task.sh [--stat]` | Diff de la rama vs base | Con --stat: solo estadísticas. Sin: diff completo |
-| `files-touched.sh` | Lista de archivos tocados (deduplicado) | Para saber qué hay que revisar en el context sync |
-| `sync-context.sh` | Detecta artículos del Constitution posiblemente desactualizados | En `/done` (automático) o cuando lo pides |
+| Script                        | Uso                                                             | Cuándo usarlo                                            |
+| ----------------------------- | --------------------------------------------------------------- | -------------------------------------------------------- |
+| `constitution-index.sh`       | Muestra el índice de 15 líneas                                  | Al inicio de cualquier análisis                          |
+| `art.sh <N>`                  | Extrae el artículo N del Constitution                           | Tras leer el índice, para cargar el art. relevante       |
+| `section.sh <file> <heading>` | Extrae una sección de cualquier MD                              | Para leer solo parte de CLAUDE.md, workflows, etc.       |
+| `fetch.sh <file>`             | Trae un archivo de la tarea activa                              | Para leer PLAN.md, STATE.md, etc. sin leer toda la tarea |
+| `plan-step.sh <N>`            | Extrae el paso N del plan                                       | Al ejecutar `/implement 3` — solo lee ese paso           |
+| `grep-task.sh <pattern>`      | Grep en archivos de la tarea                                    | Para buscar algo específico sin leer todo                |
+| `diff-task.sh [--stat]`       | Diff de la rama vs base                                         | Con --stat: solo estadísticas. Sin: diff completo        |
+| `files-touched.sh`            | Lista de archivos tocados (deduplicado)                         | Para saber qué hay que revisar en el context sync        |
+| `sync-context.sh`             | Detecta artículos del Constitution posiblemente desactualizados | En `/done` (automático) o cuando lo pides                |
 
 ### Cómo los usa Claude
 
 Claude los invoca a través de llamadas Bash dentro del chat. Tú normalmente no necesitas ejecutarlos directamente, aunque puedes hacerlo en tu terminal para inspeccionar el estado.
 
 Ejemplo de lo que Claude hace internamente durante `/analyze`:
+
 ```bash
 bash .claude/scripts/constitution-index.sh     # lee el índice (15 líneas)
 bash .claude/scripts/art.sh 3                  # solo Art. 3 — Arquitectura (~25 líneas)
@@ -671,6 +729,7 @@ Así no tienes que recordar en qué tarea estabas.
 **Cuándo se ejecuta**: tras cada `Edit` o `Write` de Claude.
 
 **Qué hace**: añade una entrada a `files.md` de la tarea activa:
+
 ```
 - 2026-05-01 14:35  M  src/domain/loyalty/loyalty.rules.ts
 - 2026-05-01 14:36  C  src/domain/loyalty/loyalty.rules.test.ts
@@ -685,6 +744,7 @@ Así no tienes que recordar en qué tarea estabas.
 **Cuándo se ejecuta**: tras cada `Edit` o `Write` de Claude, en paralelo con el anterior.
 
 **Qué hace**: si el archivo editado es "sensible" (reglas de dominio, infrastructure, rutas, env vars, estilos), emite un aviso:
+
 ```
 [context-watch] Editaste reglas de dominio → ¿cambió alguna regla de negocio? (Art. 4)
 [context-watch] Si hay cambio → anota [context-flag] en LOG.md. Se revisará en /done.
@@ -707,6 +767,7 @@ No bloquea el trabajo. Es un recordatorio para que Claude no olvide actualizar e
 **Cuándo se ejecuta**: antes de cada llamada a `Bash` que contenga `git commit`.
 
 **Qué hace**: si hay una tarea activa, emite una sugerencia:
+
 ```
 [agentic-system] Commit en rama con tarea activa TASK-...
 [agentic-system] Considera mencionar TASK-... en el cuerpo del commit.
@@ -720,22 +781,22 @@ No bloquea. Solo es una sugerencia de trazabilidad.
 
 ### Ramas principales
 
-| Rama | Propósito | Base de merges |
-|------|-----------|----------------|
-| `main` | Producción (Vercel PRO) | Solo desde `develop` vía PR |
-| `develop` | Pre-producción (Vercel PRE) | Base de todo lo nuevo |
+| Rama      | Propósito                   | Base de merges              |
+| --------- | --------------------------- | --------------------------- |
+| `main`    | Producción (Vercel PRO)     | Solo desde `develop` vía PR |
+| `develop` | Pre-producción (Vercel PRE) | Base de todo lo nuevo       |
 
 ### Ramas de trabajo
 
-| Tipo | Nombre | Base | Destino final |
-|------|--------|------|---------------|
-| Feature nueva | `feature/<slug>` | `develop` | PR a `develop` |
-| Bugfix | `fix/<slug>` | `develop` | PR a `develop` |
-| Refactor | `refactor/<slug>` | `develop` | PR a `develop` |
-| Mantenimiento | `chore/<slug>` | `develop` | PR a `develop` |
-| Hotfix urgente | `hotfix/<slug>` | `main` | PR a `main` + merge a `develop` |
-| Exploración | `spike/<slug>` | `develop` | No se mergea |
-| Sub-tarea | `feature/<slug>-<sub>` | La rama padre | PR a la rama padre |
+| Tipo           | Nombre                 | Base          | Destino final                   |
+| -------------- | ---------------------- | ------------- | ------------------------------- |
+| Feature nueva  | `feature/<slug>`       | `develop`     | PR a `develop`                  |
+| Bugfix         | `fix/<slug>`           | `develop`     | PR a `develop`                  |
+| Refactor       | `refactor/<slug>`      | `develop`     | PR a `develop`                  |
+| Mantenimiento  | `chore/<slug>`         | `develop`     | PR a `develop`                  |
+| Hotfix urgente | `hotfix/<slug>`        | `main`        | PR a `main` + merge a `develop` |
+| Exploración    | `spike/<slug>`         | `develop`     | No se mergea                    |
+| Sub-tarea      | `feature/<slug>-<sub>` | La rama padre | PR a la rama padre              |
 
 ### Reglas críticas de git
 
@@ -809,12 +870,12 @@ Este es el flujo cuando algo no quedó como querías. El principio es el mismo q
 
 ### Cuándo usar /change vs otras opciones
 
-| Situación | Qué usar |
-|-----------|----------|
-| Un paso del plan no quedó bien | `/change <descripción>` dentro de la misma tarea |
-| El plan entero está mal orientado | `/revise <qué cambiar>` para regenerar el plan |
-| Es un bug independiente de la feature actual | `/fix <slug>` en nueva rama |
-| Es solo un detalle de estilo (<5 líneas) | Puedes decírselo directamente, aunque /change sigue siendo mejor |
+| Situación                                    | Qué usar                                                         |
+| -------------------------------------------- | ---------------------------------------------------------------- |
+| Un paso del plan no quedó bien               | `/change <descripción>` dentro de la misma tarea                 |
+| El plan entero está mal orientado            | `/revise <qué cambiar>` para regenerar el plan                   |
+| Es un bug independiente de la feature actual | `/fix <slug>` en nueva rama                                      |
+| Es solo un detalle de estilo (<5 líneas)     | Puedes decírselo directamente, aunque /change sigue siendo mejor |
 
 ### El flujo de /change paso a paso
 
@@ -861,6 +922,7 @@ Próxima sesión: el hook `SessionStart` detecta la tarea activa y te avisa. Eje
 ### Escenario 3: Cambio de máquina
 
 Antes de irte:
+
 ```
 /handoff
 ```
@@ -868,6 +930,7 @@ Antes de irte:
 Esto genera `handoff.md` con: estado git, commits hechos, diff vs base, próximo paso exacto, contexto imprescindible y comandos para arrancar.
 
 En la otra máquina:
+
 ```bash
 git clone / git pull
 git checkout feature/<slug>
@@ -988,11 +1051,13 @@ Genera un resumen ejecutivo al principio de `LOG.md`. Las próximas sesiones car
 ### ❌ Pedir implementación directamente sin flujo
 
 **Incorrecto**:
+
 ```
 implementa el sistema de citas completo
 ```
 
 **Correcto**:
+
 ```
 /feature appointment-system
 # (esperar análisis y preguntas)
@@ -1008,11 +1073,13 @@ implementa el sistema de citas completo
 ### ❌ Pedir correcciones sin /change
 
 **Incorrecto**:
+
 ```
 no, ese hook no está bien, hazlo de otra manera
 ```
 
 **Correcto**:
+
 ```
 /change el hook useAppointments debería recibir userId como parámetro en lugar de leerlo del store
 ```
@@ -1044,6 +1111,7 @@ Si cierras Claude Code sin ejecutar `/pause`, el estado se pierde y la próxima 
 ### ❌ Modificar el Constitution directamente sin bumping de versión
 
 Si editas `CONSTITUTION.md` a mano, acuerda hacer:
+
 1. Bump de versión en la cabecera.
 2. Entrada en `DECISIONS.md` con el motivo.
 3. Actualizar `CONSTITUTION-INDEX.md` si cambió algún artículo.
@@ -1085,6 +1153,7 @@ Sí. Cada una está en su propia rama y carpeta. `/status` las lista todas. Para
 **¿Qué pasa si el Constitution se queda desactualizado sin que nadie lo note?**
 
 Es el riesgo principal del sistema. Los mecanismos de protección son:
+
 1. Hook `context-watch.sh` — avisa cuando se editan archivos sensibles.
 2. `/sync-context` en `/done` — obligatorio antes de cada PR.
 3. El propio flujo de `/analyze` — Claude lee el Constitution al inicio de cada tarea.
@@ -1117,4 +1186,4 @@ Simplemente dices "no". Claude anota en el `LOG.md` de la tarea que el cambio fu
 
 ---
 
-*Fin de la guía. Para cualquier duda sobre el sistema, usa `/ask` o consulta directamente los archivos de `.claude/`.*
+_Fin de la guía. Para cualquier duda sobre el sistema, usa `/ask` o consulta directamente los archivos de `.claude/`._

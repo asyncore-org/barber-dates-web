@@ -3,11 +3,13 @@
 Crea un nuevo componente React siguiendo la arquitectura y convenciones del proyecto.
 
 ## Uso
+
 ```
 /new-component <NombreComponente> [carpeta]
 ```
 
 Ejemplos:
+
 - `/new-component AppointmentCard appointments`
 - `/new-component MonthCalendar calendar`
 - `/new-component PointsDisplay loyalty`
@@ -42,6 +44,7 @@ export const [NombreComponente]: FC<[NombreComponente]Props> = ({ /* props */ })
 ```
 
 ## Reglas que siempre debes aplicar
+
 - **Named export** (nunca `export default` en componentes, solo en páginas)
 - **Idioma del código**: inglés (nombres de props, variables, funciones internas)
 - **Idioma de la UI**: español (textos visibles en JSX)

@@ -3,6 +3,7 @@
 Retoma una tarea activa en una sesión nueva sin perder contexto.
 
 ## Uso
+
 ```
 /resume              # retoma la tarea asociada a la rama actual
 /resume <TASK-ID>    # retoma la tarea especificada (y hace checkout de su rama)

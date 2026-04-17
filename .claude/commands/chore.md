@@ -3,6 +3,7 @@
 Arranca una tarea de mantenimiento: rama + carpeta + análisis del alcance.
 
 ## Uso
+
 ```
 /chore <slug> [qué se hace]
 ```

@@ -3,6 +3,7 @@
 Arranca un bugfix: crea rama + carpeta + análisis inicial. Se para aquí.
 
 ## Uso
+
 ```
 /fix <slug> [síntoma observable]
 ```

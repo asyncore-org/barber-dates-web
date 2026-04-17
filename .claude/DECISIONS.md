@@ -3,6 +3,7 @@
 > Decisiones globales con impacto durable sobre la arquitectura del proyecto. Cada entrada es inmutable una vez aprobada. Si se revierte una decisión, se añade una nueva entrada que lo explica.
 
 **Formato de cada ADR:**
+
 ```
 ## ADR-NNN — Título · YYYY-MM-DD
 
@@ -45,3 +46,13 @@
 - **Decisión**: cada tarea genera `.claude/tasks/TASK-<fecha>-<slug>/` con README/STATE/LOG/DECISIONS/files. Carpeta ignorada en git. Los descubrimientos reutilizables se promueven a `KNOWLEDGE.md` o a nuevos ADRs.
 - **Alternativas consideradas**: commitear las tareas como parte del historial (descartado: ruido en git log, no aporta al producto).
 - **Consecuencias**: las tareas son efímeras pero recuperables dentro de la misma máquina; la promoción a knowledge es explícita vía `/learn`.
+
+---
+
+## ADR-003 — Constitution v1.1.0: quality gates migrados a pnpm
+
+- **Fecha**: 2026-04-17
+- **Estado**: accepted
+- **Contexto**: Art. 14 tenía los comandos de quality gates con `npm run`. El proyecto usa pnpm como package manager y el script de test se llama `test:run` (no `test -- --run`).
+- **Decisión**: actualizar Art. 14 a `pnpm run type-check / pnpm run lint / pnpm run test:run`. Bump menor 1.0.0 → 1.1.0.
+- **Consecuencias**: los quality gates del Constitution ahora coinciden con los scripts reales de `package.json`.

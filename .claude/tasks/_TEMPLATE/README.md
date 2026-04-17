@@ -33,4 +33,4 @@
 
 ---
 
-*Este archivo es el contrato inicial de la tarea. No se modifica después del arranque salvo para marcar criterios ✅. El progreso vivo va en `STATE.md` y `LOG.md`.*
+_Este archivo es el contrato inicial de la tarea. No se modifica después del arranque salvo para marcar criterios ✅. El progreso vivo va en `STATE.md` y `LOG.md`._

@@ -7,14 +7,14 @@
 
 ## Índice
 
-| Archivo | Contenido |
-|---------|-----------|
-| [01-sistema-agentico.md](01-sistema-agentico.md) | Qué es el sistema, por qué existe, estructura de archivos completa |
-| [02-archivos-de-contexto.md](02-archivos-de-contexto.md) | Constitution, KNOWLEDGE, DECISIONS, CONSTITUTION-INDEX — cómo leerlos y mantenerlos |
-| [03-flujo-de-desarrollo.md](03-flujo-de-desarrollo.md) | El ciclo completo analyze→plan→implement→review→done con diagramas |
-| [04-referencia-comandos.md](04-referencia-comandos.md) | Los 31 comandos slash documentados en detalle |
-| [05-sistema-de-tareas.md](05-sistema-de-tareas.md) | Carpetas TASK-, scripts de fetch parcial, hooks automáticos, continuidad entre sesiones |
-| [06-buenas-practicas.md](06-buenas-practicas.md) | Ahorro de tokens, correcciones con /change, estrategia git, errores comunes, ejemplos reales, FAQ |
+| Archivo                                                  | Contenido                                                                                         |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| [01-sistema-agentico.md](01-sistema-agentico.md)         | Qué es el sistema, por qué existe, estructura de archivos completa                                |
+| [02-archivos-de-contexto.md](02-archivos-de-contexto.md) | Constitution, KNOWLEDGE, DECISIONS, CONSTITUTION-INDEX — cómo leerlos y mantenerlos               |
+| [03-flujo-de-desarrollo.md](03-flujo-de-desarrollo.md)   | El ciclo completo analyze→plan→implement→review→done con diagramas                                |
+| [04-referencia-comandos.md](04-referencia-comandos.md)   | Los 31 comandos slash documentados en detalle                                                     |
+| [05-sistema-de-tareas.md](05-sistema-de-tareas.md)       | Carpetas TASK-, scripts de fetch parcial, hooks automáticos, continuidad entre sesiones           |
+| [06-buenas-practicas.md](06-buenas-practicas.md)         | Ahorro de tokens, correcciones con /change, estrategia git, errores comunes, ejemplos reales, FAQ |
 
 ---
 

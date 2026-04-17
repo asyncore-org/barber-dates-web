@@ -49,4 +49,4 @@
 
 ---
 
-*Versión 1 generada: YYYY-MM-DD HH:mm*
+_Versión 1 generada: YYYY-MM-DD HH:mm_

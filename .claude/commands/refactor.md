@@ -3,6 +3,7 @@
 Arranca un refactor: crea rama + carpeta + análisis. Se para aquí.
 
 ## Uso
+
 ```
 /refactor <slug> [qué se refactoriza]
 ```

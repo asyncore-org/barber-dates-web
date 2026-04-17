@@ -14,6 +14,7 @@ bash .claude/scripts/art.sh 3   # arquitectura (para entender qué capa falla)
 ```
 
 Explorar con subagente si hay que rastrear código:
+
 ```
 Agent({ subagent_type: "Explore", prompt: "Busca en src/ cualquier referencia a <síntoma>. < 150 palabras." })
 ```
@@ -67,6 +68,7 @@ Reportar diagnóstico al usuario y **PARAR**. Esperar confirmación antes de `/p
 ## Fase REVIEW — invocada por `/review`
 
 Igual que en `feature.md` + verificación específica:
+
 - El síntoma original ya no se reproduce.
 - El test nuevo pasa.
 - No hay regresiones en tests existentes.

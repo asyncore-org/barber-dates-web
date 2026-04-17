@@ -34,12 +34,12 @@ Comparar el contenido del artículo con la realidad actual del código implement
 
 Para cada artículo verificado, evaluar:
 
-| Tipo de desviación | Acción |
-|--------------------|--------|
-| El artículo ya no refleja lo implementado (ej. nueva regla de negocio, nueva ruta, nueva tabla) | Proponer actualización al usuario |
-| Se descubrió un workaround o gotcha durante la implementación | `/learn <insight>` → KNOWLEDGE.md |
-| Se tomó una decisión arquitectónica nueva | Proponer ADR nuevo en DECISIONS.md |
-| Cambio en el Constitution-INDEX (nuevo artículo, renombre) | Actualizar CONSTITUTION-INDEX.md |
+| Tipo de desviación                                                                              | Acción                             |
+| ----------------------------------------------------------------------------------------------- | ---------------------------------- |
+| El artículo ya no refleja lo implementado (ej. nueva regla de negocio, nueva ruta, nueva tabla) | Proponer actualización al usuario  |
+| Se descubrió un workaround o gotcha durante la implementación                                   | `/learn <insight>` → KNOWLEDGE.md  |
+| Se tomó una decisión arquitectónica nueva                                                       | Proponer ADR nuevo en DECISIONS.md |
+| Cambio en el Constitution-INDEX (nuevo artículo, renombre)                                      | Actualizar CONSTITUTION-INDEX.md   |
 
 ### 4. Proponer cambios al usuario
 
