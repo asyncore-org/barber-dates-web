@@ -222,6 +222,10 @@ VITE_INSFORGE_ANON_KEY=
 VITE_APP_NAME="Gio Barber Shop"
 VITE_APP_ENV=development   # development | preview | production
 VITE_GOOGLE_CLIENT_ID=
+
+# Mocks locales — solo en .env.local (gitignoreado), nunca en otros envs
+VITE_USE_MOCKS=false          # activa MSW browser worker en dev
+VITE_MOCK_ROLE=client         # rol del usuario fake al hacer login: "client" | "admin"
 ```
 
 Nunca commitear `.env*` excepto `.env.example`.
