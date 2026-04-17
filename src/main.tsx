@@ -15,14 +15,23 @@ const queryClient = new QueryClient({
   },
 })
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <HelmetProvider>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
-      </QueryClientProvider>
-    </HelmetProvider>
-  </StrictMode>
-)
+async function bootstrap() {
+  if (import.meta.env.VITE_USE_MOCKS === 'true') {
+    const { worker } = await import('./mocks/browser')
+    await worker.start({ onUnhandledRequest: 'warn' })
+  }
+
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <HelmetProvider>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </QueryClientProvider>
+      </HelmetProvider>
+    </StrictMode>,
+  )
+}
+
+bootstrap()
