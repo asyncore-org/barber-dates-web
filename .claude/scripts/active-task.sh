@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Devuelve la ruta de la tarea activa asociada a la rama git actual, si existe.
-# Heurística: la tarea más reciente cuya rama coincida con el branch actual.
+# Estrategia:
+# 1) Match exacto por rama declarada en README.md de la tarea
+# 2) Fallback por slug (último segmento, segmento tras primer /, y rama con / -> -)
 # Salida: path de la carpeta o cadena vacía.
 set -euo pipefail
 
@@ -16,20 +18,51 @@ if [[ -z "$BRANCH" || "$BRANCH" == "HEAD" ]]; then
   exit 0
 fi
 
-# Slug deducido: todo lo que va detrás del "/" en la rama (feature/foo-bar → foo-bar)
-SLUG="${BRANCH#*/}"
+pick_latest() {
+  local current="${1:-}"
+  local candidate="${2:-}"
+  if [[ -z "$candidate" || ! -d "$candidate" ]]; then
+    echo "$current"
+    return
+  fi
+  if [[ -z "$current" || "$candidate" > "$current" ]]; then
+    echo "$candidate"
+    return
+  fi
+  echo "$current"
+}
 
-if [[ -z "$SLUG" || "$SLUG" == "$BRANCH" ]]; then
+LATEST=""
+
+# 1) Match exacto por rama en README
+for dir in "$TASKS_DIR"/TASK-*; do
+  [[ -d "$dir" ]] || continue
+  README="$dir/README.md"
+  [[ -f "$README" ]] || continue
+
+  TASK_BRANCH="$(grep -E '^- \*\*Rama\*\*:' "$README" 2>/dev/null | sed -nE 's/.*`([^`]+)`.*/\1/p' | head -1 || true)"
+  if [[ "$TASK_BRANCH" == "$BRANCH" ]]; then
+    LATEST="$(pick_latest "$LATEST" "$dir")"
+  fi
+done
+
+if [[ -n "$LATEST" ]]; then
+  echo "$LATEST"
   exit 0
 fi
 
-# Busca la carpeta más reciente que termine en "-$SLUG"
-LATEST=""
-for dir in "$TASKS_DIR"/TASK-*-"$SLUG"; do
-  [[ -d "$dir" ]] || continue
-  if [[ -z "$LATEST" || "$dir" > "$LATEST" ]]; then
-    LATEST="$dir"
-  fi
+# 2) Fallback por slugs candidatos
+declare -a CANDIDATES=()
+CANDIDATES+=("${BRANCH##*/}")
+CANDIDATES+=("${BRANCH#*/}")
+CANDIDATES+=("${BRANCH//\//-}")
+
+for slug in "${CANDIDATES[@]}"; do
+  [[ -n "$slug" ]] || continue
+  for dir in "$TASKS_DIR"/TASK-*-"$slug"; do
+    [[ -d "$dir" ]] || continue
+    LATEST="$(pick_latest "$LATEST" "$dir")"
+  done
 done
 
 echo "$LATEST"
