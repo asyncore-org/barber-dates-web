@@ -160,6 +160,15 @@ bash .claude/scripts/sync-context.sh
 
 Cruza los archivos tocados contra un mapa de "qué archivos afectan a qué artículos". Devuelve una lista de artículos que podrían haber quedado desactualizados.
 
+#### `validate-consistency.sh`
+
+```bash
+bash .claude/scripts/validate-consistency.sh
+```
+
+Valida que no haya drift operativo entre comandos/workflows/docs y los quality gates canónicos del Constitution.
+Si detecta comandos legacy (`npm run ...`) o faltan comandos obligatorios en archivos clave, falla con exit code `1`.
+
 ---
 
 ## Hooks automáticos
@@ -223,7 +232,7 @@ Los hooks son scripts que se ejecutan automáticamente en respuesta a eventos de
 
 **Cuándo**: tras cada edición de un archivo TypeScript.
 
-**Qué hace**: ejecuta `npm run type-check` y muestra las últimas 20 líneas.
+**Qué hace**: ejecuta `pnpm run type-check` y muestra las últimas 20 líneas.
 
 **Por qué**: los errores de TypeScript se detectan inmediatamente, no al final de una sesión larga.
 
