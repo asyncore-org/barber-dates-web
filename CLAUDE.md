@@ -80,6 +80,7 @@ bash .claude/scripts/files-touched.sh       # archivos tocados en la tarea
     ├── grep-task.sh       # grep en archivos de la tarea
     ├── diff-task.sh       # diff de la rama vs base
     ├── files-touched.sh   # archivos tocados (deduplicado)
+│       ├── validate-consistency.sh # chequeo anti-drift (quality gates + docs/comandos)
     ├── log-file-change.sh # hook PostToolUse
     ├── session-start.sh   # hook SessionStart
     └── pre-commit-check.sh # hook PreToolUse
