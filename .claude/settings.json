@@ -1,0 +1,115 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev)",
+      "Bash(npm run build)",
+      "Bash(npm run lint)",
+      "Bash(npm run lint -- *)",
+      "Bash(npm run type-check)",
+      "Bash(npm run test)",
+      "Bash(npm run test -- *)",
+      "Bash(npm run preview)",
+      "Bash(npm run analyze)",
+      "Bash(npm ci)",
+      "Bash(npm install)",
+      "Bash(npm install *)",
+      "Bash(npm outdated)",
+      "Bash(npm create vite@latest *)",
+      "Bash(npx shadcn@latest *)",
+      "Bash(npx shadcn-ui@latest *)",
+      "Bash(npx husky *)",
+      "Bash(npx commitlint *)",
+      "Bash(npx --no -- commitlint *)",
+      "Bash(npx tsc *)",
+      "Bash(npx vitest *)",
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git branch *)",
+      "Bash(git checkout *)",
+      "Bash(git switch *)",
+      "Bash(git add *)",
+      "Bash(git stash *)",
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "Bash(git merge *)",
+      "Bash(git rev-parse *)",
+      "Bash(git cherry-pick *)",
+      "Bash(git worktree *)",
+      "Bash(bash .claude/scripts/*)",
+      "Bash(ls *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(node *)",
+      "Bash(which *)",
+      "Bash(pwd)",
+      "Bash(chmod +x *)",
+      "Bash(jq *)"
+    ],
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git reset --hard*)",
+      "Bash(rm -rf *)",
+      "Bash(rm -fr *)",
+      "Bash(git commit --no-verify*)",
+      "Bash(git commit -n*)",
+      "Bash(git push origin main*)",
+      "Bash(git branch -D *)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/scripts/session-start.sh\"",
+            "blocking": false,
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/scripts/log-file-change.sh\"",
+            "blocking": false,
+            "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/scripts/context-watch.sh\"",
+            "blocking": false,
+            "timeout": 3000
+          },
+          {
+            "type": "command",
+            "command": "file=\"$CLAUDE_TOOL_INPUT_FILE_PATH\"; if [[ \"$file\" == *.ts || \"$file\" == *.tsx ]]; then cd \"$CLAUDE_PROJECT_DIR\" && [ -f package.json ] && npm run type-check 2>&1 | tail -20 || true; fi",
+            "blocking": false,
+            "timeout": 30000
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/scripts/pre-commit-check.sh\"",
+            "blocking": false,
+            "timeout": 3000
+          }
+        ]
+      }
+    ]
+  }
+}
