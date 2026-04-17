@@ -1,0 +1,204 @@
+# Gio Barber Shop — barber-dates-web
+
+> **CLAUDE.md es un orquestador.** Lee esto primero, luego salta a lo que necesites con los scripts de contexto parcial.
+
+---
+
+## Antes de cualquier acción
+
+1. **Índice del Constitution** (15 líneas, siempre barato):
+   ```bash
+   bash .claude/scripts/constitution-index.sh
+   ```
+   Luego carga SOLO los artículos que apliquen con `bash .claude/scripts/art.sh <N>`.
+   **Nunca leas CONSTITUTION.md completo** si puedes evitarlo.
+2. **Revisa** `.claude/KNOWLEDGE.md` — gotchas y workarounds descubiertos.
+3. **Ejecuta `/status`** si hay tareas activas que retomar.
+
+---
+
+## Regla fundamental: no hay código sin `/implement`
+
+> **Claude no modifica archivos de `src/` fuera del comando `/implement`.**
+
+Durante `/feature`, `/fix`, `/analyze`, `/plan`, `/revise`, `/change`:
+solo se escriben archivos dentro de `.claude/tasks/<TASK-ID>/`.
+
+La única excepción son los comandos de scaffolding invocados **desde dentro** de `/implement`.
+
+Esta regla garantiza que nunca se implementa "a lo loco" sin un plan aprobado.
+
+---
+
+## Regla de contexto: cargar solo lo necesario
+
+> **Nunca leer un archivo completo si puedes traer solo la parte que necesitas.**
+
+```bash
+bash .claude/scripts/art.sh 3               # solo Art. 3 del Constitution
+bash .claude/scripts/section.sh <file> <heading>  # sección específica de cualquier MD
+bash .claude/scripts/fetch.sh PLAN.md       # archivo de la tarea activa
+bash .claude/scripts/plan-step.sh 2         # solo el paso 2 del plan
+bash .claude/scripts/diff-task.sh --stat    # resumen del diff (no el diff completo)
+bash .claude/scripts/files-touched.sh       # archivos tocados en la tarea
+```
+
+---
+
+## Mapa del sistema agéntico
+
+```
+.claude/
+├── CONSTITUTION.md       # Reglas inmutables — leer con art.sh / section.sh
+├── KNOWLEDGE.md          # Aprendizajes vivos: gotchas, workarounds
+├── DECISIONS.md          # ADRs del proyecto
+├── settings.json         # Permisos + hooks (SessionStart, PostToolUse, PreToolUse)
+├── workflows/            # Guías por fase (una sección por fase, cargable con section.sh)
+│   ├── feature.md  fix.md  refactor.md  chore.md  hotfix.md  spike.md  review.md
+├── commands/             # 31 comandos slash
+├── tasks/                # Trabajo en progreso (NO commiteado)
+│   └── TASK-<fecha>-<tipo>-<slug>/
+│       ├── README.md      # contrato inicial
+│       ├── ANALYSIS.md    # diagnóstico (fase análisis)
+│       ├── QUESTIONS.md   # preguntas al usuario
+│       ├── PLAN.md        # pasos numerados (fase plan)
+│       ├── PROGRESS.md    # seguimiento de pasos
+│       ├── STATE.md       # estado vivo + próximo paso
+│       ├── LOG.md         # histórico append-only
+│       ├── DECISIONS.md   # decisiones locales
+│       ├── files.md       # archivos tocados (hook auto-rellena)
+│       ├── REVIEW.md      # resultado del /review
+│       ├── handoff.md     # doc para retomar en otra sesión
+│       └── CHANGES/       # CHANGE-001.md, CHANGE-002.md...
+└── scripts/              # Utilidades shell
+    ├── new-task.sh        # crea carpeta de tarea
+    ├── active-task.sh     # detecta tarea por rama git
+    ├── art.sh             # extrae artículo del Constitution
+    ├── section.sh         # extrae sección de cualquier MD
+    ├── fetch.sh           # trae archivo de tarea activa
+    ├── plan-step.sh       # extrae paso N del PLAN.md
+    ├── grep-task.sh       # grep en archivos de la tarea
+    ├── diff-task.sh       # diff de la rama vs base
+    ├── files-touched.sh   # archivos tocados (deduplicado)
+    ├── log-file-change.sh # hook PostToolUse
+    ├── session-start.sh   # hook SessionStart
+    └── pre-commit-check.sh # hook PreToolUse
+```
+
+---
+
+## Ciclo de vida de cualquier tarea
+
+```
+/<tipo> <slug>   → ANÁLISIS + QUESTIONS (para)
+[usuario responde preguntas]
+/plan            → PLAN.md (para, espera aprobación)
+[usuario: "ok" o /revise]
+/implement       → código paso a paso (un commit por paso)
+/change <qué>    → corrección sin saltar a código (para, espera /implement)
+/review          → subagente audita + quality gates
+/done            → propone PR (confirmación antes de push)
+```
+
+---
+
+## Comandos disponibles
+
+### Ciclo de vida principal
+| Comando | Fase | Descripción |
+|---------|------|-------------|
+| `/feature <slug>` | Arranque | Feature desde `develop` (o rama actual si sub-tarea) |
+| `/fix <slug>` | Arranque | Bugfix |
+| `/refactor <slug>` | Arranque | Refactor sin cambio funcional |
+| `/chore <slug>` | Arranque | Mantenimiento (deps, config, scripts) |
+| `/hotfix <slug>` | Arranque | Urgente a prod (base: `main`) |
+| `/spike <slug>` | Arranque | Exploración time-boxed |
+| `/analyze` | Análisis | Re-ejecuta análisis con nueva info |
+| `/plan` | Plan | Genera PLAN.md con pasos |
+| `/revise <qué>` | Plan | Ajusta el plan antes de implementar |
+| `/implement [N\|next\|all\|N..M]` | Implementación | **Única puerta al código de producción** |
+| `/next` | Implementación | Atajo para `/implement next` |
+| `/change <qué>` | Corrección | Analiza ajuste → propone plan → espera `/implement` |
+| `/review` | Review | Subagente + quality gates + criterios |
+| `/done` | Cierre | Propone PR (confirmación antes de push) |
+
+### Gestión de sesión y tarea
+| Comando | Descripción |
+|---------|-------------|
+| `/status` | Estado actual: rama, tarea activa, commits |
+| `/resume [TASK-ID]` | Retoma tarea (lee README+STATE+LOG) |
+| `/pause` | Pausa voluntaria, persiste estado |
+| `/block <motivo>` | Marca como bloqueada |
+| `/handoff` | Genera doc para retomar en otra máquina |
+| `/compact-task` | Resume LOG.md cuando crece mucho |
+
+### Aprendizaje y contexto
+| Comando | Descripción |
+|---------|-------------|
+| `/learn <insight>` | Añade a KNOWLEDGE.md |
+| `/ask <pregunta>` | Responde sin crear tarea (usa scripts de contexto parcial) |
+| `/worktree <slug>` | Crea worktree paralelo aislado (solo si el usuario lo pide) |
+
+### Scaffolding de código
+| Comando | Descripción |
+|---------|-------------|
+| `/new-component <nombre>` | Componente React + named export |
+| `/new-page <nombre>` | Página con `lazy()` + AuthGuard + SeoHead |
+| `/new-hook <nombre>` | Hook TanStack Query con queryKeys |
+| `/new-domain <entidad>` | Tipos + reglas puras + test |
+| `/new-infra <entidad>` | Adaptador InsForge con mapper |
+
+### Diagnóstico
+| Comando | Descripción |
+|---------|-------------|
+| `/check` | type-check + lint + tests |
+| `/phase` | Estado de la fase actual vs plan maestro |
+
+---
+
+## Scripts de contexto parcial (ahorro de tokens)
+
+```bash
+bash .claude/scripts/art.sh 3                        # Art. 3 del Constitution
+bash .claude/scripts/section.sh <file> <heading>     # cualquier sección de MD
+bash .claude/scripts/fetch.sh PLAN.md                # archivo de tarea activa
+bash .claude/scripts/fetch.sh STATE.md TASK-20260417-feature-auth  # de tarea específica
+bash .claude/scripts/plan-step.sh 2                  # paso 2 del plan activo
+bash .claude/scripts/grep-task.sh "domain"           # grep en archivos de la tarea
+bash .claude/scripts/diff-task.sh --stat             # resumen del diff vs base
+bash .claude/scripts/files-touched.sh                # archivos tocados (deduplicado)
+```
+
+---
+
+## Reglas del sistema agéntico
+
+1. **No hay código sin `/implement`** (regla fundamental — ver arriba).
+2. **Cargar contexto mínimo** — usar scripts de fetch parcial, no leer archivos completos.
+3. **Carpetas de tareas no commiteadas** (`.gitignore`). Descubrimientos reutilizables → `/learn`.
+4. **Commits pequeños** — un commit por paso del plan (Art. 8 del Constitution).
+5. **Ramas según Art. 9**: `develop` como base por defecto, rama actual si sub-tarea.
+6. **Quality gates antes de `/done`**: type-check + lint + tests verdes.
+7. **Paralelización solo cuando se pide**: worktrees o subagentes `Explore` para investigación.
+8. **Correcciones con `/change`**: nunca ajustar código directamente sin pasar por análisis → plan → `/implement`.
+
+---
+
+## Fase actual
+
+**Fase 0: Setup inicial** — Scaffold del proyecto con todas las herramientas configuradas.
+
+Ver todas las fases en `../PLAN_GIO_BARBER_SHOP.md`.
+
+---
+
+## Quick reference — dónde está qué
+
+| Qué busco | Dónde |
+|-----------|-------|
+| Reglas del proyecto | `.claude/CONSTITUTION.md` (usar `art.sh`) |
+| Aprendizajes | `.claude/KNOWLEDGE.md` |
+| Decisiones globales | `.claude/DECISIONS.md` |
+| Cómo hacer una feature | `.claude/workflows/feature.md` (usar `section.sh`) |
+| Tarea activa | `.claude/tasks/TASK-<fecha>-<slug>/` |
+| Plan del producto | `../PLAN_GIO_BARBER_SHOP.md` |
