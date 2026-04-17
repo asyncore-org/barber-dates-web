@@ -1,0 +1,61 @@
+name: Deploy Production
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  quality:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run lint
+
+      - run: pnpm run type-check
+
+      - run: pnpm run test:run
+
+  deploy-production:
+    name: Deploy to Vercel PRO
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run build
+        env:
+          VITE_INSFORGE_URL: ${{ secrets.INSFORGE_URL_PROD }}
+          VITE_INSFORGE_ANON_KEY: ${{ secrets.INSFORGE_ANON_KEY_PROD }}
+          VITE_APP_ENV: production
+
+      - uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_PROD }}
+          vercel-args: '--prod'
+          working-directory: ./
