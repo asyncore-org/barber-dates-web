@@ -34,3 +34,12 @@ _(vacío)_
 ## Tips útiles
 
 _(vacío)_
+
+## Convenciones del proyecto
+
+### Los mocks deben mantenerse sincronizados con el API real
+
+**Contexto**: `src/mocks/` contiene handlers MSW que simulan el API de Supabase (InsForge).
+**Regla**: Cualquier cambio en la capa `infrastructure/` que afecte a endpoints, nombres de tabla, columnas o forma de la respuesta **debe reflejarse también en el handler y fixture correspondiente de `src/mocks/`**. Si no, los mocks dejan de representar el comportamiento real y se vuelven engañosos.
+**Cómo aplicarlo**: Al modificar un adaptador InsForge, buscar el handler MSW equivalente (`src/mocks/handlers/<dominio>.ts`) y actualizar la URL, estructura de respuesta y fixtures afectados en el mismo commit.
+**Fixtures como fuente de verdad compartida**: `src/mocks/data/*.ts` se commitean al repo. Son los datos de partida para todos los devs. Si durante pruebas locales añades datos valiosos, edita el fixture y haz commit para que el resto del equipo los tenga.
