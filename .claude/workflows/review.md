@@ -52,9 +52,9 @@ Agent({
 ### 3. Quality gates
 
 ```bash
-npm run type-check
-npm run lint
-npm run test -- --run
+pnpm run type-check
+pnpm run lint
+pnpm run test:run
 ```
 
 ### 4. Verificar criterios de aceptación

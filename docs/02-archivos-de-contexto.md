@@ -102,7 +102,7 @@ La forma correcta es con el comando `/learn`:
 
 ```
 /learn InsForge no soporta .rpc() con array args — usar .sql() directo
-/learn npm run dev no hot-reloada en iCloud Drive — reiniciar Vite
+/learn pnpm run dev no hot-reloada en iCloud Drive — reiniciar Vite
 ```
 
 Claude añade la entrada con el formato correcto y la fecha.

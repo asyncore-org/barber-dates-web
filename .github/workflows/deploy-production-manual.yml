@@ -1,8 +1,12 @@
-name: Tag Production Release
+name: Deploy Production (manual)
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to deploy (e.g. v20260418-abc1234)'
+        required: true
+        type: string
 
 jobs:
   quality:
@@ -10,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
 
       - uses: pnpm/action-setup@v4
 
@@ -26,33 +32,14 @@ jobs:
 
       - run: pnpm run test:run
 
-  tag:
-    name: Create Deployment Tag
+  deploy-production:
+    name: Deploy to Vercel PRO
     needs: quality
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-
-      - name: Create and push tag
-        run: |
-          TAG="v$(date +%Y%m%d)-$(git rev-parse --short HEAD)"
-          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists on remote; skipping."
-            exit 0
-          fi
-          git tag "$TAG"
-          git push origin "$TAG"
-
-  deploy-pro-preview:
-    name: Deploy PRO Preview
-    needs: quality
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+          ref: ${{ inputs.tag }}
 
       - uses: pnpm/action-setup@v4
 
@@ -66,22 +53,22 @@ jobs:
       - run: npm install --global vercel@latest
 
       - name: Pull project settings
-        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_PROD }}
 
       - name: Build
-        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_PROD }}
           VITE_INSFORGE_URL: ${{ secrets.INSFORGE_URL_PROD }}
           VITE_INSFORGE_ANON_KEY: ${{ secrets.INSFORGE_ANON_KEY_PROD }}
-          VITE_APP_ENV: preview
+          VITE_APP_ENV: production
 
       - name: Deploy
-        run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_PROD }}

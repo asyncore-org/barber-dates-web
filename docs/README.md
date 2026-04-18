@@ -15,6 +15,7 @@
 | [04-referencia-comandos.md](04-referencia-comandos.md)   | Los 31 comandos slash documentados en detalle                                                     |
 | [05-sistema-de-tareas.md](05-sistema-de-tareas.md)       | Carpetas TASK-, scripts de fetch parcial, hooks automáticos, continuidad entre sesiones           |
 | [06-buenas-practicas.md](06-buenas-practicas.md)         | Ahorro de tokens, correcciones con /change, estrategia git, errores comunes, ejemplos reales, FAQ |
+| [07-consistency-checks.md](07-consistency-checks.md)     | Validación automática de consistencia para evitar drift en quality gates y flujo agéntico         |
 
 ---
 

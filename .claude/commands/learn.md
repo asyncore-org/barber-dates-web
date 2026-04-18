@@ -16,7 +16,7 @@ Captura un aprendizaje reutilizable en `.claude/KNOWLEDGE.md`. Se usa cuando dur
 Ejemplos:
 
 - `/learn InsForge no soporta .rpc() con array args — hay que usar .sql() directo`
-- `/learn npm run dev a veces no hot-reloada si el workspace está en iCloud — reiniciar vite`
+- `/learn pnpm run dev a veces no hot-reloada si el workspace está en iCloud — reiniciar vite`
 
 ## Lo que debes hacer
 

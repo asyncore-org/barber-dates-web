@@ -43,7 +43,7 @@ bash .claude/scripts/art.sh 3   # arquitectura — siempre en refactors
 ## Fase IMPLEMENTACIÓN — invocada por `/implement`
 
 - Commits por cambio lógico small.
-- `npm run test -- --run` debe pasar tras cada commit.
+- `pnpm run test:run` debe pasar tras cada commit.
 - Si aparece un cambio de comportamiento → PARAR y avisar al usuario.
 
 ---
