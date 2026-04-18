@@ -114,7 +114,9 @@ bash .claude/scripts/files-touched.sh       # archivos tocados en la tarea
 /plan            → PLAN.md (para, espera aprobación)
 [usuario: "ok" o /revise]
 /implement       → código paso a paso (un commit por paso)
-/change <qué>    → corrección sin saltar a código (para, espera /implement)
+/change <qué>    → análisis + CHANGE-N.md (para)
+                   [si complejo: /plan actualiza PLAN.md antes de /implement]
+                   /implement → /review → /test
 /review          → subagente audita + quality gates
 /test            → subagente abre browser y testea flujos de la app (E2E visual)
 /done            → propone PR (confirmación antes de push)
@@ -139,7 +141,7 @@ bash .claude/scripts/files-touched.sh       # archivos tocados en la tarea
 | `/revise <qué>`                   | Plan           | Ajusta el plan antes de implementar                  |
 | `/implement [N\|next\|all\|N..M]` | Implementación | **Única puerta al código de producción**             |
 | `/next`                           | Implementación | Atajo para `/implement next`                         |
-| `/change <qué>`                   | Corrección     | Analiza ajuste → propone plan → espera `/implement`  |
+| `/change <qué>`                   | Corrección     | Analiza → CHANGE-N.md → [/plan si complejo] → `/implement` → `/review` → `/test` |
 | `/review`                         | Review         | Subagente + quality gates + criterios                |
 | `/test [--pre]`                   | Test visual    | Subagente abre Chromium y recorre flujos de la app   |
 | `/done`                           | Cierre         | Propone PR (confirmación antes de push)              |
