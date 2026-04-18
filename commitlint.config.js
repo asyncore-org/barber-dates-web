@@ -18,6 +18,7 @@ export default {
         'ci',
         'seo',
         'readme',
+        'agentic',
       ],
     ],
     'subject-max-length': [2, 'always', 72],

@@ -75,6 +75,32 @@ Nunca tocar CONSTITUTION.md sin confirmación explícita (Art. 14).
 - `STATE.md` → status `done`.
 - `LOG.md` → entrada `done` con timestamp y resumen.
 
+### 6b. Mergear la rama base en la rama actual
+
+Antes de proponer la PR, traer los últimos cambios de la rama destino para que la rama esté al día y no haya conflictos en el merge:
+
+```bash
+BASE=$(gh pr view --json baseRefName -q .baseRefName 2>/dev/null || echo "develop")
+git fetch origin
+git merge origin/$BASE
+```
+
+Si hay conflictos → resolverlos y hacer commit antes de continuar. No proponer la PR con conflictos sin resolver.
+
+### 6c. Verificar estado de PR existente
+
+Comprobar si ya existe una PR para esta rama antes de proponer crear una nueva:
+
+```bash
+gh pr list --head $(git branch --show-current) --state all --json number,state,title
+```
+
+Según el resultado:
+
+- **Sin resultados** → proceder al paso 7 normalmente con `gh pr create`.
+- **PR OPEN** → no crear nueva; comunicar al usuario: `"La PR #N ya está abierta y lista para merge."` No proponer `gh pr create`.
+- **PR MERGED o CLOSED** → informar al usuario del estado y preguntar: `"La PR #N ya fue mergeada/cerrada. ¿Quieres abrir una PR nueva para esta iteración?"`
+
 ### 7. Propuesta de cierre
 
 Solo cuando los pasos 2–5 están completos:
