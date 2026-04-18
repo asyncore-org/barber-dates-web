@@ -17,6 +17,24 @@
 
 ---
 
+## Regla de documentación: actualizar el contexto en el mismo commit
+
+> **Todo cambio relevante debe reflejarse en el contexto de Claude en el mismo paso en que ocurre.**
+
+Esto incluye:
+
+- **Nueva regla de negocio o cambio en una existente** → actualizar Art. 4 del Constitution.
+- **Nueva tabla, campo o relación** → actualizar Art. 5.
+- **Nueva ruta o cambio en auth** → actualizar Art. 6.
+- **Nueva variable de entorno** → actualizar Art. 13.
+- **Cambio en la estrategia de ramas o despliegue** → actualizar Art. 9.
+- **Gotcha, workaround o comportamiento sorprendente** → añadir entrada a `KNOWLEDGE.md`.
+- **Decisión arquitectónica** → añadir ADR a `DECISIONS.md`.
+
+**El objetivo**: que cualquier sesión futura de Claude pueda retomar el trabajo sin que el humano tenga que re-explicar decisiones ya tomadas. Si algo se implementó pero no se documentó, el conocimiento se pierde en el próximo `/compact`.
+
+---
+
 ## Regla fundamental: no hay código sin `/implement`
 
 > **Claude no modifica archivos de `src/` fuera del comando `/implement`.**
@@ -98,6 +116,7 @@ bash .claude/scripts/files-touched.sh       # archivos tocados en la tarea
 /implement       → código paso a paso (un commit por paso)
 /change <qué>    → corrección sin saltar a código (para, espera /implement)
 /review          → subagente audita + quality gates
+/test            → subagente abre browser y testea flujos de la app (E2E visual)
 /done            → propone PR (confirmación antes de push)
 ```
 
@@ -122,6 +141,7 @@ bash .claude/scripts/files-touched.sh       # archivos tocados en la tarea
 | `/next`                           | Implementación | Atajo para `/implement next`                         |
 | `/change <qué>`                   | Corrección     | Analiza ajuste → propone plan → espera `/implement`  |
 | `/review`                         | Review         | Subagente + quality gates + criterios                |
+| `/test [--pre]`                   | Test visual    | Subagente abre Chromium y recorre flujos de la app   |
 | `/done`                           | Cierre         | Propone PR (confirmación antes de push)              |
 
 ### Gestión de sesión y tarea

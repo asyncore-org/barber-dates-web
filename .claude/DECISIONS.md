@@ -49,6 +49,23 @@
 
 ---
 
+## ADR-005 — CI/CD con Vercel CLI (no GitHub Action) y deploy manual a PRO · 2026-04-18
+
+- **Estado**: accepted
+- **Contexto**: necesidad de controlar exactamente cuándo y qué se despliega en PRO, sin que Vercel auto-despliegue en cada push.
+- **Decisión**: usar Vercel CLI en GitHub Actions en lugar de la GitHub Action oficial de Vercel. Los despliegues a PRO production son siempre manuales vía `workflow_dispatch` con un tag específico.
+- **Alternativas consideradas**: Vercel auto-deploy desde GitHub (descartado: no permite controlar qué va a PRO ni cuándo). GitHub Action de Vercel (descartado: menos control sobre el environment y las variables).
+- **Consecuencias**: hay que deshabilitar los auto-deploys de Vercel en el dashboard (Settings → Git → "Ignored Build Step" = `exit 1`) en ambos proyectos. Sin eso, Vercel sigue desplegando en paralelo con su propia integración GitHub.
+
+## ADR-006 — `IS_PROD_DEPLOY` como env a nivel de job · 2026-04-18
+
+- **Estado**: accepted
+- **Contexto**: en `deploy-pre.yml`, la expresión `github.ref == 'refs/heads/develop'` se usaba 3 veces (pull, build, deploy).
+- **Decisión**: definir `IS_PROD_DEPLOY: ${{ github.ref == 'refs/heads/develop' }}` como `env` a nivel de job. Usarlo en steps como `${{ env.IS_PROD_DEPLOY == 'true' && '--prod' || '' }}`.
+- **Consecuencias**: el patrón `env.VAR == 'true' && 'X' || 'Y'` es el ternario idiomático de GitHub Actions cuando el valor proviene de un env de job (siempre string, no boolean).
+
+---
+
 ## ADR-003 — Constitution v1.1.0: quality gates migrados a pnpm
 
 - **Fecha**: 2026-04-17

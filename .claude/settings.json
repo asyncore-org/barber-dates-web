@@ -58,7 +58,10 @@
       "Bash(which *)",
       "Bash(pwd)",
       "Bash(chmod +x *)",
-      "Bash(jq *)"
+      "Bash(jq *)",
+      "Bash(curl *)",
+      "Bash(kill *)",
+      "Bash(lsof *)"
     ],
     "deny": [
       "Bash(git push --force*)",
