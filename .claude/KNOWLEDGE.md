@@ -23,6 +23,22 @@ _(vacío — se irá llenando)_
 **Qué**: `pnpm install` avisa que esbuild no puede ejecutar su build script. El build de Vite funciona igualmente — esbuild shippea el binario de plataforma como sub-paquete, no necesita el script.
 **Por qué importa**: No bloquea nada. La config correcta es `"pnpm": { "ignoredBuiltDependencies": ["esbuild"] }` en `package.json`.
 
+### 2026-04-18 · vite.config.ts + vitest.config.ts · bloque `test:` duplicado
+
+**Qué**: Si `vitest.config.ts` existe como fichero separado, el bloque `test: { ... }` en `vite.config.ts` causa error TS: `'test' does not exist in type 'UserConfigExport'`.
+**Por qué**: Vitest v4 usa su propio tipo de config. Cuando hay `vitest.config.ts`, Vite no expone `test` en su type.
+**Regla**: `vite.config.ts` solo define build/plugins. `vitest.config.ts` define entorno de test. Nunca duplicar `test:` en `vite.config.ts`.
+
+### 2026-04-18 · pnpm/action-setup@v4 + `packageManager` en package.json · conflicto de versión
+
+**Qué**: `pnpm/action-setup@v4` lee el campo `packageManager` de `package.json` automáticamente. Si además se especifica `version:` en el workflow, falla con `Error: Multiple versions of pnpm specified`.
+**Regla**: Con `pnpm/action-setup@v4`, nunca añadir `with: version: X` si `packageManager` ya está en `package.json`. Es la única fuente de verdad.
+
+### 2026-04-18 · sync-context.sh · `declare -A` incompatible con bash 3 de macOS
+
+**Qué**: macOS incluye bash 3.2 por defecto. `declare -A` (arrays asociativos) es bash 4+. El script fallaba con `declare: -A: invalid option`.
+**Fix**: Reemplazado por cadena separada por espacios con `grep -qw` para comprobar membresía. Si en el futuro se necesitan arrays asociativos en scripts `.claude/`, usar bash 4 (Homebrew) o evitarlos.
+
 ## Errores conocidos pendientes
 
 _(vacío)_
