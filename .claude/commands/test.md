@@ -12,8 +12,17 @@ Genera `TEST.md` con veredicto PASS/FAIL por flujo.
 ## Uso
 
 ```
-/test           # testea en local (mock), flujos por defecto o los del README
-/test --pre     # testea contra el entorno PRE (InsForge real, pide credenciales)
+/test                              # flujos del README o por defecto (local/mock)
+/test <descripción libre>          # testea exactamente lo que describes
+/test --pre                        # flujos del README o por defecto (PRE real)
+/test --pre <descripción libre>    # testea lo que describes contra PRE
+```
+
+Ejemplos:
+```
+/test login y registro
+/test que se puede reservar una cita y cancelarla
+/test --pre el flujo completo de puntos de fidelidad
 ```
 
 ## Precondiciones
@@ -78,14 +87,29 @@ Anotar si el servidor fue levantado por nosotros (`DEV_SERVER_STARTED=true`) par
 
 ### 4. Determinar flujos a testear
 
-Buscar sección `## Flujos a testear` en el `README.md` de la tarea activa:
+Prioridad decreciente — usar el primer nivel que aplique:
+
+**Nivel 0 — argumento del comando (mayor prioridad)**
+
+Si el usuario pasó texto libre al invocar `/test` (ej. `/test login y reserva de cita`):
+→ usar ese texto directamente como instrucción para el subagente.
+→ saltar los niveles 1 y 2.
+
+El subagente recibirá: *"El usuario quiere testear: `<texto del argumento>`. Diseña y ejecuta los pasos necesarios para verificarlo."*
+
+**Nivel 1 — sección en el README de la tarea**
+
+Si no hay argumento, buscar sección `## Flujos a testear` en el `README.md` de la tarea activa:
 
 ```bash
 bash .claude/scripts/section.sh .claude/tasks/<TASK-ID>/README.md "Flujos a testear"
 ```
 
 Si la sección existe → usar esos flujos.
-Si no existe → usar los **flujos por defecto** (ver más abajo).
+
+**Nivel 2 — flujos por defecto (fallback)**
+
+Si tampoco existe la sección → usar los **flujos por defecto** (ver más abajo).
 
 ### 5. Lanzar subagente con Playwright
 
