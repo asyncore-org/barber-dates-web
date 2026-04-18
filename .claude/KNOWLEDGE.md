@@ -39,6 +39,29 @@ _(vacío — se irá llenando)_
 **Qué**: macOS incluye bash 3.2 por defecto. `declare -A` (arrays asociativos) es bash 4+. El script fallaba con `declare: -A: invalid option`.
 **Fix**: Reemplazado por cadena separada por espacios con `grep -qw` para comprobar membresía. Si en el futuro se necesitan arrays asociativos en scripts `.claude/`, usar bash 4 (Homebrew) o evitarlos.
 
+## CI/CD — Vercel + GitHub Actions
+
+### 2026-04-18 · deploy-pre.yml · el workflow se ejecuta desde la rama destino, no desde main
+
+**Qué**: `deploy-pre.yml` se ejecuta en ramas distintas de `main`. GitHub Actions usa el archivo de la **rama que recibe el push**. Si el fix está solo en `main`, `develop` sigue ejecutando la versión vieja.
+**Cómo detectarlo**: el log del CI muestra `vercel deploy --prebuilt` sin `--prod` aunque la rama sea develop.
+**Fix**: aplicar el cambio directamente a `develop` vía PR desde una rama `fix/`.
+
+### 2026-04-18 · Vercel CLI · `--prod` actualiza URL principal; sin él crea URL temporal
+
+**Qué**: `vercel deploy --prebuilt` sin `--prod` crea una URL única temporal. Con `--prod`, actualiza la URL de producción del proyecto.
+**Regla**: `vercel build --prod` + `vercel deploy --prebuilt --prod` siempre deben ir juntos.
+
+### 2026-04-18 · Vercel dashboard · auto-deploy de GitHub puede solaparse con el CI
+
+**Qué**: si el proyecto Vercel tiene la integración GitHub activa (por defecto), Vercel hace su propio deploy en paralelo al workflow de CI, generando despliegues duplicados.
+**Fix**: en cada proyecto Vercel → Settings → Git → "Ignored Build Step" → poner `exit 1`.
+
+### 2026-04-18 · Vercel CLI · URL de deploy mezclada con logs en stdout
+
+**Qué**: `vercel deploy --prebuilt` mezcla logs de progreso con la URL final en stdout. Capturar con `URL=$(vercel deploy ...)` puede capturar líneas de log en lugar de la URL.
+**Fix**: `grep -Eo 'https://[^[:space:]]+\.vercel\.app[^[:space:]]*' | head -n 1`.
+
 ## Errores conocidos pendientes
 
 _(vacío)_

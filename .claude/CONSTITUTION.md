@@ -157,7 +157,9 @@ Formato: `type(scope): descripción en inglés, presente imperativo`.
 
 ---
 
-## Art. 9 — Estrategia de ramas
+## Art. 9 — Estrategia de ramas y flujo de despliegue
+
+### Ramas
 
 - `main` → producción (Vercel PRO). Solo merges desde `develop` vía PR.
 - `develop` → pre-producción (Vercel PRE). Base de todo lo nuevo.
@@ -169,6 +171,32 @@ Formato: `type(scope): descripción en inglés, presente imperativo`.
 **Sub-tareas**: si una tarea sale de otra en curso, la rama hija se crea desde la rama actual (no desde `develop`). Se mergea de vuelta a la rama padre, no a `develop`.
 
 **Prohibido sin permiso**: `push --force`, `reset --hard`, `--no-verify`, merge sobre `main` directo.
+
+### Flujo de despliegue CI/CD
+
+| Evento | Workflow | Qué ocurre |
+|---|---|---|
+| Push a cualquier rama ≠ `main` y ≠ `develop` | `deploy-pre.yml` | Preview en Vercel PRE (URL temporal única) |
+| Push a `develop` | `deploy-pre.yml` | **Production en Vercel PRE** (actualiza URL principal de PRE) |
+| Push a `main` | `deploy-production.yml` | Preview en Vercel PRO + tag automático `v{fecha}-{hash}` |
+| `workflow_dispatch` manual con tag | `deploy-production-manual.yml` | **Production en Vercel PRO** (actualiza URL principal de PRO) |
+
+### Cómo desplegar a PRO (paso a paso)
+
+1. Mergea `develop → main` vía PR
+2. El CI crea automáticamente el tag (ej. `v20260418-ab6eda5`) y despliega preview en PRO
+3. Anota el tag: **GitHub → Actions → run del paso 2 → Job Summary**
+4. Ve a **GitHub → Actions → "Deploy Production (manual)" → Run workflow**
+5. Introduce el tag del paso 3 → confirma
+
+### Variables de entorno por entorno
+
+| Entorno | `VITE_APP_ENV` | Proyecto Vercel | Secrets usados |
+|---|---|---|---|
+| Feature branch | `preview` | `barber-dates-web-pre` | `INSFORGE_*_PRE` |
+| Develop (PRE production) | `preview` | `barber-dates-web-pre` | `INSFORGE_*_PRE` |
+| PRO preview | `preview` | `barber-dates-web-prod` | `INSFORGE_*_PROD` |
+| PRO production | `production` | `barber-dates-web-prod` | `INSFORGE_*_PROD` |
 
 ---
 
