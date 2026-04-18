@@ -30,6 +30,8 @@ jobs:
     name: Deploy to Vercel PRE
     needs: quality
     runs-on: ubuntu-latest
+    env:
+      IS_PROD_DEPLOY: ${{ github.ref == 'refs/heads/develop' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -45,13 +47,13 @@ jobs:
       - run: npm install --global vercel@latest
 
       - name: Pull project settings
-        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel pull --yes --environment=${{ env.IS_PROD_DEPLOY == 'true' && 'production' || 'preview' }} --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_PRE }}
 
       - name: Build
-        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel build ${{ env.IS_PROD_DEPLOY == 'true' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_PRE }}
@@ -60,7 +62,17 @@ jobs:
           VITE_APP_ENV: preview
 
       - name: Deploy
-        run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
+        run: |
+          DEPLOY_OUTPUT=$(vercel deploy --prebuilt ${{ env.IS_PROD_DEPLOY == 'true' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }})
+          URL=$(printf '%s\n' "$DEPLOY_OUTPUT" | grep -Eo 'https://[^[:space:]]+\.vercel\.app[^[:space:]]*' | head -n 1)
+          if [ -z "$URL" ]; then
+            echo "Failed to extract deployment URL from Vercel output."
+            printf '%s\n' "$DEPLOY_OUTPUT"
+            exit 1
+          fi
+          echo "### PRE — ${{ env.IS_PROD_DEPLOY == 'true' && 'Production' || 'Preview' }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**URL:** $URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Branch:** \`${{ github.ref_name }}\`" >> "$GITHUB_STEP_SUMMARY"
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_PRE }}
