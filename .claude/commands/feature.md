@@ -37,7 +37,7 @@ Ejemplos:
 ### 2. Crear la rama
 
 ```bash
-git checkout <base> && git pull
+git checkout <base> && git pull origin <base>
 git checkout -b feature/<slug>
 ```
 
