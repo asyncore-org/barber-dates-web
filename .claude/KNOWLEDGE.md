@@ -62,6 +62,19 @@ _(vacío — se irá llenando)_
 **Qué**: `vercel deploy --prebuilt` mezcla logs de progreso con la URL final en stdout. Capturar con `URL=$(vercel deploy ...)` puede capturar líneas de log en lugar de la URL.
 **Fix**: `grep -Eo 'https://[^[:space:]]+\.vercel\.app[^[:space:]]*' | head -n 1`.
 
+### 2026-04-18 · Vercel Analytics + Speed Insights · activación en dashboard obligatoria
+
+**Qué**: Los componentes `<Analytics />` y `<SpeedInsights />` de `@vercel/analytics` y `@vercel/speed-insights` están montados en `src/main.tsx`. Sin embargo, el dashboard de Vercel permanece vacío hasta que Analytics se active manualmente por proyecto.
+
+**Pasos para activar** (hacer una sola vez por proyecto):
+1. Vercel Dashboard → proyecto `barber-dates-web-pre` → pestaña **Analytics** → **Enable**
+2. Vercel Dashboard → proyecto `barber-dates-web-prod` → pestaña **Analytics** → **Enable**
+3. Para Speed Insights: mismo flujo, pestaña **Speed Insights** → **Enable**
+
+**En local**: los componentes se montan pero no envían datos — solo funcionan en dominios `*.vercel.app` o dominios custom configurados en Vercel.
+
+**GDPR**: Vercel Analytics no usa cookies ni almacena IPs completas. Cumple sin banner de cookies en España bajo el marco RGPD actual.
+
 ## Errores conocidos pendientes
 
 _(vacío)_
