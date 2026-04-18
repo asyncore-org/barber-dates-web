@@ -2,7 +2,7 @@
 
 > **Este documento es la fuente de verdad inmutable.** Ningún agente debe modificarlo sin permiso explícito del usuario. Si detecta que algo ha cambiado en la realidad del código y el Constitution debería actualizarse, **avisa primero**, explica QUÉ cambia, QUÉ quedará y POR QUÉ, y espera confirmación.
 
-Versión: 1.0.0 · Última revisión: 2026-04-17
+Versión: 1.1.0 · Última revisión: 2026-04-17
 
 ---
 
@@ -17,23 +17,23 @@ Aplicación web de **gestión de citas para Gio Barber Shop** (peluquería mascu
 
 ## Art. 2 — Stack tecnológico (no alterar sin discusión)
 
-| Capa | Tecnología | Restricción |
-|------|-----------|-------------|
-| Framework | **React 19 + Vite** | No Next.js (el 95% del contenido está detrás de auth) |
-| Lenguaje | **TypeScript strict** | Sin `any`. Interfaces para objetos, types para uniones |
-| Estilos | **TailwindCSS v4** | Sin CSS custom. Sin `style={{}}` salvo valores dinámicos imposibles en Tailwind |
-| Componentes base | **shadcn/ui (Radix UI)** | Copiados a `src/components/ui/` |
-| Routing | **React Router v7** | Layouts anidados, protección por rol |
-| Estado servidor | **TanStack Query v5** | Para TODO dato del servidor |
-| Virtualización | **TanStack Virtual** | Listas > ~30 elementos |
-| Fechas | **date-fns** | Nunca moment.js |
-| Estado global UI | **Zustand** | SOLO UI (tema, sidebar). Nunca datos del servidor |
-| Formularios | **React Hook Form + Zod** | Siempre juntos |
-| SEO | **react-helmet-async** | Meta tags dinámicos |
-| Testing | **Vitest + RTL** | |
-| Backend | **InsForge** | Como Supabase: PostgreSQL + Auth + Storage + Edge Functions |
-| Despliegue | **Vercel dual** | PRO desde `main` · PRE desde cualquier rama |
-| CI/CD | **GitHub Actions** | Quality gates antes de cada deploy |
+| Capa             | Tecnología                | Restricción                                                                     |
+| ---------------- | ------------------------- | ------------------------------------------------------------------------------- |
+| Framework        | **React 19 + Vite**       | No Next.js (el 95% del contenido está detrás de auth)                           |
+| Lenguaje         | **TypeScript strict**     | Sin `any`. Interfaces para objetos, types para uniones                          |
+| Estilos          | **TailwindCSS v4**        | Sin CSS custom. Sin `style={{}}` salvo valores dinámicos imposibles en Tailwind |
+| Componentes base | **shadcn/ui (Radix UI)**  | Copiados a `src/components/ui/`                                                 |
+| Routing          | **React Router v7**       | Layouts anidados, protección por rol                                            |
+| Estado servidor  | **TanStack Query v5**     | Para TODO dato del servidor                                                     |
+| Virtualización   | **TanStack Virtual**      | Listas > ~30 elementos                                                          |
+| Fechas           | **date-fns**              | Nunca moment.js                                                                 |
+| Estado global UI | **Zustand**               | SOLO UI (tema, sidebar). Nunca datos del servidor                               |
+| Formularios      | **React Hook Form + Zod** | Siempre juntos                                                                  |
+| SEO              | **react-helmet-async**    | Meta tags dinámicos                                                             |
+| Testing          | **Vitest + RTL**          |                                                                                 |
+| Backend          | **InsForge**              | Como Supabase: PostgreSQL + Auth + Storage + Edge Functions                     |
+| Despliegue       | **Vercel dual**           | PRO desde `main` · PRE desde cualquier rama                                     |
+| CI/CD            | **GitHub Actions**        | Quality gates antes de cada deploy                                              |
 
 ---
 
@@ -47,13 +47,13 @@ pages/ → components/ → hooks/ → infrastructure/
 domain/ no importa NADA externo
 ```
 
-| Capa | Qué contiene | Puede importar de | NUNCA importa de |
-|------|-------------|-------------------|------------------|
-| `src/domain/` | Tipos TS + funciones puras + reglas de negocio | Otros archivos de `domain/` | React, InsForge, date-fns, nada externo |
-| `src/infrastructure/` | Adaptadores a servicios externos (InsForge) | `domain/` (solo types) | React, hooks, components |
-| `src/hooks/` | Capa aplicación: TanStack Query + lógica orquestal | `domain/`, `infrastructure/` | `components/`, `pages/` |
-| `src/components/` | UI reutilizable | `hooks/`, `domain/` | `infrastructure/` directamente |
-| `src/pages/` | Pantallas | `hooks/`, `components/`, `domain/` | `infrastructure/` directamente |
+| Capa                  | Qué contiene                                       | Puede importar de                  | NUNCA importa de                        |
+| --------------------- | -------------------------------------------------- | ---------------------------------- | --------------------------------------- |
+| `src/domain/`         | Tipos TS + funciones puras + reglas de negocio     | Otros archivos de `domain/`        | React, InsForge, date-fns, nada externo |
+| `src/infrastructure/` | Adaptadores a servicios externos (InsForge)        | `domain/` (solo types)             | React, hooks, components                |
+| `src/hooks/`          | Capa aplicación: TanStack Query + lógica orquestal | `domain/`, `infrastructure/`       | `components/`, `pages/`                 |
+| `src/components/`     | UI reutilizable                                    | `hooks/`, `domain/`                | `infrastructure/` directamente          |
+| `src/pages/`          | Pantallas                                          | `hooks/`, `components/`, `domain/` | `infrastructure/` directamente          |
 
 **Si rompes esta regla, la rompes por escrito y con permiso. No hay excepciones tácitas.**
 
@@ -101,14 +101,14 @@ redeemed_rewards  id, card_id→loyalty_cards, reward_id→rewards, redeemed_at
 
 ## Art. 6 — Rutas
 
-| Ruta | Acceso | Componente |
-|------|--------|-----------|
-| `/` | Público | `LandingPage` |
-| `/auth` | Público | `AuthPage` |
-| `/calendar` | `AuthGuard(role='client')` | `CalendarPage` |
-| `/appointments` | `AuthGuard(role='client')` | `AppointmentsPage` |
-| `/admin/dashboard` | `AuthGuard(role='admin')` | `DashboardPage` |
-| `/admin/settings` | `AuthGuard(role='admin')` | `SettingsPage` |
+| Ruta               | Acceso                     | Componente         |
+| ------------------ | -------------------------- | ------------------ |
+| `/`                | Público                    | `LandingPage`      |
+| `/auth`            | Público                    | `AuthPage`         |
+| `/calendar`        | `AuthGuard(role='client')` | `CalendarPage`     |
+| `/appointments`    | `AuthGuard(role='client')` | `AppointmentsPage` |
+| `/admin/dashboard` | `AuthGuard(role='admin')`  | `DashboardPage`    |
+| `/admin/settings`  | `AuthGuard(role='admin')`  | `SettingsPage`     |
 
 ### Flujo de arranque
 
@@ -133,9 +133,7 @@ App carga
 - **Comentarios**: solo cuando el WHY no es obvio. Sin JSDoc en componentes simples.
 - **queryKeys**: arrays descriptivos de mayor a menor especificidad.
   ```ts
-  ['appointments']
-  ['appointments', userId]
-  ['appointments', userId, date]
+  ;['appointments'][('appointments', userId)][('appointments', userId, date)]
   ```
 - **Zod**: schema en el mismo archivo que el form o en `domain/`.
 
@@ -176,19 +174,19 @@ Formato: `type(scope): descripción en inglés, presente imperativo`.
 
 ## Art. 10 — Paleta de colores (no cambiar sin consenso)
 
-| Token | Valor | Uso |
-|-------|-------|-----|
+| Token             | Valor     | Uso                                          |
+| ----------------- | --------- | -------------------------------------------- |
 | Primario (Dorado) | `#C8A44E` | Acentos, botones principales, iconos activos |
-| Hover dorado | `#b8943e` | Hover botones dorados |
-| Fondo oscuro | `#1A1A1A` | Tema oscuro |
-| Fondo claro | `#FAFAFA` | Tema claro |
-| Texto primario | `#111111` | |
-| Texto secundario | `#6B7280` | |
-| Borde | `#E5E7EB` | |
-| Éxito | `#10B981` | Cita confirmada |
-| Error | `#EF4444` | Cancelación, errores |
-| Warning | `#F59E0B` | Avisos |
-| Superficie card | `#FFFFFF` | |
+| Hover dorado      | `#b8943e` | Hover botones dorados                        |
+| Fondo oscuro      | `#1A1A1A` | Tema oscuro                                  |
+| Fondo claro       | `#FAFAFA` | Tema claro                                   |
+| Texto primario    | `#111111` |                                              |
+| Texto secundario  | `#6B7280` |                                              |
+| Borde             | `#E5E7EB` |                                              |
+| Éxito             | `#10B981` | Cita confirmada                              |
+| Error             | `#EF4444` | Cancelación, errores                         |
+| Warning           | `#F59E0B` | Avisos                                       |
+| Superficie card   | `#FFFFFF` |                                              |
 
 **Tipografía**: Inter (Google Fonts), `font-display: swap`, preconnect en `<head>`.
 
@@ -224,6 +222,10 @@ VITE_INSFORGE_ANON_KEY=
 VITE_APP_NAME="Gio Barber Shop"
 VITE_APP_ENV=development   # development | preview | production
 VITE_GOOGLE_CLIENT_ID=
+
+# Mocks locales — solo en .env.local (gitignoreado), nunca en otros envs
+VITE_USE_MOCKS=false          # activa MSW browser worker en dev
+VITE_MOCK_ROLE=client         # rol del usuario fake al hacer login: "client" | "admin"
 ```
 
 Nunca commitear `.env*` excepto `.env.example`.
@@ -233,9 +235,9 @@ Nunca commitear `.env*` excepto `.env.example`.
 ## Art. 14 — Quality gates (ejecutar antes de cualquier cierre)
 
 ```bash
-npm run type-check
-npm run lint
-npm run test -- --run
+pnpm run type-check
+pnpm run lint
+pnpm run test:run
 ```
 
 Si alguno falla, la tarea no puede cerrarse (`/done`).

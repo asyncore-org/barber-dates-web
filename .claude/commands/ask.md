@@ -4,11 +4,13 @@ Responde una pregunta sobre el proyecto sin crear ninguna tarea ni modificar nin
 Usa scripts de contexto parcial para no cargar el contexto completo.
 
 ## Uso
+
 ```
 /ask <pregunta libre>
 ```
 
 Ejemplos:
+
 - `/ask ¿cuál es la regla exacta de cancelación de citas?`
 - `/ask ¿cómo se estructura un hook nuevo con TanStack Query?`
 - `/ask ¿qué RLS aplica a la tabla loyalty_cards?`

@@ -22,8 +22,8 @@
 ## Archivos relevantes encontrados
 
 | Archivo | Por qué importa |
-|---------|----------------|
-| | |
+| ------- | --------------- |
+|         |                 |
 
 ## Artículos del Constitution relevantes
 

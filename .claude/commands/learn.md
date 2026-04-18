@@ -1,19 +1,22 @@
 # Comando: /learn
 
 Captura un aprendizaje reutilizable en `.claude/KNOWLEDGE.md`. Se usa cuando durante el desarrollo descubres algo que:
+
 - Podría ahorrarle tiempo a otro desarrollador (o a ti mismo en otra sesión).
 - Es un gotcha del stack.
 - Es un comando/workaround que no era obvio.
 - Es un error conocido que aún no se corrige.
 
 ## Uso
+
 ```
 /learn <insight libre>
 ```
 
 Ejemplos:
+
 - `/learn InsForge no soporta .rpc() con array args — hay que usar .sql() directo`
-- `/learn npm run dev a veces no hot-reloada si el workspace está en iCloud — reiniciar vite`
+- `/learn pnpm run dev a veces no hot-reloada si el workspace está en iCloud — reiniciar vite`
 
 ## Lo que debes hacer
 
@@ -24,7 +27,7 @@ Ejemplos:
    - **Errores conocidos pendientes** — bugs que no se corrigen aún.
    - **Workarounds** — soluciones temporales hasta que se arregle X.
    - **Tips útiles** — comandos, trucos productivos.
-   Si no encaja en ninguna, crear una sección nueva.
+     Si no encaja en ninguna, crear una sección nueva.
 3. Añadir la entrada con el formato:
 
 ```markdown

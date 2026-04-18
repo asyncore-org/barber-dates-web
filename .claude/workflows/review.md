@@ -25,14 +25,14 @@ Agent({
   subagent_type: "Explore",
   description: "Review de arquitectura y calidad",
   prompt: "Audita el diff de la rama actual contra <base> en el repo barber-dates-web.
-  
+
   Contexto del proyecto:
   - Clean Architecture React: domain/ puro → infrastructure/ → hooks/ → components/pages/
   - Reglas en .claude/CONSTITUTION.md
   - Backend InsForge (tipo Supabase): mapper snake_case↔camelCase en infrastructure/
-  
+
   Archivos modificados: <output de files-touched.sh>
-  
+
   Evalúa (para cada hallazgo: file_path:line_number):
   1. Violaciones de capas: ¿components/ o pages/ importan de infrastructure/?
   2. Reglas de negocio en componentes (deben estar en domain/).
@@ -42,7 +42,7 @@ Agent({
   6. Formularios sin validación Zod.
   7. UI nueva sin loading/error state.
   8. InsForge calls fuera de infrastructure/ (domain/ u hooks/ que llaman directo a InsForge).
-  
+
   Formato:
   ✅ Sin problemas | ⚠️ Revisar (no bloquea) | ❌ Bloquea
   Máximo 300 palabras."
@@ -52,14 +52,15 @@ Agent({
 ### 3. Quality gates
 
 ```bash
-npm run type-check
-npm run lint
-npm run test -- --run
+pnpm run type-check
+pnpm run lint
+pnpm run test:run
 ```
 
 ### 4. Verificar criterios de aceptación
 
 Leer `PLAN.md` sección "Criterios de aceptación globales". Marcar cada uno:
+
 - ✅ Implementado y verificable.
 - ❌ No implementado → volver a desarrollo.
 
@@ -69,18 +70,22 @@ Leer `PLAN.md` sección "Criterios de aceptación globales". Marcar cada uno:
 # REVIEW · YYYY-MM-DD HH:mm
 
 ## Agente de review
+
 <output resumido>
 
 ## Quality gates
+
 - TypeScript: ✅/❌
 - ESLint: ✅/❌ (detalles si falla)
 - Tests: ✅/❌ (N passed / M failed)
 
 ## Criterios de aceptación
+
 - [x] criterio 1
 - [ ] criterio 2 — PENDIENTE: <detalle>
 
 ## Veredicto: APROBADO | BLOQUEADO
+
 <motivo si bloqueado>
 ```
 

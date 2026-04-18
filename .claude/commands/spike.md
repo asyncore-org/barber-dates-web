@@ -3,6 +3,7 @@
 Arranca una exploración/prototipo: rama + carpeta + clarificación de la pregunta. Se para aquí.
 
 ## Uso
+
 ```
 /spike <slug> [pregunta a responder]
 ```

@@ -7,10 +7,10 @@
 
 ## Plan en curso: v<N>
 
-| # | Paso | Estado | Commit | Notas |
-|---|------|--------|--------|-------|
-| 1 | <título> | pending | — | |
-| 2 | <título> | pending | — | |
+| #   | Paso     | Estado  | Commit | Notas |
+| --- | -------- | ------- | ------ | ----- |
+| 1   | <título> | pending | —      |       |
+| 2   | <título> | pending | —      |       |
 
 **Estado**: `pending` · `in-progress` · `done` · `skipped` · `blocked`
 

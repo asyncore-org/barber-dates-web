@@ -1,0 +1,1 @@
+pnpm run lint --quiet && pnpm run type-check

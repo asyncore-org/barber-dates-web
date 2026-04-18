@@ -14,12 +14,12 @@ Claude Code es un agente muy capaz, pero sin estructura tiene problemas serios e
 
 Este sistema resuelve todos esos problemas con cuatro piezas:
 
-| Pieza | Qué aporta |
-|-------|------------|
-| **Archivos de contexto** (Constitution, KNOWLEDGE, DECISIONS) | Claude conoce el proyecto desde el primer mensaje, sin explorar el código desde cero |
-| **Flujo por fases** (analyze → plan → implement → review → done) | Nada se implementa sin un plan aprobado. Cada fase produce artefactos persistentes |
-| **Carpetas de tarea** (TASK-*) | El progreso queda documentado en tiempo real — retomar en otra sesión es trivial |
-| **Scripts de fetch parcial** | Claude carga solo el fragmento que necesita, no archivos completos — ahorra tokens |
+| Pieza                                                            | Qué aporta                                                                           |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **Archivos de contexto** (Constitution, KNOWLEDGE, DECISIONS)    | Claude conoce el proyecto desde el primer mensaje, sin explorar el código desde cero |
+| **Flujo por fases** (analyze → plan → implement → review → done) | Nada se implementa sin un plan aprobado. Cada fase produce artefactos persistentes   |
+| **Carpetas de tarea** (TASK-\*)                                  | El progreso queda documentado en tiempo real — retomar en otra sesión es trivial     |
+| **Scripts de fetch parcial**                                     | Claude carga solo el fragmento que necesita, no archivos completos — ahorra tokens   |
 
 ---
 
@@ -94,13 +94,13 @@ barber-dates-web/
     │       └── CHANGES/
     │           └── CHANGE-N.md  ← Una por cada /change ejecutado
     │
-    │  ─── Scripts (15 archivos) ─────────────────────────────────
+    │  ─── Scripts (16 archivos) ─────────────────────────────────
     └── scripts/
         ├── [tareas]     new-task.sh  active-task.sh
         ├── [fetch]      constitution-index.sh  art.sh  section.sh
         │                fetch.sh  plan-step.sh  grep-task.sh
         │                diff-task.sh  files-touched.sh
-        ├── [contexto]   sync-context.sh
+      ├── [contexto]   sync-context.sh  validate-consistency.sh
         └── [hooks]      log-file-change.sh  context-watch.sh
                          session-start.sh  pre-commit-check.sh
 ```
@@ -139,7 +139,7 @@ TÚ escribes: /feature appointment-system
 Hooks que actúan en paralelo:
   - Cada Edit/Write → log-file-change.sh  → actualiza files.md
   - Cada Edit/Write → context-watch.sh    → avisa si toca archivo sensible
-  - Cada Edit *.ts  → npm run type-check  → TypeScript en tiempo real
+  - Cada Edit *.ts  → pnpm run type-check  → TypeScript en tiempo real
   - git commit      → pre-commit-check.sh → sugiere TASK-id en el mensaje
   - Inicio sesión   → session-start.sh    → avisa si hay tarea activa
 ```

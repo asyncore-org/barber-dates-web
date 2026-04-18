@@ -27,11 +27,13 @@ Muestra el estado actual del desarrollo y las tareas de la fase activa.
 ```
 
 ## Cuándo ejecutarlo
+
 - Al inicio de una sesión de trabajo para orientarse
 - Cuando el usuario pregunta "¿cómo vamos?" o "¿qué falta?"
 - Para decidir qué construir a continuación
 
 ## Notas
+
 - Verificar el estado REAL del código, no solo recordar el plan
 - Si hay algo en el plan que ya no tiene sentido dado el estado actual, señalarlo
 - Priorizar siempre desbloquear la fase actual antes de hablar de fases futuras

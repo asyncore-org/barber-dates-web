@@ -3,6 +3,7 @@
 Ejecuta uno o varios pasos del `PLAN.md` aprobado. **Única puerta de entrada al código de producción.**
 
 ## Uso
+
 ```
 /implement              # siguiente paso pendiente
 /implement next         # igual que el anterior
@@ -40,6 +41,7 @@ bash .claude/scripts/plan-step.sh <N>          # ver solo el paso N
 #### 2c. Implementar el paso
 
 Usar los comandos de scaffolding si aplica:
+
 - `/new-domain <entidad>` → tipos + reglas + test
 - `/new-infra <entidad>` → adaptador InsForge
 - `/new-hook <nombre>` → TanStack Query hook
@@ -50,6 +52,7 @@ Seguir estrictamente las reglas arquitectónicas del Constitution (Art. 3).
 **Sin `any`. Sin saltarse capas. Sin lógica de negocio en componentes.**
 
 > **Radar de contexto**: mientras implementas, si el paso introduce algo de lo siguiente, anótalo en `LOG.md` bajo la etiqueta `[context-flag]` para que `/done` lo detecte fácilmente:
+>
 > - Nueva regla de negocio o cambio en una existente → Art. 4
 > - Nueva tabla, campo o relación → Art. 5
 > - Nueva ruta o cambio en AuthGuard → Art. 6
@@ -90,7 +93,7 @@ Tras cada paso, reportar brevemente al usuario:
 ✅ Paso N completado — <título>
    Commit: <hash>
    Archivos: <N archivos, +A/-B>
-   
+
 Próximo: Paso N+1 — <título>
 ¿Continúo o prefieres revisar antes?
 ```

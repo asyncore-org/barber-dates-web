@@ -4,11 +4,13 @@ Arranca una feature nueva: crea la rama, la carpeta de tarea y ejecuta la **fase
 Se para al terminar el análisis — **no implementa nada**.
 
 ## Uso
+
 ```
 /feature <slug> [descripción libre]
 ```
 
 Ejemplos:
+
 - `/feature calendar-virtualization`
 - `/feature loyalty-redeem-flow el cliente debe poder canjear puntos por premios`
 
@@ -50,6 +52,7 @@ Lee el path devuelto por stdout.
 ### 4. Rellenar README.md de la tarea
 
 Si el usuario dio descripción, usarla. Si no, preguntar:
+
 - ¿Qué hace la feature exactamente?
 - ¿Para qué usuario / caso de uso?
 - ¿Criterios de aceptación?

@@ -132,6 +132,7 @@ Ver `.claude/commands/change.md` — funciona igual en todos los workflows.
 Ver `.claude/commands/done.md`.
 
 **Doble verificación específica de features**:
+
 - Que las páginas nuevas usan `lazy()` + `Suspense`.
 - Que hay `AuthGuard` en rutas privadas.
 - Que el dominio tiene tests.

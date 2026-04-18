@@ -50,19 +50,20 @@ Si en la misma sesión Claude ya cargó el Constitution Art. 4, no hace falta pe
 
 ### Ramas
 
-| Rama | Base | Destino del PR |
-|------|------|----------------|
-| `feature/<slug>` | `develop` | `develop` |
-| `fix/<slug>` | `develop` | `develop` |
-| `refactor/<slug>` | `develop` | `develop` |
-| `chore/<slug>` | `develop` | `develop` |
-| `hotfix/<slug>` | `main` ⚠️ | `main` + cherry-pick a `develop` |
-| `spike/<slug>` | `develop` | No se mergea |
-| Sub-tarea | Rama padre | Rama padre |
+| Rama              | Base       | Destino del PR                   |
+| ----------------- | ---------- | -------------------------------- |
+| `feature/<slug>`  | `develop`  | `develop`                        |
+| `fix/<slug>`      | `develop`  | `develop`                        |
+| `refactor/<slug>` | `develop`  | `develop`                        |
+| `chore/<slug>`    | `develop`  | `develop`                        |
+| `hotfix/<slug>`   | `main` ⚠️  | `main` + cherry-pick a `develop` |
+| `spike/<slug>`    | `develop`  | No se mergea                     |
+| Sub-tarea         | Rama padre | Rama padre                       |
 
 ### Commits
 
 **Formato obligatorio** (Husky + Commitlint lo valida):
+
 ```
 <tipo>(<scope>): <descripción en inglés, presente imperativo>
 ```
@@ -104,12 +105,12 @@ git branch -D           # bloqueado
 
 ### Cuándo usar /change vs otras opciones
 
-| Situación | Qué usar |
-|-----------|----------|
-| Un paso del plan no quedó bien | `/change <descripción>` dentro de la misma tarea |
-| El plan entero está mal orientado | `/revise <qué>` para regenerar el plan |
-| Bug independiente de la feature | `/fix <slug>` en nueva rama |
-| Ajuste de < 3 líneas obvio | Puedes decírselo directamente, aunque /change sigue siendo mejor |
+| Situación                         | Qué usar                                                         |
+| --------------------------------- | ---------------------------------------------------------------- |
+| Un paso del plan no quedó bien    | `/change <descripción>` dentro de la misma tarea                 |
+| El plan entero está mal orientado | `/revise <qué>` para regenerar el plan                           |
+| Bug independiente de la feature   | `/fix <slug>` en nueva rama                                      |
+| Ajuste de < 3 líneas obvio        | Puedes decírselo directamente, aunque /change sigue siendo mejor |
 
 ### El flujo exacto de /change
 
@@ -276,11 +277,13 @@ Tú: /implement
 ### ❌ Pedir implementación directamente
 
 **Incorrecto**:
+
 ```
 implementa el sistema de citas completo
 ```
 
 **Correcto**:
+
 ```
 /feature appointment-system sistema de gestión de citas
 ```
@@ -292,11 +295,13 @@ implementa el sistema de citas completo
 ### ❌ Pedir correcciones sin /change
 
 **Incorrecto**:
+
 ```
 no, ese hook no está bien, hazlo de otra manera
 ```
 
 **Correcto**:
+
 ```
 /change el hook useAppointments debería recibir userId como parámetro, no leerlo del store
 ```
@@ -324,6 +329,7 @@ Si cierras Claude Code abruptamente, `STATE.md` puede quedar con información de
 Si editas `CONSTITUTION.md` directamente y no actualizas `CONSTITUTION-INDEX.md`, Claude puede cargar el artículo equivocado creyendo que cubre algo diferente.
 
 **Protocolo al tocar el Constitution directamente**:
+
 1. Bump de versión en la cabecera.
 2. Actualizar `CONSTITUTION-INDEX.md` si cambió el scope de algún artículo.
 3. Entrada en `DECISIONS.md` explicando el cambio.
@@ -361,6 +367,7 @@ Las que quieras. Cada una está en su propia rama y carpeta. `/status` las lista
 **¿Qué pasa si el Constitution se queda desactualizado?**
 
 Los mecanismos de protección son tres:
+
 1. Hook `context-watch.sh` — avisa cuando se editan archivos sensibles.
 2. `/sync-context` en `/done` — obligatorio antes de cada PR.
 3. El propio análisis inicial — Claude lee el Constitution al arrancar cada tarea.
@@ -402,6 +409,7 @@ bash .claude/scripts/files-touched.sh     # qué archivos has tocado
 **¿Cómo sé qué versión del Constitution estoy usando?**
 
 La cabecera de `CONSTITUTION.md` siempre tiene la versión actual:
+
 ```markdown
 Versión: 1.0.0 · Última revisión: 2026-04-17
 ```
@@ -414,4 +422,4 @@ Es la plantilla base que `new-task.sh` usa para crear nuevas tareas. Si quieres 
 
 ---
 
-*Fin de la documentación. Para cualquier duda sobre el sistema, usa `/ask` en Claude Code o consulta directamente los archivos de `.claude/`.*
+_Fin de la documentación. Para cualquier duda sobre el sistema, usa `/ask` en Claude Code o consulta directamente los archivos de `.claude/`._

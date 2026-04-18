@@ -5,11 +5,13 @@ Se usa cuando algo implementado no es como se quería, o cuando el usuario pide 
 **Nunca toca código directamente: primero analiza, propone plan de cambio y espera /implement.**
 
 ## Uso
+
 ```
 /change <descripción del ajuste>
 ```
 
 Ejemplos:
+
 - `/change el mapper de appointments no está mapeando el campo notes correctamente`
 - `/change el hook useAppointments debería recibir el userId como parámetro, no leerlo del store`
 - `/change cambia el color del botón de reserva a dorado (#C8A44E) en lugar de azul`
@@ -24,19 +26,25 @@ Crear `.claude/tasks/<TASK-ID>/CHANGES/CHANGE-<N>.md` (incrementar N):
 # CHANGE-N — <título> · YYYY-MM-DD HH:mm
 
 ## Qué se pide cambiar
+
 <descripción exacta del usuario>
 
 ## Diagnóstico
+
 <tras analizar el código: qué está mal y por qué>
 
 ## Archivos afectados
+
 <lista de archivos que hay que tocar>
 
 ## Impacto en el plan
+
 <si hay PLAN.md: qué pasos quedan afectados>
 
 ## Plan del cambio
+
 ### Paso C-1 — <título>
+
 - Archivos: ...
 - Qué se cambia: ...
 - Criterio: ...
@@ -52,6 +60,7 @@ bash .claude/scripts/files-touched.sh              # archivos en la tarea
 ```
 
 Usar subagente `Explore` si hay que investigar el código en detalle:
+
 ```
 Agent({
   subagent_type: "Explore",
@@ -91,6 +100,7 @@ Si el usuario aprueba, el CHANGE queda en estado `approved`.
 ### 6. Tras implementar
 
 El CHANGE pasa a `done`. Se añade entrada en `LOG.md`:
+
 ```
 ## YYYY-MM-DD HH:mm — change-done
 CHANGE-N implementado: <título>. Commits: <hashes>
