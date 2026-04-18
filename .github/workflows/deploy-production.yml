@@ -1,4 +1,4 @@
-name: Deploy Production
+name: Tag Production Release
 
 on:
   push:
@@ -26,32 +26,19 @@ jobs:
 
       - run: pnpm run test:run
 
-  deploy-production:
-    name: Deploy to Vercel PRO
+  tag:
+    name: Create Deployment Tag
     needs: quality
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'pnpm'
+          fetch-depth: 0
 
-      - run: pnpm install --frozen-lockfile
-
-      - run: pnpm run build
-        env:
-          VITE_INSFORGE_URL: ${{ secrets.INSFORGE_URL_PROD }}
-          VITE_INSFORGE_ANON_KEY: ${{ secrets.INSFORGE_ANON_KEY_PROD }}
-          VITE_APP_ENV: production
-
-      - uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_PROD }}
-          vercel-args: '--prod'
-          working-directory: ./
+      - name: Create and push tag
+        run: |
+          TAG="v$(date +%Y%m%d)-$(git rev-parse --short HEAD)"
+          git tag "$TAG"
+          git push origin "$TAG"
