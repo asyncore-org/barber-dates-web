@@ -11,13 +11,10 @@ FAIL=0
 echo "[consistency] Running Claude system consistency checks..."
 
 DRIFT_OUTPUT="$({
-  grep -RInF "npm run type-check" "$ROOT_DIR/.claude/commands" "$ROOT_DIR/.claude/workflows" "$ROOT_DIR/docs" 2>/dev/null || true
-  grep -RInF "npm run lint" "$ROOT_DIR/.claude/commands" "$ROOT_DIR/.claude/workflows" "$ROOT_DIR/docs" 2>/dev/null || true
-  grep -RInF "npm run test -- --run" "$ROOT_DIR/.claude/commands" "$ROOT_DIR/.claude/workflows" "$ROOT_DIR/docs" 2>/dev/null || true
-  grep -InF "npm run type-check" "$ROOT_DIR/CLAUDE.md" "$ROOT_DIR/.github/copilot-instructions.md" 2>/dev/null || true
-  grep -InF "npm run lint" "$ROOT_DIR/CLAUDE.md" "$ROOT_DIR/.github/copilot-instructions.md" 2>/dev/null || true
-  grep -InF "npm run test -- --run" "$ROOT_DIR/CLAUDE.md" "$ROOT_DIR/.github/copilot-instructions.md" 2>/dev/null || true
-} | grep -v "pnpm run" | grep -vE '/\.claude/DECISIONS\.md:|/docs/07-consistency-checks\.md:' | sort -u || true)"
+  grep -RInF "npm run type-check" "$ROOT_DIR/.claude/commands" "$ROOT_DIR/.claude/workflows" "$ROOT_DIR/docs" "$ROOT_DIR/CLAUDE.md" "$ROOT_DIR/.github/copilot-instructions.md" 2>/dev/null || true
+  grep -RInF "npm run lint" "$ROOT_DIR/.claude/commands" "$ROOT_DIR/.claude/workflows" "$ROOT_DIR/docs" "$ROOT_DIR/CLAUDE.md" "$ROOT_DIR/.github/copilot-instructions.md" 2>/dev/null || true
+  grep -RInF "npm run test -- --run" "$ROOT_DIR/.claude/commands" "$ROOT_DIR/.claude/workflows" "$ROOT_DIR/docs" "$ROOT_DIR/CLAUDE.md" "$ROOT_DIR/.github/copilot-instructions.md" 2>/dev/null || true
+} | grep -vE '/\.claude/DECISIONS\.md:|/docs/07-consistency-checks\.md:' | sort -u || true)"
 
 if [[ -n "$DRIFT_OUTPUT" ]]; then
   echo "[consistency] FAIL: Found legacy npm quality gate commands:" >&2

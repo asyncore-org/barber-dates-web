@@ -163,14 +163,14 @@ El pipeline se cancela si cualquier gate falla. Ningún deploy ocurre sin pasar 
 
 > El build se ejecuta en el job de deploy, no como gate independiente.
 
-### Despliegue dual en Vercel
+### Despliegue en Vercel
 
-| Proyecto Vercel | Rama de origen         | Cuándo se despliega          |
-| --------------- | ---------------------- | ---------------------------- |
-| **PRE**         | Cualquier rama (≠ `main`) | En cada push                |
-| **PRO**         | `main`                 | Al mergear un PR aprobado    |
+| Proyecto Vercel | Cuándo se despliega |
+| --------------- | ------------------- |
+| **PRE**         | Automáticamente en cada push a cualquier rama (≠ `main`), tras pasar los quality gates |
+| **PRO**         | Solo manualmente: ir a Actions → "Deploy Production (manual)" → elegir el tag a desplegar |
 
-Cada PR genera automáticamente una URL de preview en el proyecto PRE. El proyecto PRO solo recibe código de `main` que ha pasado todos los quality gates.
+Cada push a `main` ejecuta los quality gates y crea automáticamente un tag `v{YYYYMMDD}-{sha}` (ej. `v20260418-abc1234`). Para desplegar a PRO, se lanza manualmente el workflow eligiendo el tag deseado — esto permite decidir exactamente qué versión llega a producción.
 
 ---
 

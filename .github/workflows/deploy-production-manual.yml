@@ -9,8 +9,32 @@ on:
         type: string
 
 jobs:
+  quality:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run lint
+
+      - run: pnpm run type-check
+
+      - run: pnpm run test:run
+
   deploy-production:
     name: Deploy to Vercel PRO
+    needs: quality
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
