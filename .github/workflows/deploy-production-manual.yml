@@ -1,0 +1,44 @@
+name: Deploy Production (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to deploy (e.g. v20260418-abc1234)'
+        required: true
+        type: string
+
+jobs:
+  deploy-production:
+    name: Deploy to Vercel PRO
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: npm install --global vercel@latest
+
+      - name: Build
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_PROD }}
+          VITE_INSFORGE_URL: ${{ secrets.INSFORGE_URL_PROD }}
+          VITE_INSFORGE_ANON_KEY: ${{ secrets.INSFORGE_ANON_KEY_PROD }}
+          VITE_APP_ENV: production
+
+      - name: Deploy
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_PROD }}
