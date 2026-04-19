@@ -130,4 +130,68 @@ Available languages:
 - Serverless functions have single endpoint (no subpaths)
 - Storage: Upload files to buckets, store URLs in database
 - AI operations are OpenAI-compatible
-- **EXTRA IMPORTANT**: Use Tailwind CSS 3.4 (do not upgrade to v4). Lock these dependencies in `package.json`
+- **PROJECT OVERRIDE**: This project uses **TailwindCSS v4** (not v3.4). Do not downgrade.
+
+---
+
+## Project Context — Gio Barber Shop
+
+This is **barber-dates-web**, a web booking app for a men's barbershop. Two roles: **client** (books appointments, earns loyalty points, redeems rewards) and **admin** (manages services, schedules, blocked days, metrics).
+
+**Stack**: React 19 + Vite + TypeScript strict · TailwindCSS v4 · shadcn/ui · React Router v7 · TanStack Query v5 · Zustand · Vitest + MSW v2 · InsForge (PostgreSQL + Auth + Storage)
+
+### Architecture — Clean Architecture (strict layers)
+
+```
+src/domain/           # Pure types + business rules — zero external imports
+src/infrastructure/   # InsForge adapters — imports only from domain/
+src/hooks/            # TanStack Query + orchestration — imports domain/ + infrastructure/
+src/components/       # Reusable UI — imports hooks/ + domain/
+src/pages/            # Screens — imports hooks/ + components/ + domain/
+src/stores/           # Zustand — UI state only (never remote data)
+src/lib/              # Shared utilities (cn, formatters)
+src/mocks/            # MSW handlers + fixtures (dev + tests)
+```
+
+**Import law**: `pages → components → hooks → infrastructure → domain`. Never backwards.
+**domain/ never imports**: React, InsForge SDK, date-fns, or any external package.
+**Naming**: snake_case in DB ↔ camelCase in domain. Mappers live in `infrastructure/`, never leak snake_case to upper layers.
+
+### Database Schema (PostgreSQL / InsForge)
+
+```sql
+profiles              id, full_name, phone, avatar_url, role('client'|'admin'), created_at, updated_at
+services              id, name, description, duration_minutes, price, loyalty_points, is_active, sort_order
+appointments          id, client_id→profiles, service_id→services, start_time, end_time, status, notes
+                      status: 'confirmed' | 'completed' | 'cancelled' | 'no_show'
+schedule_blocks       id, block_date, start_time, end_time, day_of_week, reason, is_recurring
+shop_config           id, key (unique), value (JSONB)
+loyalty_cards         id, client_id→profiles (unique), total_points, total_visits
+loyalty_transactions  id, card_id→loyalty_cards, appointment_id→appointments, points, type, description
+                      type: 'earned' | 'redeemed' | 'bonus' | 'adjustment'
+rewards               id, name, description, points_cost, is_active
+redeemed_rewards      id, card_id→loyalty_cards, reward_id→rewards, redeemed_at
+```
+
+### Row Level Security (RLS) — enabled on all tables
+
+| Table | Client can | Admin can |
+|-------|-----------|-----------|
+| `profiles` | Read/update own row | Read/update all |
+| `appointments` | Read/create/update own rows | Full CRUD |
+| `services` | Read (public) | Full CRUD |
+| `rewards` | Read (public) | Full CRUD |
+| `loyalty_cards` | Read own | Read all |
+| `loyalty_transactions` | Read own | Read all |
+| `schedule_blocks` | Read | Full CRUD |
+| `shop_config` | Read | Full CRUD |
+
+### Business Rules (live in `src/domain/`, never in components)
+
+1. A client can have at most **1 future active appointment** (`status='confirmed'`) at a time.
+2. Appointments can be cancelled up to **2 hours before** start time (`CANCELLATION_LIMIT_HOURS = 2`).
+3. Loyalty points are awarded when the appointment status changes to **`completed`** (not on booking or confirmation).
+4. Admin can block specific days/hours via `schedule_blocks`.
+5. Services have fixed duration that determines available booking slots.
+6. **Client session**: persistent indefinitely.
+7. **Admin session**: maximum **15 days** from login (`ADMIN_SESSION_MAX_DAYS = 15`). Force logout if exceeded. Login timestamp stored in `localStorage` under key `admin_login_time`.
