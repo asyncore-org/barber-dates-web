@@ -4,11 +4,7 @@ import { insforgeClient } from '@/infrastructure/insforge'
 
 const IS_MOCK_MODE = import.meta.env.VITE_USE_MOCKS === 'true'
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined
-export const isGoogleConfigured =
-  !!GOOGLE_CLIENT_ID &&
-  GOOGLE_CLIENT_ID !== 'tu-google-client-id' &&
-  GOOGLE_CLIENT_ID.trim() !== ''
+export const isGoogleConfigured = import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === 'true'
 
 function normalizeAuthError(error: unknown, operation: 'login' | 'signup' | 'google' | 'signout' | 'reset' | 'update'): Error {
   const message = (error instanceof Error ? error.message : String(error)).toLowerCase()
@@ -92,7 +88,8 @@ export const authRepository = {
         },
       })
       if (error) throw error
-      if (!data.user) throw new Error('Revisa tu email para confirmar tu cuenta.')
+      if (!data.user) throw new Error('No se pudo crear la cuenta.')
+      if (!data.session) throw new Error('Revisa tu email para confirmar tu cuenta.')
       return mapToUser(data.user)
     } catch (error) {
       throw normalizeAuthError(error, 'signup')
