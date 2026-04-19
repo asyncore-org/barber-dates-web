@@ -21,12 +21,13 @@ const schema = z
 type FormValues = z.infer<typeof schema>
 
 interface ResetPasswordFormProps {
+  otp: string
   onSuccess?: () => void
 }
 
 const fieldCls = 'border-white/20 bg-[#111111] text-white placeholder:text-white/45 focus-visible:ring-[#C8A44E]'
 
-export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
+export function ResetPasswordForm({ otp, onSuccess }: ResetPasswordFormProps) {
   const { updatePassword } = useAuth()
   const [serverError, setServerError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
@@ -41,7 +42,7 @@ export function ResetPasswordForm({ onSuccess }: ResetPasswordFormProps) {
   const onSubmit = async (values: FormValues) => {
     setServerError(null)
     try {
-      await updatePassword(values.password)
+      await updatePassword(values.password, otp)
       onSuccess?.()
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Error al actualizar la contraseña')

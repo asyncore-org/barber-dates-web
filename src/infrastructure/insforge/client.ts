@@ -1,7 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@insforge/sdk'
 
-export const insforgeClient = createClient(
-  import.meta.env.VITE_INSFORGE_URL as string,
-  import.meta.env.VITE_INSFORGE_ANON_KEY as string,
-  { auth: { detectSessionInUrl: true } },
-)
+export const insforgeClient = createClient({
+  baseUrl: import.meta.env.VITE_INSFORGE_URL as string,
+  anonKey: import.meta.env.VITE_INSFORGE_ANON_KEY as string,
+})

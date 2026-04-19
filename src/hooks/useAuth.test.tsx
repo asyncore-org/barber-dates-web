@@ -13,7 +13,7 @@ vi.mock('@/infrastructure/auth', () => ({
     signUp: vi.fn(),
     signInWithGoogle: vi.fn(),
     resetPasswordForEmail: vi.fn(),
-    updatePassword: vi.fn(),
+    updatePassword: vi.fn(), // InsForge: (password, otp) => void
   },
 }))
 

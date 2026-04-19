@@ -1,4 +1,3 @@
-import type { User as SupabaseUser } from '@supabase/supabase-js'
 import type { User, UserRole } from '@/domain/user'
 import { insforgeClient } from '@/infrastructure/insforge'
 
@@ -6,8 +5,25 @@ const IS_MOCK_MODE = import.meta.env.VITE_USE_MOCKS === 'true'
 
 export const isGoogleConfigured = import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === 'true'
 
-function normalizeAuthError(error: unknown, operation: 'login' | 'signup' | 'google' | 'signout' | 'reset' | 'update'): Error {
+// Shape of the user object returned by the InsForge SDK
+interface InsForgeUser {
+  id: string
+  email: string
+  emailVerified: boolean
+  providers: string[]
+  createdAt: string
+  updatedAt: string
+  profile: { name?: string; avatar_url?: string } | null
+  metadata: Record<string, unknown> | null
+}
+
+function normalizeAuthError(
+  error: unknown,
+  operation: 'login' | 'signup' | 'google' | 'signout' | 'reset' | 'update',
+): Error {
   const message = (error instanceof Error ? error.message : String(error)).toLowerCase()
+  // InsForge errors may carry a code in the `error` property
+  const code = (error as { error?: string })?.error?.toLowerCase() ?? ''
 
   if (import.meta.env.DEV) {
     console.error(`[auth:${operation}]`, error)
@@ -15,20 +31,27 @@ function normalizeAuthError(error: unknown, operation: 'login' | 'signup' | 'goo
 
   if (operation === 'login') {
     if (
-      message.includes('invalid login credentials') ||
-      message.includes('invalid credentials') ||
-      message.includes('email or password')
+      code.includes('invalid') ||
+      message.includes('invalid') ||
+      message.includes('credentials') ||
+      message.includes('password') ||
+      message.includes('not found')
     ) {
       return new Error('Email o contraseña incorrectos.')
     }
-    if (message.includes('email not confirmed')) {
+    if (code.includes('email') || message.includes('email') && message.includes('verif')) {
       return new Error('Debes confirmar tu email antes de iniciar sesión.')
     }
     return new Error('No hemos podido iniciar sesión. Inténtalo de nuevo en unos minutos.')
   }
 
   if (operation === 'signup') {
-    if (message.includes('already registered') || message.includes('already exists')) {
+    if (
+      code.includes('exists') ||
+      code.includes('duplicate') ||
+      message.includes('already') ||
+      message.includes('exists')
+    ) {
       return new Error('Ya existe una cuenta con ese email.')
     }
     return new Error('No hemos podido crear tu cuenta. Inténtalo de nuevo en unos minutos.')
@@ -39,30 +62,27 @@ function normalizeAuthError(error: unknown, operation: 'login' | 'signup' | 'goo
   }
 
   if (operation === 'reset') {
-    return new Error('No hemos podido enviar el email de recuperación. Inténtalo de nuevo en unos minutos.')
+    return new Error(
+      'No hemos podido enviar el email de recuperación. Inténtalo de nuevo en unos minutos.',
+    )
   }
 
   if (operation === 'update') {
-    return new Error('No hemos podido actualizar tu contraseña. Inténtalo de nuevo en unos minutos.')
+    return new Error(
+      'No hemos podido actualizar tu contraseña. Inténtalo de nuevo en unos minutos.',
+    )
   }
 
   return new Error('No hemos podido cerrar sesión. Inténtalo de nuevo.')
 }
 
-function mapToUser(supabaseUser: SupabaseUser): User {
+function mapToUser(user: InsForgeUser): User {
   return {
-    id: supabaseUser.id,
-    email: supabaseUser.email ?? '',
-    fullName:
-      (supabaseUser.user_metadata?.full_name as string | undefined) ??
-      (supabaseUser.email ?? '').split('@')[0],
-    // app_metadata.role is set by the server (admin dashboard); user_metadata.role
-    // is what the client writes on signup. app_metadata takes precedence.
-    role: ((supabaseUser.app_metadata?.role as string | undefined) ??
-      (supabaseUser.user_metadata?.role as string | undefined) ??
-      'client') as UserRole,
-    phone: (supabaseUser.user_metadata?.phone as string | undefined) ?? undefined,
-    avatarUrl: (supabaseUser.user_metadata?.avatar_url as string | undefined) ?? undefined,
+    id: user.id,
+    email: user.email,
+    fullName: user.profile?.name ?? user.email.split('@')[0],
+    role: ((user.metadata?.role as string | undefined) ?? 'client') as UserRole,
+    avatarUrl: user.profile?.avatar_url ?? undefined,
   }
 }
 
@@ -71,7 +91,8 @@ export const authRepository = {
     try {
       const { data, error } = await insforgeClient.auth.signInWithPassword({ email, password })
       if (error) throw error
-      return mapToUser(data.user)
+      if (!data?.user) throw new Error('No se recibió usuario del servidor.')
+      return mapToUser(data.user as InsForgeUser)
     } catch (error) {
       throw normalizeAuthError(error, 'login')
     }
@@ -82,15 +103,12 @@ export const authRepository = {
       const { data, error } = await insforgeClient.auth.signUp({
         email,
         password,
-        options: {
-          // role is always 'client' on self-registration — admins are created via InsForge dashboard
-          data: { full_name: fullName, role: 'client' },
-        },
+        name: fullName,
       })
       if (error) throw error
-      if (!data.user) throw new Error('No se pudo crear la cuenta.')
-      if (!data.session) throw new Error('Revisa tu email para confirmar tu cuenta.')
-      return mapToUser(data.user)
+      if (!data?.user) throw new Error('No se pudo crear la cuenta.')
+      if (data.requireEmailVerification) throw new Error('Revisa tu email para confirmar tu cuenta.')
+      return mapToUser(data.user as InsForgeUser)
     } catch (error) {
       throw normalizeAuthError(error, 'signup')
     }
@@ -105,8 +123,7 @@ export const authRepository = {
     }
   },
 
-  // Triggers a browser redirect to Google — returns null (page navigates away).
-  // Throws if Google OAuth is not enabled in the InsForge project.
+  // Triggers browser redirect to Google — returns null (page navigates away).
   async signInWithGoogle(): Promise<User | null> {
     if (IS_MOCK_MODE) {
       const { data, error } = await insforgeClient.auth.signInWithPassword({
@@ -114,15 +131,15 @@ export const authRepository = {
         password: 'password123',
       })
       if (error) throw error
-      if (!data.user) throw new Error('No se pudo iniciar sesión con Google (mock).')
-      return mapToUser(data.user)
+      if (!data?.user) throw new Error('No se pudo iniciar sesión con Google (mock).')
+      return mapToUser(data.user as InsForgeUser)
     }
 
     try {
       const redirectTo = `${window.location.origin}/auth`
       const { error } = await insforgeClient.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo },
+        redirectTo,
       })
       if (error) throw error
       return null
@@ -134,25 +151,27 @@ export const authRepository = {
   async resetPasswordForEmail(email: string): Promise<void> {
     try {
       const redirectTo = `${window.location.origin}/auth`
-      const { error } = await insforgeClient.auth.resetPasswordForEmail(email, { redirectTo })
+      const { error } = await insforgeClient.auth.sendResetPasswordEmail({ email, redirectTo })
       if (error) throw error
     } catch (error) {
       throw normalizeAuthError(error, 'reset')
     }
   },
 
-  async updatePassword(password: string): Promise<void> {
+  // otp: token extracted from the reset email redirect URL (?token=xxx)
+  async updatePassword(password: string, otp: string): Promise<void> {
     try {
-      const { error } = await insforgeClient.auth.updateUser({ password })
+      const { error } = await insforgeClient.auth.resetPassword({ newPassword: password, otp })
       if (error) throw error
     } catch (error) {
       throw normalizeAuthError(error, 'update')
     }
   },
 
+  // getCurrentUser handles OAuth callbacks automatically (insforge_code in URL)
   async getSession(): Promise<User | null> {
-    const { data, error } = await insforgeClient.auth.getSession()
-    if (error || !data.session) return null
-    return mapToUser(data.session.user)
+    const { data, error } = await insforgeClient.auth.getCurrentUser()
+    if (error || !data?.user) return null
+    return mapToUser(data.user as InsForgeUser)
   },
 }

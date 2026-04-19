@@ -116,8 +116,8 @@ export function useAuth() {
     await authRepository.resetPasswordForEmail(email)
   }
 
-  const updatePassword = async (password: string): Promise<void> => {
-    await authRepository.updatePassword(password)
+  const updatePassword = async (password: string, otp: string): Promise<void> => {
+    await authRepository.updatePassword(password, otp)
   }
 
   return { user, authChecked, isGoogleEnabled: isGoogleConfigured, signIn, signInWithGoogle, signUp, signOut, requestPasswordReset, updatePassword }
