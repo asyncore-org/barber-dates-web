@@ -6,7 +6,8 @@ Genera `TEST.md` con veredicto PASS/FAIL por flujo.
 **Posición en el ciclo de vida**: después de `/review`, antes de `/done`.
 
 ```
-/implement → /change (ajustes) → /review → /test → /done
+/implement → /review → /test → /done
+/change (ajustes) → [/plan si complejo] → /implement → /review → /test
 ```
 
 ## Uso

@@ -16,6 +16,22 @@ Ejemplos:
 - `/change el hook useAppointments debería recibir el userId como parámetro, no leerlo del store`
 - `/change cambia el color del botón de reserva a dorado (#C8A44E) en lugar de azul`
 
+## Flujo completo del change (referencia)
+
+```
+/change <qué>         → análisis + CHANGE-N.md (para aquí)
+[si es complejo]      → /plan actualiza PLAN.md antes de /implement
+[tú apruebas]
+/implement            → ejecuta los pasos del change
+/review               → audita el resultado
+/test                 → verifica visualmente
+(continuar con la tarea o /done si era el último paso)
+```
+
+**Regla de complejidad** — cuándo usar `/plan`:
+- Change con **≤1 paso y ≤2 archivos** → `CHANGE-N.md` es suficiente. Ir directo a `/implement`.
+- Change con **>1 paso o >2 archivos** → ejecutar `/plan` para formalizar el plan en `PLAN.md` antes de `/implement`.
+
 ## Lo que debes hacer
 
 ### 1. Registrar el change-request
@@ -83,12 +99,14 @@ Change-<N> analizado:
 
 Diagnóstico: <...>
 Archivos a tocar: <N>
+Complejidad: rápido (1 paso, ≤2 archivos) | complejo (>1 paso o >2 archivos)
 
 Plan del cambio:
   Paso C-1 — <título>
   Paso C-2 — <título>
 
-¿Apruebas? (usa /implement para ejecutarlo)
+[Si complejo]: Ejecuta /plan para formalizar este plan en PLAN.md antes de /implement.
+[Si rápido]:   ¿Apruebas? (usa /implement para ejecutarlo)
 ```
 
 ### 5. PARAR aquí
@@ -107,3 +125,10 @@ CHANGE-N implementado: <título>. Commits: <hashes>
 ```
 
 Si el CHANGE altera el PLAN original, regenerar `PLAN.md` y `PROGRESS.md` con `/revise`.
+
+A continuación, ejecutar siempre:
+
+1. **`/review`** — audita el resultado contra el Constitution y los criterios de aceptación.
+2. **`/test`** — verifica visualmente que los flujos afectados siguen funcionando.
+
+Solo si ambos pasan → continuar con la tarea o ejecutar `/done`.
