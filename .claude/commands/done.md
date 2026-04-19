@@ -75,15 +75,22 @@ Nunca tocar CONSTITUTION.md sin confirmación explícita (Art. 14).
 - `STATE.md` → status `done`.
 - `LOG.md` → entrada `done` con timestamp y resumen.
 
-### 6b. Mergear la rama base en la rama actual
+### 6b. Determinar la rama destino y mergear
 
-Antes de proponer la PR, traer los últimos cambios de la rama destino para que la rama esté al día y no haya conflictos en el merge:
+**REGLA DURA**: La rama destino es siempre `develop`. La única excepción es `hotfix/*`, que apunta a `main`.
 
 ```bash
-BASE=$(gh pr view --json baseRefName -q .baseRefName 2>/dev/null || echo "develop")
+BRANCH=$(git branch --show-current)
+if [[ "$BRANCH" == hotfix/* ]]; then
+  BASE="main"
+else
+  BASE="develop"
+fi
 git fetch origin
 git merge origin/$BASE
 ```
+
+**NUNCA uses `main` como base excepto en `hotfix/*`.** Si el script de detección de PR existente devuelve `main` como base, ignóralo y usa `develop` igualmente (salvo que sea hotfix).
 
 Si hay conflictos → resolverlos y hacer commit antes de continuar. No proponer la PR con conflictos sin resolver.
 
@@ -132,6 +139,8 @@ PR propuesto:
 
 ¿Procedo con push + apertura de PR?
 ```
+
+La PR **siempre** se crea con `--base develop` (o `--base main` si es rama `hotfix/*`). Nunca omitir el flag `--base`.
 
 ### 8. Esperar confirmación
 
