@@ -8,7 +8,17 @@ Cada entrada debe tener: **Fecha · Contexto · Qué · Por qué importa**.
 
 ## Entorno y arranque
 
-_(vacío — se irá llenando)_
+### 2026-04-19 · InsForge MCP · cómo conectarse a PRE vs PRO desde Claude Code
+
+**Qué**: hay dos MCP servers globales configurados en `~/.claude/settings.json`: `insforge-pre` (desarrollo) e `insforge-prod` (producción). Claude Code los carga al arrancar la sesión.
+
+**Cómo usarlos**: al iniciar una sesión de Claude Code, ambos MCP servers están disponibles automáticamente. Para operar sobre PRE (lo normal durante desarrollo), usar las herramientas con prefijo `insforge-pre`. Para inspeccionar PRO, usar `insforge-prod` — con cuidado, son datos reales.
+
+**Credenciales y URLs**: ver Art. 13 del Constitution. Las API keys están solo en `~/.claude/settings.json` (fuera del repo).
+
+**Si las herramientas no aparecen**: los MCPs se cargan solo al inicio de sesión. Si se modificó `~/.claude/settings.json` durante la sesión, hay que reiniciar Claude Code para que tome efecto.
+
+**Para añadir un nuevo proyecto InsForge**: editar `~/.claude/settings.json` directamente — ver Art. 13 para el formato exacto.
 
 ## Gotchas del stack
 

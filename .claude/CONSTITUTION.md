@@ -242,7 +242,9 @@ Formato: `type(scope): descripción en inglés, presente imperativo`.
 
 ---
 
-## Art. 13 — Variables de entorno
+## Art. 13 — Variables de entorno y MCP servers
+
+### Variables de entorno (frontend)
 
 ```bash
 VITE_INSFORGE_URL=
@@ -257,6 +259,30 @@ VITE_MOCK_ROLE=client         # rol del usuario fake al hacer login: "client" | 
 ```
 
 Nunca commitear `.env*` excepto `.env.example`.
+
+### MCP servers de InsForge (Claude Code)
+
+Configurados globalmente en `~/.claude/settings.json` (fuera del repo, nunca commiteado).  
+Para añadir un nuevo proyecto InsForge, añadir una entrada bajo `mcpServers`:
+
+```json
+"insforge-<nombre>": {
+  "command": "npx",
+  "args": [
+    "@insforge/mcp",
+    "--api_key", "ik_TU_KEY",
+    "--api_base_url", "https://TU_URL.eu-central.insforge.app"
+  ]
+}
+```
+
+| Nombre MCP | Entorno | URL |
+|---|---|---|
+| `insforge-pre` | PRE (desarrollo) | `https://99upfj9c.eu-central.insforge.app` |
+| `insforge-prod` | PRO (producción) | `https://pfzm89u2.eu-central.insforge.app` |
+
+Las API keys se obtienen desde InsForge Dashboard → Connect Project → API Keys.  
+Los cambios en `~/.claude/settings.json` requieren reiniciar Claude Code para tomar efecto.
 
 ---
 
