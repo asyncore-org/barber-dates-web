@@ -34,9 +34,10 @@
 
 ## ADR-003 — InsForge como BaaS en lugar de Supabase directo · 2026-04-17
 
-- **Estado**: accepted
+- **Estado**: superseded-by ADR-007
 - **Contexto**: necesidad de PostgreSQL + Auth + Storage + Edge Functions con una sola integración.
-- **Decisión**: InsForge (API compatible tipo Supabase).
+- **Decisión**: InsForge como BaaS principal.
+- **Error documentado (2026-04-19)**: la decisión original asumía que InsForge era "API compatible tipo Supabase" y usaba `@supabase/supabase-js`. Esto es incorrecto — InsForge tiene su propio SDK (`@insforge/sdk`) con rutas de API completamente distintas. Ver ADR-007.
 - **Consecuencias**: el cliente se aísla en `src/infrastructure/insforge/client.ts`. Si hubiera que migrar a Supabase real, se cambia solo el cliente y los adaptadores.
 
 ## ADR-004 — Sistema de tareas con carpetas no commiteadas · 2026-04-17
@@ -65,6 +66,19 @@
 - **Consecuencias**: el patrón `env.VAR == 'true' && 'X' || 'Y'` es el ternario idiomático de GitHub Actions cuando el valor proviene de un env de job (siempre string, no boolean).
 
 ---
+
+## ADR-007 — Migrar de @supabase/supabase-js a @insforge/sdk · 2026-04-19
+
+- **Estado**: accepted
+- **Contexto**: el proyecto arrancó usando `@supabase/supabase-js` asumiendo que InsForge era API-compatible con Supabase. Al intentar conectar con InsForge PRE en las primeras pruebas reales, todos los endpoints de auth devolvían 404. La causa: InsForge usa `/api/auth/sessions` para login, no `/auth/v1/token` (Supabase). InsForge tiene su propio SDK con métodos y retornos distintos.
+- **Decisión**: reemplazar `@supabase/supabase-js` por `@insforge/sdk` en toda la capa de infraestructura. El cliente se inicializa con `createClient({ baseUrl, anonKey })`. Los métodos de auth cambian (ver KNOWLEDGE.md sección InsForge para la tabla completa).
+- **Alternativas consideradas**: configurar `auth.url` en el cliente de Supabase para apuntar a las rutas de InsForge (descartado: frágil, hackish, no mantenible a medida que se usen más features del SDK).
+- **Consecuencias**:
+  - Única capa afectada: `src/infrastructure/` (`client.ts` + `authRepository.ts`)
+  - El mapper de usuario cambia: `user.metadata.role` en lugar de `user.app_metadata.role`
+  - El flujo de reset de contraseña es distinto (token en query param, no hash fragment)
+  - La detección de email confirmation: `data.requireEmailVerification === true` en lugar de `data.session === null`
+  - Tests: el mock de `@insforge/sdk` reemplaza al de `@supabase/supabase-js`
 
 ## ADR-003 — Constitution v1.1.0: quality gates migrados a pnpm
 
