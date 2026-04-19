@@ -81,6 +81,17 @@ export function useAuth() {
     setUser(sessionUser)
   }
 
+  const signInWithGoogle = async (): Promise<void> => {
+    const sessionUser = await authRepository.signInWithGoogle()
+    if (!sessionUser) return
+
+    if (sessionUser.role === 'admin') {
+      localStorage.setItem(ADMIN_LOGIN_TIME_KEY, Date.now().toString())
+    }
+
+    setUser(sessionUser)
+  }
+
   const signUp = async (email: string, password: string, fullName: string): Promise<void> => {
     const sessionUser = await authRepository.signUp(email, password, fullName)
     setUser(sessionUser)
@@ -101,5 +112,13 @@ export function useAuth() {
     if (signOutError) throw signOutError
   }
 
-  return { user, authChecked, signIn, signUp, signOut }
+  const requestPasswordReset = async (email: string): Promise<void> => {
+    await authRepository.resetPasswordForEmail(email)
+  }
+
+  const updatePassword = async (password: string): Promise<void> => {
+    await authRepository.updatePassword(password)
+  }
+
+  return { user, authChecked, signIn, signInWithGoogle, signUp, signOut, requestPasswordReset, updatePassword }
 }
