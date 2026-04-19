@@ -10,7 +10,7 @@
 | Categoría       | Comandos                                                                      |
 | --------------- | ----------------------------------------------------------------------------- |
 | **Arranque**    | `/feature` `/fix` `/refactor` `/chore` `/hotfix` `/spike`                     |
-| **Ciclo**       | `/analyze` `/plan` `/revise` `/implement` `/next` `/change` `/review` `/done` |
+| **Ciclo**       | `/analyze` `/plan` `/revise` `/implement` `/next` `/change` `/review` `/test` `/done` |
 | **Sesión**      | `/status` `/resume` `/pause` `/block` `/handoff` `/compact-task`              |
 | **Contexto**    | `/sync-context` `/learn` `/ask` `/worktree`                                   |
 | **Scaffolding** | `/new-domain` `/new-infra` `/new-hook` `/new-component` `/new-page`           |
@@ -176,9 +176,18 @@ Flujo de corrección controlada. Cuando algo no quedó como querías.
 **Lo que SÍ hace**:
 
 1. Analiza qué implica el cambio sin tocar nada.
-2. Crea `CHANGES/CHANGE-N.md` con diagnóstico y plan.
-3. Te lo muestra y para.
+2. Crea `CHANGES/CHANGE-N.md` con diagnóstico y plan propuesto.
+3. Te lo muestra y **para**.
 4. Espera a que tú ejecutes `/implement`.
+
+**Ciclo completo**:
+
+```
+/change <qué>
+  └─ si ≤ 1 paso y ≤ 2 archivos → /implement directamente
+  └─ si > 1 paso o > 2 archivos → /plan (formaliza PLAN.md) → /implement
+/implement → /review → /test → continuar o /done
+```
 
 ```
 /change el hook useAppointments debería recibir userId como parámetro, no leerlo del store
@@ -199,6 +208,32 @@ Audita el resultado implementado antes de cerrar:
 
 ```
 /review
+```
+
+---
+
+### `/test`
+
+Lanza un subagente que abre Chromium, navega la app y verifica que los flujos principales funcionan visualmente. **Posición en el ciclo**: después de `/review`, antes de `/done`.
+
+| Variante              | Qué hace                                           |
+| --------------------- | -------------------------------------------------- |
+| `/test`               | Flujos por defecto contra servidor local (mocks)   |
+| `/test <descripción>` | Testea exactamente lo que describes (local)        |
+| `/test --pre`         | Flujos por defecto contra InsForge PRE (real)      |
+| `/test --pre <desc>`  | Lo que describes contra InsForge PRE               |
+
+**Precondiciones**:
+- `/review` ejecutado sin bloqueos abiertos.
+- MCP de Playwright configurado en `~/.claude/settings.json` (ver [05-sistema-de-tareas.md](05-sistema-de-tareas.md)).
+
+**Genera**: `TEST.md` con veredicto PASS / FAIL por flujo.
+
+```
+/test
+/test login y registro
+/test que se puede reservar una cita y cancelarla
+/test --pre el flujo completo de puntos de fidelidad
 ```
 
 ---
