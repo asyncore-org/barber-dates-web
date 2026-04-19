@@ -6,6 +6,112 @@ Cada entrada debe tener: **Fecha · Contexto · Qué · Por qué importa**.
 
 ---
 
+## InsForge — SDK, API y documentación
+
+### 2026-04-19 · InsForge SDK · NO usar @supabase/supabase-js — tiene su propio SDK
+
+**Qué**: InsForge NO es Supabase. Aunque comparte conceptos similares (PostgreSQL, Auth, Storage), usa su **propio SDK** con rutas de API completamente diferentes. Usar `@supabase/supabase-js` con URLs de InsForge da 404 en todos los endpoints de auth.
+
+**SDK correcto**: `@insforge/sdk` — instalar con `pnpm add @insforge/sdk`
+
+**Documentación oficial**:
+- Índice completo: https://docs.insforge.dev/llms.txt
+- SDK TypeScript (auth): https://docs.insforge.dev/sdks/typescript/auth.md
+- SDK TypeScript (overview): https://docs.insforge.dev/sdks/typescript/overview.md
+- Auth API REST: https://docs.insforge.dev/api-reference/client/user-login.md
+- React guide: https://docs.insforge.dev/examples/framework-guides/react.md
+- Arquitectura auth: https://docs.insforge.dev/core-concepts/authentication/architecture.md
+
+**Inicialización correcta**:
+```typescript
+import { createClient } from '@insforge/sdk'
+
+const insforge = createClient({
+  baseUrl: 'https://xxxx.eu-central.insforge.app',
+  anonKey: 'your-anon-key',
+})
+```
+
+**Rutas API de auth** (InsForge vs Supabase):
+| Operación | Supabase (`/auth/v1/`) | InsForge (`/api/auth/`) |
+|---|---|---|
+| Login | `POST /token?grant_type=password` | `POST /sessions` |
+| Registro | `POST /signup` | `POST /users` |
+| Sesión actual | `GET /user` | `GET /sessions/current` |
+| OAuth iniciar | `GET /authorize` | `GET /oauth/:provider` |
+| Reset password | `POST /recover` | `POST /email/reset-password` |
+
+**Métodos del SDK** (diferencias clave vs supabase-js):
+```typescript
+// Login
+insforge.auth.signInWithPassword({ email, password })
+// → { data: { user, accessToken, csrfToken }, error }
+
+// Registro
+insforge.auth.signUp({ email, password, name, redirectTo })
+// → { data: { user, accessToken, requireEmailVerification? }, error }
+// IMPORTANTE: chequear data.requireEmailVerification === true (no data.session === null)
+
+// Sesión actual (en bootstrap — NO getSession())
+insforge.auth.getCurrentUser()
+// → { data: { user | null }, error }
+
+// OAuth (auto-redirect al proveedor)
+insforge.auth.signInWithOAuth({ provider: 'google', redirectTo: '...' })
+
+// Password reset — paso 1
+insforge.auth.sendResetPasswordEmail({ email, redirectTo })
+// paso 2 (con token de la URL de redirect)
+insforge.auth.resetPassword({ newPassword, otp: tokenFromUrl })
+
+// Cerrar sesión
+insforge.auth.signOut()
+```
+
+**Forma del objeto User** (InsForge):
+```typescript
+{
+  id: string,
+  email: string,
+  emailVerified: boolean,       // NO email_confirmed_at
+  providers: string[],
+  createdAt: string,
+  updatedAt: string,
+  profile: { name?: string, avatar_url?: string },  // NO user_metadata
+  metadata: Record<string, unknown>,                 // datos flexibles del admin
+}
+```
+
+**Cómo almacenar el rol de admin**:
+- El rol se guarda en `user.metadata.role` (columna `metadata` jsonb en `auth.users`)
+- SQL para promover a admin en InsForge:
+  ```sql
+  UPDATE auth.users
+  SET metadata = COALESCE(metadata, '{}'::jsonb) || '{"role": "admin"}'::jsonb
+  WHERE email = 'user@example.com';
+  ```
+- En el mapper: leer `(user.metadata?.role as string) ?? 'client'`
+- **NO** usar `app_metadata` ni `user_metadata` (conceptos de Supabase, no existen en InsForge)
+
+**Esquema real de `auth.users` en InsForge**:
+```
+id (uuid), email (text), password (text), email_verified (boolean),
+created_at, updated_at, profile (jsonb), metadata (jsonb),
+is_project_admin (boolean), is_anonymous (boolean)
+```
+
+**Flujo reset de contraseña** (InsForge, diferente a Supabase):
+- Supabase: redirige a `URL#type=recovery` (hash fragment)
+- InsForge: redirige a `URL?token=xxx` (query param — verificar formato exacto en docs)
+- La detección en AuthPage ya NO puede buscar `#type=recovery`
+
+**Google OAuth en InsForge**:
+- El Client ID vive en el dashboard de InsForge, NO en el `.env` del frontend
+- Usar `VITE_GOOGLE_OAUTH_ENABLED=true` en `.env` para mostrar/ocultar el botón
+- El SDK hace el redirect automáticamente sin necesidad del Client ID en frontend
+
+---
+
 ## Entorno y arranque
 
 ### 2026-04-19 · InsForge MCP · cómo conectarse a PRE vs PRO desde Claude Code

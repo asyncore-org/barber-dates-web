@@ -1,0 +1,1 @@
+export { insforgeClient } from './client'
