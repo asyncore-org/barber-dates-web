@@ -128,10 +128,16 @@ Claude:
 
 Tú: "ok" (o "cambia el paso 1...")
 
+# Regla de complejidad:
+# ≤ 1 paso y ≤ 2 archivos → /implement directamente
+# > 1 paso o > 2 archivos → /plan primero (formaliza en PLAN.md), luego /implement
+
 Tú: /implement
   → Claude ejecuta los pasos del CHANGE
   → Commit(s) con mensaje descriptivo
   → CHANGE marcado como "done"
+
+Tú: /review → /test   # siempre después de implementar un change
 ```
 
 ### Lo que garantiza
@@ -208,6 +214,10 @@ Tú: /implement
 # Tests: ✅ 31 passed
 # Criterios: 5/5 ✅
 
+/test
+# Subagente Playwright: abre Chromium, navega los flujos de loyalty
+# ✅ PASS — badge aparece en header, puntos se acumulan al completar cita
+
 /done
 # Context sync: "Art. 4 desactualizado — propongo añadir regla 8 sobre puntos de fidelización"
 # Tú: "sí"
@@ -236,6 +246,9 @@ Tú: /implement
 # Fix → commit fix(calendar): handle viewport-dependent slot calculation
 
 /review  # todo pasa
+
+/test
+# ✅ PASS — la reserva de cita en móvil funciona correctamente
 
 /done
 # Claude: "¿Procedo con PR a main? RECORDATORIO: hacer cherry-pick del fix a develop"
