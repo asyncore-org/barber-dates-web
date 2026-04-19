@@ -125,6 +125,9 @@ bash .claude/scripts/files-touched.sh       # archivos tocados en la tarea
 [usuario aprueba items → /change por cada uno]
 ```
 
+> **`/optimize`** sigue este mismo ciclo pero arranca con análisis especializado de rendimiento/calidad.
+> Ver sección de comandos y `.claude/commands/optimize.md`.
+
 ---
 
 ## Comandos disponibles
@@ -139,6 +142,7 @@ bash .claude/scripts/files-touched.sh       # archivos tocados en la tarea
 | `/chore <slug>`                   | Arranque       | Mantenimiento (deps, config, scripts)                |
 | `/hotfix <slug>`                  | Arranque       | Urgente a prod (base: `main`)                        |
 | `/spike <slug>`                   | Arranque       | Exploración time-boxed                               |
+| `/optimize [scope]`               | Arranque       | Flujo completo de optimización (análisis → plan → implement → review → test). Sin scope = todo; scopes: `bundle`, `queries`, `accessibility`, `seo`, `renders` |
 | `/analyze`                        | Análisis       | Re-ejecuta análisis con nueva info                   |
 | `/plan`                           | Plan           | Genera PLAN.md con pasos                             |
 | `/revise <qué>`                   | Plan           | Ajusta el plan antes de implementar                  |
