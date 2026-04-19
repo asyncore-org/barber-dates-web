@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { ADMIN_LOGIN_TIME_KEY, shouldForceAdminLogout } from '@/domain/user'
-import { authRepository } from '@/infrastructure/auth'
+import { authRepository, isGoogleConfigured } from '@/infrastructure/auth'
 import { useAuthStore } from '@/stores/authStore'
 
 const ADMIN_SESSION_CHECK_INTERVAL_MS = 60 * 1000
@@ -120,5 +120,5 @@ export function useAuth() {
     await authRepository.updatePassword(password)
   }
 
-  return { user, authChecked, signIn, signInWithGoogle, signUp, signOut, requestPasswordReset, updatePassword }
+  return { user, authChecked, isGoogleEnabled: isGoogleConfigured, signIn, signInWithGoogle, signUp, signOut, requestPasswordReset, updatePassword }
 }

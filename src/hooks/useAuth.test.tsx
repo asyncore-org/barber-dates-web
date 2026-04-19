@@ -5,11 +5,15 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAuth } from './useAuth'
 
 vi.mock('@/infrastructure/auth', () => ({
+  isGoogleConfigured: false,
   authRepository: {
     getSession: vi.fn(),
     signOut: vi.fn(),
     signIn: vi.fn(),
     signUp: vi.fn(),
+    signInWithGoogle: vi.fn(),
+    resetPasswordForEmail: vi.fn(),
+    updatePassword: vi.fn(),
   },
 }))
 

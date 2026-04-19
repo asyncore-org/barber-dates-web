@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/hooks'
-import { isGoogleConfigured } from '@/infrastructure/auth/authRepository'
 
 const schema = z
   .object({
@@ -30,7 +29,7 @@ interface RegisterFormProps {
 const fieldCls = 'border-white/20 bg-[#111111] text-white placeholder:text-white/45 focus-visible:ring-[#C8A44E]'
 
 export function RegisterForm({ onSuccess }: RegisterFormProps) {
-  const { signUp, signInWithGoogle } = useAuth()
+  const { signUp, signInWithGoogle, isGoogleEnabled } = useAuth()
   const [serverError, setServerError] = useState<string | null>(null)
   const [pendingConfirmation, setPendingConfirmation] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -196,7 +195,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
         {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta gratis'}
       </Button>
 
-      {isGoogleConfigured && (
+      {isGoogleEnabled && (
         <>
           <div className="flex items-center gap-3 text-xs text-white/40">
             <div className="h-px flex-1 bg-white/15" />

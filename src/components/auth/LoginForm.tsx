@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/hooks'
-import { isGoogleConfigured } from '@/infrastructure/auth/authRepository'
 
 const schema = z.object({
   email: z.string().email('Email inválido'),
@@ -24,7 +23,7 @@ interface LoginFormProps {
 const fieldCls = 'border-white/20 bg-[#111111] text-white placeholder:text-white/45 focus-visible:ring-[#C8A44E]'
 
 export function LoginForm({ onSuccess, onForgot }: LoginFormProps) {
-  const { signIn, signInWithGoogle } = useAuth()
+  const { signIn, signInWithGoogle, isGoogleEnabled } = useAuth()
   const [serverError, setServerError] = useState<string | null>(null)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -134,7 +133,7 @@ export function LoginForm({ onSuccess, onForgot }: LoginFormProps) {
         {isSubmitting ? 'Entrando...' : 'Iniciar sesión'}
       </Button>
 
-      {isGoogleConfigured && (
+      {isGoogleEnabled && (
         <>
           <div className="flex items-center gap-3 text-xs text-white/40">
             <div className="h-px flex-1 bg-white/15" />

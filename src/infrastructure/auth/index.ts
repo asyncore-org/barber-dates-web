@@ -1,1 +1,1 @@
-export { authRepository } from './authRepository'
+export { authRepository, isGoogleConfigured } from './authRepository'
