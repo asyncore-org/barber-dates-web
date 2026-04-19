@@ -120,6 +120,9 @@ bash .claude/scripts/files-touched.sh       # archivos tocados en la tarea
 /review          → subagente audita + quality gates
 /test            → subagente abre browser y testea flujos de la app (E2E visual)
 /done            → propone PR (confirmación antes de push)
+[Copilot revisa + CI corre]
+/revise-pr       → triage de comentarios Copilot + fallos CI (para)
+[usuario aprueba items → /change por cada uno]
 ```
 
 ---
@@ -145,6 +148,7 @@ bash .claude/scripts/files-touched.sh       # archivos tocados en la tarea
 | `/review`                         | Review         | Subagente + quality gates + criterios                |
 | `/test [--pre]`                   | Test visual    | Subagente abre Chromium y recorre flujos de la app   |
 | `/done`                           | Cierre         | Propone PR (confirmación antes de push)              |
+| `/revise-pr`                      | Post-PR        | Triage de comentarios Copilot + fallos CI tras abrir PR |
 
 ### Gestión de sesión y tarea
 
