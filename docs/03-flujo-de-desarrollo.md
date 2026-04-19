@@ -86,10 +86,14 @@ Todo desarrollo no trivial sigue este ciclo. Los comandos son los puntos de cont
           │  Claude:               │           │
           │  1. Analiza el cambio  │           │
           │  2. Crea CHANGE-N.md   │           │
-          │  3. Plan de corrección │           │
-          │  4. PARA               │           │
+          │  3. PARA               │           │
           │                        │           │
-          │  Tú: "ok" → /implement │           │
+          │  ≤1 paso / ≤2 archivos │           │
+          │  → /implement directo  │           │
+          │                        │           │
+          │  >1 paso o >2 archivos │           │
+          │  → /plan primero       │           │
+          │  → /implement          │           │
           └─────────────┬──────────┘           │
                         └──────────────────────┘
                                                │
@@ -105,6 +109,18 @@ Todo desarrollo no trivial sigue este ciclo. Los comandos son los puntos de cont
 ║    3. Verifica criterios de aceptación del README.md             ║
 ║    4. Escribe REVIEW.md con veredicto                            ║
 ║    5. Reporta: APROBADO o BLOQUEADO (con qué hay que arreglar)   ║
+╚══════════════════════════════════════════════╦═══════════════════╝
+                                               │
+╔══════════════════════════════════════════════▼═══════════════════╗
+║  TEST                                                            ║
+║                                                                  ║
+║  Tú: /test  (o /test <descripción>, /test --pre)                 ║
+║                                                                  ║
+║  Claude hace:                                                    ║
+║    1. Lanza subagente Playwright que abre Chromium               ║
+║    2. Navega los flujos principales de la tarea                  ║
+║    3. Escribe TEST.md con veredicto PASS / FAIL por flujo        ║
+║    4. Si hay FAILs: reporta y para. Vuelves a /change o /review  ║
 ╚══════════════════════════════════════════════╦═══════════════════╝
                                                │
 ╔══════════════════════════════════════════════▼═══════════════════╗
@@ -134,6 +150,7 @@ Todo desarrollo no trivial sigue este ciclo. Los comandos son los puntos de cont
 | `/plan`                 | Sin contrato escrito, imposible retomar si se interrumpe. Claude improvisa     |
 | `/implement`            | No existe — es la puerta obligatoria al código. Sin ella no hay código         |
 | `/review`               | Los errores de capas (components importando de infrastructure) son silenciosos |
+| `/test`                 | Un bug visual que pasa type-check y lint llega a producción sin que nadie lo vea |
 | Context sync en `/done` | Constitution desactualizado → siguiente tarea trabaja con info falsa           |
 
 ---
@@ -162,6 +179,7 @@ A veces mientras haces una feature descubres que necesitas hacer algo más peque
 /plan    # plan quirúrgico, máximo 3 pasos
 /implement
 /review
+/test
 /done
 # Claude te recuerda SIEMPRE: "hay que hacer cherry-pick a develop"
 ```
