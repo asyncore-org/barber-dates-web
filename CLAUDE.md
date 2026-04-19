@@ -120,7 +120,13 @@ bash .claude/scripts/files-touched.sh       # archivos tocados en la tarea
 /review          → subagente audita + quality gates
 /test            → subagente abre browser y testea flujos de la app (E2E visual)
 /done            → propone PR (confirmación antes de push)
+[Copilot revisa + CI corre]
+/revise-pr       → triage de comentarios Copilot + fallos CI (para)
+[usuario aprueba items → /change por cada uno]
 ```
+
+> **`/optimize`** sigue este mismo ciclo pero arranca con análisis especializado de rendimiento/calidad.
+> Ver sección de comandos y `.claude/commands/optimize.md`.
 
 ---
 
@@ -136,6 +142,7 @@ bash .claude/scripts/files-touched.sh       # archivos tocados en la tarea
 | `/chore <slug>`                   | Arranque       | Mantenimiento (deps, config, scripts)                |
 | `/hotfix <slug>`                  | Arranque       | Urgente a prod (base: `main`)                        |
 | `/spike <slug>`                   | Arranque       | Exploración time-boxed                               |
+| `/optimize [scope]`               | Arranque       | Flujo completo de optimización (análisis → plan → implement → review → test). Sin scope = todo; scopes: `bundle`, `queries`, `accessibility`, `seo`, `renders` |
 | `/analyze`                        | Análisis       | Re-ejecuta análisis con nueva info                   |
 | `/plan`                           | Plan           | Genera PLAN.md con pasos                             |
 | `/revise <qué>`                   | Plan           | Ajusta el plan antes de implementar                  |
@@ -145,6 +152,7 @@ bash .claude/scripts/files-touched.sh       # archivos tocados en la tarea
 | `/review`                         | Review         | Subagente + quality gates + criterios                |
 | `/test [--pre]`                   | Test visual    | Subagente abre Chromium y recorre flujos de la app   |
 | `/done`                           | Cierre         | Propone PR (confirmación antes de push)              |
+| `/revise-pr`                      | Post-PR        | Triage de comentarios Copilot + fallos CI tras abrir PR |
 
 ### Gestión de sesión y tarea
 
