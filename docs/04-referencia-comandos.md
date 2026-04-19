@@ -224,8 +224,10 @@ Lanza un subagente que abre Chromium, navega la app y verifica que los flujos pr
 | `/test --pre <desc>`  | Lo que describes contra InsForge PRE               |
 
 **Precondiciones**:
+- El plan está en estado `approved` o `done` (todos los pasos implementados).
 - `/review` ejecutado sin bloqueos abiertos.
 - MCP de Playwright configurado en `~/.claude/settings.json` (ver [05-sistema-de-tareas.md](05-sistema-de-tareas.md)).
+- Para `/test --pre`: credenciales de acceso a InsForge PRE disponibles (se piden al ejecutar).
 
 **Genera**: `TEST.md` con veredicto PASS / FAIL por flujo.
 

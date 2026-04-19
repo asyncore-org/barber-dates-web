@@ -183,6 +183,7 @@ redeemed_rewards      id, card_id→loyalty_cards, reward_id→rewards, redeemed
 | `rewards` | Read (public) | Full CRUD |
 | `loyalty_cards` | Read own | Read all |
 | `loyalty_transactions` | Read own | Read all |
+| `redeemed_rewards` | Read own | Read all |
 | `schedule_blocks` | Read | Full CRUD |
 | `shop_config` | Read | Full CRUD |
 
