@@ -1,9 +1,86 @@
 import type { User, UserRole } from '@/domain/user'
-import { insforgeClient } from '@/infrastructure/insforge'
+import {
+  insforgeClient,
+  OAUTH_CALLBACK_ERROR_KEY,
+  OAUTH_CALLBACK_SEEN_KEY,
+} from '@/infrastructure/insforge'
 
 const IS_MOCK_MODE = import.meta.env.VITE_USE_MOCKS === 'true'
+const GOOGLE_OAUTH_ENV_FALLBACK = import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === 'true'
+const OAUTH_PENDING_KEY = 'gio_oauth_pending_google'
+const AUTH_NOTICE_KEY = 'gio_auth_notice'
+let googleOAuthEnabledPromise: Promise<boolean> | null = null
 
-export const isGoogleConfigured = import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === 'true'
+function readSessionStorage(key: string): string | null {
+  if (typeof sessionStorage === 'undefined') return null
+  return sessionStorage.getItem(key)
+}
+
+function writeSessionStorage(key: string, value: string): void {
+  if (typeof sessionStorage === 'undefined') return
+  sessionStorage.setItem(key, value)
+}
+
+function removeSessionStorage(key: string): void {
+  if (typeof sessionStorage === 'undefined') return
+  sessionStorage.removeItem(key)
+}
+
+function clearOAuthTransientState(): void {
+  removeSessionStorage(OAUTH_PENDING_KEY)
+  removeSessionStorage(OAUTH_CALLBACK_SEEN_KEY)
+  removeSessionStorage(OAUTH_CALLBACK_ERROR_KEY)
+}
+
+function normalizeOAuthFailureNotice(error: unknown, callbackError: string | null): string {
+  const rawCode = (error as { error?: string })?.error?.toLowerCase() ?? ''
+  const rawMessage = (error instanceof Error ? error.message : String(error)).toLowerCase()
+  const callbackCode = (callbackError ?? '').toLowerCase()
+
+  if (callbackCode.includes('access_denied')) {
+    return 'Has cancelado el acceso con Google. Puedes volver a intentarlo cuando quieras.'
+  }
+
+  if (callbackCode.includes('redirect') || rawCode.includes('redirect') || rawMessage.includes('redirect')) {
+    return 'Google OAuth no está configurado para esta URL de despliegue. Revisa Redirect URLs en InsForge/Google.'
+  }
+
+  if (rawCode.includes('pkce_verifier_missing') || rawMessage.includes('code verifier')) {
+    return 'No se pudo completar el inicio con Google. Inténtalo de nuevo sin cambiar de pestaña durante el proceso.'
+  }
+
+  if (rawCode.includes('invalid_refresh_token') || rawCode.includes('oauth') || rawMessage.includes('oauth')) {
+    return 'No se pudo validar la sesión al volver de Google. Revisa la configuración OAuth en InsForge.'
+  }
+
+  return 'No se pudo completar el inicio con Google. Revisa configuración OAuth y vuelve a intentarlo.'
+}
+
+async function resolveGoogleOAuthEnabled(): Promise<boolean> {
+  try {
+    const { data, error } = await insforgeClient.auth.getPublicAuthConfig()
+    if (error || !data) return GOOGLE_OAUTH_ENV_FALLBACK
+    return data.oAuthProviders.includes('google')
+  } catch {
+    return GOOGLE_OAUTH_ENV_FALLBACK
+  }
+}
+
+export function getGoogleOAuthEnabled(): Promise<boolean> {
+  if (IS_MOCK_MODE) return Promise.resolve(true)
+
+  if (!googleOAuthEnabledPromise) {
+    googleOAuthEnabledPromise = resolveGoogleOAuthEnabled()
+  }
+
+  return googleOAuthEnabledPromise
+}
+
+export function consumeAuthNotice(): string | null {
+  const notice = readSessionStorage(AUTH_NOTICE_KEY)
+  if (notice) removeSessionStorage(AUTH_NOTICE_KEY)
+  return notice
+}
 
 // Shape of the user object returned by the InsForge SDK
 interface InsForgeUser {
@@ -136,6 +213,8 @@ export const authRepository = {
     }
 
     try {
+      writeSessionStorage(OAUTH_PENDING_KEY, '1')
+      removeSessionStorage(AUTH_NOTICE_KEY)
       const redirectTo = `${window.location.origin}/auth`
       const { error } = await insforgeClient.auth.signInWithOAuth({
         provider: 'google',
@@ -144,6 +223,7 @@ export const authRepository = {
       if (error) throw error
       return null
     } catch (error) {
+      removeSessionStorage(OAUTH_PENDING_KEY)
       throw normalizeAuthError(error, 'google')
     }
   },
@@ -170,8 +250,24 @@ export const authRepository = {
 
   // getCurrentUser handles OAuth callbacks automatically (insforge_code in URL)
   async getSession(): Promise<User | null> {
+    const callbackError = readSessionStorage(OAUTH_CALLBACK_ERROR_KEY)
     const { data, error } = await insforgeClient.auth.getCurrentUser()
-    if (error || !data?.user) return null
+
+    if (error || !data?.user) {
+      const hadPendingOAuth = readSessionStorage(OAUTH_PENDING_KEY) === '1'
+      const hadOAuthCallback = readSessionStorage(OAUTH_CALLBACK_SEEN_KEY) === '1'
+      const shouldReportOAuthFailure = Boolean(callbackError) || hadPendingOAuth || hadOAuthCallback
+
+      if (shouldReportOAuthFailure) {
+        writeSessionStorage(AUTH_NOTICE_KEY, normalizeOAuthFailureNotice(error, callbackError))
+      }
+
+      clearOAuthTransientState()
+      return null
+    }
+
+    removeSessionStorage(AUTH_NOTICE_KEY)
+    clearOAuthTransientState()
     return mapToUser(data.user as InsForgeUser)
   },
 }

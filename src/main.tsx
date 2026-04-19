@@ -17,10 +17,28 @@ const queryClient = new QueryClient({
   },
 })
 
+async function disableMockServiceWorker() {
+  if (!('serviceWorker' in navigator)) return
+
+  const registrations = await navigator.serviceWorker.getRegistrations()
+  const mockRegistrations = registrations.filter((registration) => {
+    const scriptUrl =
+      registration.active?.scriptURL ??
+      registration.waiting?.scriptURL ??
+      registration.installing?.scriptURL ??
+      ''
+    return scriptUrl.includes('mockServiceWorker.js')
+  })
+
+  await Promise.all(mockRegistrations.map((registration) => registration.unregister()))
+}
+
 async function bootstrap() {
   if (import.meta.env.VITE_USE_MOCKS === 'true') {
     const { worker } = await import('./mocks/browser')
     await worker.start({ onUnhandledRequest: 'warn' })
+  } else {
+    await disableMockServiceWorker()
   }
 
   createRoot(document.getElementById('root')!).render(

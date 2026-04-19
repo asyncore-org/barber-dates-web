@@ -2,6 +2,12 @@
   "github.copilot.chat.codeGeneration.useInstructionFiles": true,
   "github.copilot.chat.codeGeneration.instructions": [
     {
+      "file": "CLAUDE.md"
+    },
+    {
+      "file": "AGENTS.md"
+    },
+    {
       "file": ".github/copilot-instructions.md"
     }
   ]

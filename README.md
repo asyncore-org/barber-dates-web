@@ -110,6 +110,10 @@ VITE_MOCK_ROLE=client   # "client" | "admin"
 
 Con `VITE_USE_MOCKS=true`, el service worker intercepta todas las peticiones al backend y las resuelve con los handlers de `src/mocks/handlers/` y los fixtures de `src/mocks/data/`.
 
+Si cambias `VITE_USE_MOCKS`, reinicia `pnpm dev` para que Vite recargue variables de entorno. Luego haz hard refresh en el navegador para limpiar estado de sesión/cache.
+
+Cuando `VITE_USE_MOCKS=false`, la app desregistra automáticamente `mockServiceWorker.js` para evitar comportamientos residuales.
+
 > Los fixtures en `src/mocks/data/` están commiteados y son compartidos por todo el equipo. Si durante pruebas locales añades datos útiles, edítalos y haz commit para que el resto los tenga.
 
 Los handlers MSW también se usan en los tests de Vitest a través del servidor de nodo configurado en `src/test/setup.ts`.
@@ -124,11 +128,19 @@ Los handlers MSW también se usan en los tests de Vitest a través del servidor 
 | `VITE_INSFORGE_ANON_KEY` | Clave anónima pública de InsForge              | `eyJ...`                           |
 | `VITE_APP_NAME`        | Nombre de la aplicación                          | `Gio Barber Shop`                  |
 | `VITE_APP_ENV`         | Entorno actual                                   | `development` / `preview` / `production` |
-| `VITE_GOOGLE_CLIENT_ID` | Client ID de Google OAuth                       | `xxx.apps.googleusercontent.com`   |
+| `VITE_GOOGLE_OAUTH_ENABLED` | Fallback UI: muestra botón Google si falla la config pública de InsForge | `true` |
 | `VITE_USE_MOCKS`       | Activa MSW (solo en `.env.local`)                | `false`                            |
 | `VITE_MOCK_ROLE`       | Rol del usuario fake al hacer login con el mock  | `client` / `admin`                 |
 
 > **Nunca commitear `.env*`** excepto `.env.example`. Los valores reales solo van en `.env.local`, que está en `.gitignore`.
+
+### Orden de carga de variables (Vite)
+
+- Desarrollo local: `/.env.local` (si existe) sobreescribe `/.env`.
+- Build en CI/CD: las variables `VITE_*` inyectadas por GitHub Actions/Vercel tienen prioridad sobre archivos locales.
+- `/.env.example` no se usa en runtime: es solo plantilla/documentación para saber qué variables crear.
+
+En este proyecto, los workflows de deploy ya inyectan desde `secrets` (por ejemplo `VITE_INSFORGE_URL` y `VITE_INSFORGE_ANON_KEY`) durante el `vercel build`.
 
 ---
 

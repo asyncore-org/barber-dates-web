@@ -34,7 +34,8 @@ function getInitialMode(): AuthMode {
 
 export default function AuthPage() {
   const [mode, setMode] = useState<AuthMode>(getInitialMode)
-  const { user } = useAuth()
+  const { user, readAuthNotice } = useAuth()
+  const [authNotice] = useState<string | null>(() => readAuthNotice())
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -64,6 +65,12 @@ export default function AuthPage() {
           </div>
 
           <div className="rounded-2xl bg-[#202020]/95 border border-white/15 p-6 shadow-2xl shadow-black/35">
+            {authNotice && (
+              <div className="mb-4 rounded-lg border border-[#EF4444]/40 bg-[#7f1d1d]/30 p-3 text-sm text-red-100">
+                {authNotice}
+              </div>
+            )}
+
             {mode === 'login' && (
               <LoginForm onForgot={() => setMode('forgot')} />
             )}

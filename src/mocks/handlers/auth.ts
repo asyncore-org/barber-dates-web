@@ -1,77 +1,106 @@
 import { http, HttpResponse } from 'msw'
 import { getMockUser } from '../data/users'
 
-interface SupabaseSession {
-  access_token: string
-  refresh_token: string
-  token_type: string
-  expires_in: number
+interface MockSession {
+  accessToken: string
+  refreshToken: string
+  csrfToken: string
   user: Record<string, unknown>
 }
 
 // In-memory auth state — resets on page reload (intentional: see KNOWLEDGE.md)
-let currentSession: SupabaseSession | null = null
+let currentSession: MockSession | null = null
 
-function buildSupabaseUser(user: ReturnType<typeof getMockUser>) {
+function buildInsForgeUser(user: ReturnType<typeof getMockUser>) {
   return {
     id: user.id,
     email: user.email,
-    role: 'authenticated',
-    aud: 'authenticated',
-    created_at: user.created_at,
-    app_metadata: { provider: 'email', role: user.role },
-    user_metadata: {
-      full_name: user.full_name,
-      phone: user.phone,
-      loyalty_points: user.loyalty_points,
+    emailVerified: true,
+    providers: ['email'],
+    createdAt: user.created_at,
+    updatedAt: new Date().toISOString(),
+    profile: {
+      name: user.full_name,
+      avatar_url: user.avatar_url,
     },
+    metadata: { role: user.role, phone: user.phone, loyalty_points: user.loyalty_points },
   }
 }
 
+function createSession() {
+  const user = getMockUser()
+  currentSession = {
+    accessToken: `mock-token-${user.role}-${Date.now()}`,
+    refreshToken: `mock-refresh-${Date.now()}`,
+    csrfToken: `mock-csrf-${Date.now()}`,
+    user: buildInsForgeUser(user),
+  }
+  return currentSession
+}
+
 export const authHandlers = [
-  // GET /auth/v1/user — devuelve usuario si hay sesión activa, 401 si no
-  http.get('*/auth/v1/user', ({ request }) => {
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '')
-    if (!token || !currentSession || token !== currentSession.access_token) {
-      return HttpResponse.json(
-        { message: 'invalid claim: missing sub claim' },
-        { status: 401 },
-      )
-    }
-    return HttpResponse.json(currentSession.user)
+  // POST /api/auth/sessions — login fake con cualquier credencial
+  http.post('*/api/auth/sessions', () => {
+    const session = createSession()
+    return HttpResponse.json(session)
   }),
 
-  // POST /auth/v1/token?grant_type=password — login fake con cualquier credencial
-  http.post('*/auth/v1/token', () => {
-    const user = getMockUser()
-    const accessToken = `mock-token-${user.role}-${Date.now()}`
-    currentSession = {
-      access_token: accessToken,
-      refresh_token: `mock-refresh-${Date.now()}`,
-      token_type: 'bearer',
-      expires_in: 3600,
-      user: buildSupabaseUser(user),
-    }
-    return HttpResponse.json(currentSession)
+  // POST /api/auth/users — registro fake
+  http.post('*/api/auth/users', () => {
+    const session = createSession()
+    return HttpResponse.json({ ...session, requireEmailVerification: false })
   }),
 
-  // POST /auth/v1/signup — registro fake (respeta VITE_MOCK_ROLE)
-  http.post('*/auth/v1/signup', () => {
-    const user = getMockUser()
-    const accessToken = `mock-token-${user.role}-${Date.now()}`
-    currentSession = {
-      access_token: accessToken,
-      refresh_token: `mock-refresh-${Date.now()}`,
-      token_type: 'bearer',
-      expires_in: 3600,
-      user: buildSupabaseUser(user),
-    }
-    return HttpResponse.json(currentSession)
-  }),
-
-  // POST /auth/v1/logout
-  http.post('*/auth/v1/logout', () => {
+  // POST /api/auth/logout
+  http.post('*/api/auth/logout', () => {
     currentSession = null
-    return new HttpResponse(null, { status: 204 })
+    return HttpResponse.json({ success: true })
+  }),
+
+  // POST /api/auth/refresh — en mocks evitamos 401 para no ruido en bootstrap
+  http.post('*/api/auth/refresh', () => {
+    if (!currentSession) {
+      return HttpResponse.json({ accessToken: null, user: null })
+    }
+    return HttpResponse.json(currentSession)
+  }),
+
+  // GET /api/auth/sessions/current
+  http.get('*/api/auth/sessions/current', ({ request }) => {
+    const token = request.headers.get('Authorization')?.replace('Bearer ', '')
+    if (!token || !currentSession || token !== currentSession.accessToken) {
+      return HttpResponse.json({ user: null }, { status: 401 })
+    }
+    return HttpResponse.json({ user: currentSession.user })
+  }),
+
+  // GET /api/auth/public-config
+  http.get('*/api/auth/public-config', () => {
+    return HttpResponse.json({
+      requireEmailVerification: false,
+      passwordMinLength: 8,
+      requireNumber: false,
+      requireLowercase: false,
+      requireUppercase: false,
+      requireSpecialChar: false,
+      verifyEmailMethod: 'link',
+      resetPasswordMethod: 'link',
+      oAuthProviders: ['google'],
+      customOAuthProviders: [],
+    })
+  }),
+
+  // POST /api/auth/email/send-reset-password
+  http.post('*/api/auth/email/send-reset-password', () => {
+    return HttpResponse.json({ success: true, message: 'Recovery email sent (mock)' })
+  }),
+
+  // POST /api/auth/email/reset-password
+  http.post('*/api/auth/email/reset-password', async ({ request }) => {
+    const body = (await request.json()) as { newPassword?: string; otp?: string }
+    if (!body.newPassword || !body.otp) {
+      return HttpResponse.json({ error: 'INVALID_REQUEST', message: 'Missing data' }, { status: 400 })
+    }
+    return HttpResponse.json({ success: true, message: 'Password updated (mock)' })
   }),
 ]
