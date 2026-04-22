@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks'
-import { AppLoader } from '@/components/layout'
+import { AppLoader, AppLayout } from '@/components/layout'
 import { AuthGuard } from '@/components/auth'
 
 const LandingPage = lazy(() => import('@/pages/public/LandingPage'))
@@ -35,7 +35,7 @@ export default function App() {
           path="/calendar"
           element={
             <AuthGuard role="client">
-              <CalendarPage />
+              <AppLayout><CalendarPage /></AppLayout>
             </AuthGuard>
           }
         />
@@ -43,7 +43,7 @@ export default function App() {
           path="/appointments"
           element={
             <AuthGuard role="client">
-              <AppointmentsPage />
+              <AppLayout><AppointmentsPage /></AppLayout>
             </AuthGuard>
           }
         />
@@ -51,7 +51,7 @@ export default function App() {
           path="/admin/dashboard"
           element={
             <AuthGuard role="admin">
-              <DashboardPage />
+              <AppLayout><DashboardPage /></AppLayout>
             </AuthGuard>
           }
         />
@@ -59,7 +59,7 @@ export default function App() {
           path="/admin/settings"
           element={
             <AuthGuard role="admin">
-              <SettingsPage />
+              <AppLayout><SettingsPage /></AppLayout>
             </AuthGuard>
           }
         />
