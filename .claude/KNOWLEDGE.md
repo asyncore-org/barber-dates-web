@@ -191,6 +191,16 @@ is_project_admin (boolean), is_anonymous (boolean)
 
 **GDPR**: Vercel Analytics no usa cookies ni almacena IPs completas. Cumple sin banner de cookies en España bajo el marco RGPD actual.
 
+### 2026-04-22 · Husky + pnpm · pnpm no encontrado en Git bash en Windows
+
+**Qué**: Los hooks de Husky (`.husky/pre-commit`, `.husky/commit-msg`) usan `pnpm run` / `pnpm exec`, pero en Windows el ejecutable de pnpm está instalado en `%LOCALAPPDATA%\pnpm\.tools\pnpm\<version>\bin\` — una ruta que Git bash no incluye en su PATH. El hook falla con `pnpm: command not found`.
+
+**Fix aplicado**: Cambiar `pnpm run` por `npm run` y `pnpm exec` por `npx` en ambos hooks. Los scripts de `package.json` funcionan igual con ambos gestores. `npm` siempre está en el PATH de Git bash.
+
+**Síntoma**: `husky - pre-commit script failed (code 127)` con `pnpm: command not found in PATH`.
+
+**Por qué importa**: El hook fallará siempre en Windows hasta que pnpm esté en el PATH de bash. `npm run` es la alternativa portátil.
+
 ## Errores conocidos pendientes
 
 _(vacío)_
