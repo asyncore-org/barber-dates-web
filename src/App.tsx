@@ -4,7 +4,6 @@ import { useAuth } from '@/hooks'
 import { AppLoader, AppLayout } from '@/components/layout'
 import { AuthGuard } from '@/components/auth'
 
-const LandingPage = lazy(() => import('@/pages/public/LandingPage'))
 const AuthPage = lazy(() => import('@/pages/auth/AuthPage'))
 const CalendarPage = lazy(() => import('@/pages/client/CalendarPage'))
 const AppointmentsPage = lazy(() => import('@/pages/client/AppointmentsPage'))
@@ -29,7 +28,7 @@ export default function App() {
   return (
     <Suspense fallback={<AppLoader />}>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={<AuthPage />} />
         <Route path="/auth" element={<AuthPage />} />
         <Route
           path="/calendar"

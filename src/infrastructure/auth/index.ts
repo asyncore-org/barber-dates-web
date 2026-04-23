@@ -1,1 +1,1 @@
-export { authRepository, isGoogleConfigured } from './authRepository'
+export { authRepository, getGoogleOAuthEnabled, consumeAuthNotice } from './authRepository'

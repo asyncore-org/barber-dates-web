@@ -5,7 +5,8 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAuth } from './useAuth'
 
 vi.mock('@/infrastructure/auth', () => ({
-  isGoogleConfigured: false,
+  getGoogleOAuthEnabled: vi.fn().mockResolvedValue(false),
+  consumeAuthNotice: vi.fn(() => null),
   authRepository: {
     getSession: vi.fn(),
     signOut: vi.fn(),
