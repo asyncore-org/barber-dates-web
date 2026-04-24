@@ -95,7 +95,7 @@ body {
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
   transition:
     background 0.2s,
@@ -430,27 +430,7 @@ h3,
 
 /* ============ RESPONSIVE ============ */
 
-.mobile-only {
-  display: none;
-}
-
-.desktop-only {
-  display: block;
-}
-
-@media (max-width: 900px) {
-  .mobile-only {
-    display: block;
-  }
-
-  .desktop-only {
-    display: none;
-  }
-
-  .hide-mobile {
-    display: none !important;
-  }
-
+@media (max-width: 768px) {
   body {
     font-size: 13px;
   }
@@ -467,22 +447,5 @@ h3,
 
   .card-body {
     padding: 14px 16px;
-  }
-
-  .grid-responsive {
-    grid-template-columns: 1fr !important;
-  }
-
-  .hero-grid {
-    grid-template-columns: 1fr !important;
-    gap: 16px !important;
-  }
-
-  .two-col-mobile-stack {
-    grid-template-columns: 1fr !important;
-  }
-
-  .settings-grid {
-    grid-template-columns: 1fr !important;
   }
 }
