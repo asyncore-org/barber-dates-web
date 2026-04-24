@@ -2,6 +2,7 @@ import { createClient } from '@insforge/sdk'
 
 export const OAUTH_CALLBACK_ERROR_KEY = 'gio_oauth_callback_error'
 export const OAUTH_CALLBACK_SEEN_KEY = 'gio_oauth_callback_seen'
+export const OAUTH_CALLBACK_CODE_KEY = 'gio_oauth_callback_code'
 
 function readRequiredEnv(name: 'VITE_INSFORGE_URL' | 'VITE_INSFORGE_ANON_KEY'): string {
   const value = import.meta.env[name]
@@ -18,11 +19,20 @@ function captureOAuthCallbackSignals(): void {
   try {
     const params = new URLSearchParams(window.location.search)
     const oauthError = params.get('error')
+    const oauthErrorDescription = params.get('error_description')
     if (oauthError) {
-      sessionStorage.setItem(OAUTH_CALLBACK_ERROR_KEY, oauthError)
+      const details = oauthErrorDescription
+        ? `${oauthError}:${oauthErrorDescription}`
+        : oauthError
+      sessionStorage.setItem(OAUTH_CALLBACK_ERROR_KEY, details)
     }
 
-    if (params.has('insforge_code')) {
+    const callbackCode = params.get('code')
+    if (callbackCode) {
+      sessionStorage.setItem(OAUTH_CALLBACK_CODE_KEY, callbackCode)
+    }
+
+    if (params.has('insforge_code') || callbackCode) {
       sessionStorage.setItem(OAUTH_CALLBACK_SEEN_KEY, '1')
     }
   } catch {

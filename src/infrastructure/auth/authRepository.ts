@@ -1,6 +1,7 @@
 import type { User, UserRole } from '@/domain/user'
 import {
   insforgeClient,
+  OAUTH_CALLBACK_CODE_KEY,
   OAUTH_CALLBACK_ERROR_KEY,
   OAUTH_CALLBACK_SEEN_KEY,
 } from '@/infrastructure/insforge'
@@ -28,8 +29,44 @@ function removeSessionStorage(key: string): void {
 
 function clearOAuthTransientState(): void {
   removeSessionStorage(OAUTH_PENDING_KEY)
+  removeSessionStorage(OAUTH_CALLBACK_CODE_KEY)
   removeSessionStorage(OAUTH_CALLBACK_SEEN_KEY)
   removeSessionStorage(OAUTH_CALLBACK_ERROR_KEY)
+}
+
+function stripOAuthParamsFromUrl(): void {
+  if (typeof window === 'undefined') return
+
+  try {
+    const url = new URL(window.location.href)
+    const currentSearch = url.search
+
+    url.searchParams.delete('code')
+    url.searchParams.delete('insforge_code')
+    url.searchParams.delete('state')
+    url.searchParams.delete('scope')
+    url.searchParams.delete('authuser')
+    url.searchParams.delete('prompt')
+    url.searchParams.delete('error')
+    url.searchParams.delete('error_description')
+
+    if (url.search !== currentSearch) {
+      window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`)
+    }
+  } catch {
+    // Best effort cleanup only.
+  }
+}
+
+async function exchangeOAuthCodeFallbackIfNeeded(): Promise<void> {
+  const callbackCode = readSessionStorage(OAUTH_CALLBACK_CODE_KEY)
+  if (!callbackCode) return
+
+  removeSessionStorage(OAUTH_CALLBACK_CODE_KEY)
+  const { error } = await insforgeClient.auth.exchangeOAuthCode(callbackCode)
+  stripOAuthParamsFromUrl()
+
+  if (error) throw error
 }
 
 function normalizeOAuthFailureNotice(error: unknown, callbackError: string | null): string {
@@ -257,6 +294,16 @@ export const authRepository = {
   // getCurrentUser handles OAuth callbacks automatically (insforge_code in URL)
   async getSession(): Promise<User | null> {
     const callbackError = readSessionStorage(OAUTH_CALLBACK_ERROR_KEY)
+
+    // Fallback for providers that return `code` instead of `insforge_code`.
+    try {
+      await exchangeOAuthCodeFallbackIfNeeded()
+    } catch (exchangeError) {
+      writeSessionStorage(AUTH_NOTICE_KEY, normalizeOAuthFailureNotice(exchangeError, callbackError))
+      clearOAuthTransientState()
+      return null
+    }
+
     const { data, error } = await insforgeClient.auth.getCurrentUser()
 
     if (error || !data?.user) {
