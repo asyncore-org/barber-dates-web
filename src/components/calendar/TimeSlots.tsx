@@ -17,7 +17,7 @@ const ALL_SLOTS = generateSlots()
 
 export function TimeSlots({ selected, onSelect, taken = [] }: TimeSlotsProps) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
       {ALL_SLOTS.map(slot => {
         const isTaken = taken.includes(slot)
         const isSelected = selected === slot
@@ -28,7 +28,8 @@ export function TimeSlots({ selected, onSelect, taken = [] }: TimeSlotsProps) {
             disabled={isTaken}
             onClick={() => onSelect(slot)}
             style={{
-              padding: '0.4rem 0',
+              padding: '0.75rem 0',
+              minHeight: 44,
               borderRadius: 6,
               border: isSelected ? '1px solid var(--fg-0)' : '1px solid var(--line)',
               background: isSelected ? '#fff' : isTaken ? 'transparent' : 'var(--bg-3)',

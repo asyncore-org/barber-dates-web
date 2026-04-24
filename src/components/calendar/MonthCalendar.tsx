@@ -52,7 +52,7 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
           </span>
           <button onClick={next} style={navBtn}><Icon name="chevronR" size={14} /></button>
         </div>
-        <button onClick={goToday} style={{ ...navBtn, padding: '0.25rem 0.6rem', fontSize: 11, fontFamily: 'var(--font-ui)' }}>
+        <button onClick={goToday} style={{ ...navBtn, width: 'auto', padding: '0 0.75rem', fontSize: 12, fontFamily: 'var(--font-ui)' }}>
           Hoy
         </button>
       </div>
@@ -122,9 +122,9 @@ const navBtn: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: 28,
-  height: 28,
-  borderRadius: 6,
+  width: 40,
+  height: 40,
+  borderRadius: 8,
   border: '1px solid var(--line)',
   background: 'transparent',
   color: 'var(--fg-2)',
