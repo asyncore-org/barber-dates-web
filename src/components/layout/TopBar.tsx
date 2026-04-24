@@ -58,7 +58,7 @@ export function TopBar() {
       }}>
         <Logo size={32} />
 
-        <nav style={{ display: 'flex', gap: '0.25rem', flex: 1 }}>
+        <nav className="hidden md:flex" style={{ gap: '0.25rem', flex: 1 }}>
           {links.map(({ to, label, icon }) => (
             <NavLink
               key={to}
