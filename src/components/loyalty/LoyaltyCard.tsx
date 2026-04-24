@@ -9,14 +9,16 @@ export function LoyaltyCard({ points, target, stamps, memberCode }: LoyaltyCardP
   const pct = Math.min((points / target) * 100, 100)
 
   return (
-    <div style={{
-      background: 'linear-gradient(135deg, #0d0d10 0%, #1a1a20 50%, #0d0d10 100%)',
-      border: '1px solid rgba(201,162,74,0.3)',
-      borderRadius: 12,
-      padding: '1.25rem',
-      position: 'relative',
-      overflow: 'hidden',
-    }}>
+    <div
+      className="p-4 md:p-5"
+      style={{
+        background: 'linear-gradient(135deg, #0d0d10 0%, #1a1a20 50%, #0d0d10 100%)',
+        border: '1px solid rgba(201,162,74,0.3)',
+        borderRadius: 12,
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
       <div style={{
         position: 'absolute',
         top: 0, left: 0, right: 0, bottom: 0,
