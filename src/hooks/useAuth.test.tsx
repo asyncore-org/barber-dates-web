@@ -80,6 +80,20 @@ describe('useAuth', () => {
     expect(localStorage.getItem(ADMIN_LOGIN_TIME_KEY)).toBeNull()
   })
 
+  it('keeps admin session on bootstrap when timestamp is missing and initializes it', async () => {
+    mockedGetSession.mockResolvedValue(adminUser)
+
+    renderHook(() => useAuth())
+
+    await waitFor(() => {
+      expect(useAuthStore.getState().authChecked).toBe(true)
+      expect(useAuthStore.getState().user).toEqual(adminUser)
+    })
+
+    expect(mockedSignOut).not.toHaveBeenCalled()
+    expect(localStorage.getItem(ADMIN_LOGIN_TIME_KEY)).not.toBeNull()
+  })
+
   it('forces logout at runtime when an admin session is already expired', async () => {
     const expiredLoginTimestamp = Date.now() - 16 * 24 * 60 * 60 * 1000
     localStorage.setItem(ADMIN_LOGIN_TIME_KEY, String(expiredLoginTimestamp))

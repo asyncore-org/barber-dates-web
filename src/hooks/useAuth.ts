@@ -52,7 +52,9 @@ export function useAuth() {
 
       if (sessionUser.role === 'admin') {
         const raw = localStorage.getItem(ADMIN_LOGIN_TIME_KEY)
-        if (shouldForceAdminLogout(raw)) {
+        if (raw === null) {
+          localStorage.setItem(ADMIN_LOGIN_TIME_KEY, Date.now().toString())
+        } else if (shouldForceAdminLogout(raw)) {
           await forceLogoutAndClearSession(clearAuth)
           return
         }
