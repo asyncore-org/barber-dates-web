@@ -1,6 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { ADMIN_LOGIN_TIME_KEY, shouldForceAdminLogout } from '@/domain/user'
-import { authRepository, isGoogleConfigured } from '@/infrastructure/auth'
+import { authRepository, consumeAuthNotice, getGoogleOAuthEnabled } from '@/infrastructure/auth'
 import { useAuthStore } from '@/stores/authStore'
 
 const ADMIN_SESSION_CHECK_INTERVAL_MS = 60 * 1000
@@ -18,6 +18,25 @@ async function forceLogoutAndClearSession(clearAuth: () => void): Promise<void> 
 
 export function useAuth() {
   const { user, authChecked, setUser, setAuthChecked, clearAuth } = useAuthStore()
+  const [isGoogleEnabled, setIsGoogleEnabled] = useState(
+    import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === 'true',
+  )
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadGoogleOAuthAvailability = async () => {
+      const enabled = await getGoogleOAuthEnabled()
+      if (!isMounted) return
+      setIsGoogleEnabled(enabled)
+    }
+
+    void loadGoogleOAuthAvailability()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   useEffect(() => {
     // Guard: only bootstrap once per app lifecycle
@@ -33,7 +52,9 @@ export function useAuth() {
 
       if (sessionUser.role === 'admin') {
         const raw = localStorage.getItem(ADMIN_LOGIN_TIME_KEY)
-        if (shouldForceAdminLogout(raw)) {
+        if (raw === null) {
+          localStorage.setItem(ADMIN_LOGIN_TIME_KEY, Date.now().toString())
+        } else if (shouldForceAdminLogout(raw)) {
           await forceLogoutAndClearSession(clearAuth)
           return
         }
@@ -120,5 +141,18 @@ export function useAuth() {
     await authRepository.updatePassword(password, otp)
   }
 
-  return { user, authChecked, isGoogleEnabled: isGoogleConfigured, signIn, signInWithGoogle, signUp, signOut, requestPasswordReset, updatePassword }
+  const readAuthNotice = (): string | null => consumeAuthNotice()
+
+  return {
+    user,
+    authChecked,
+    isGoogleEnabled,
+    signIn,
+    signInWithGoogle,
+    signUp,
+    signOut,
+    requestPasswordReset,
+    updatePassword,
+    readAuthNotice,
+  }
 }

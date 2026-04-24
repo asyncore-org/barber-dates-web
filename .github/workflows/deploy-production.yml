@@ -78,6 +78,7 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_PROD }}
           VITE_INSFORGE_URL: ${{ secrets.INSFORGE_URL_PROD }}
           VITE_INSFORGE_ANON_KEY: ${{ secrets.INSFORGE_ANON_KEY_PROD }}
+          VITE_GOOGLE_OAUTH_ENABLED: 'true'
           VITE_APP_ENV: preview
 
       - name: Deploy

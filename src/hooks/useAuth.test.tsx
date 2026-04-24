@@ -5,7 +5,8 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAuth } from './useAuth'
 
 vi.mock('@/infrastructure/auth', () => ({
-  isGoogleConfigured: false,
+  getGoogleOAuthEnabled: vi.fn().mockResolvedValue(false),
+  consumeAuthNotice: vi.fn(() => null),
   authRepository: {
     getSession: vi.fn(),
     signOut: vi.fn(),
@@ -77,6 +78,20 @@ describe('useAuth', () => {
     })
 
     expect(localStorage.getItem(ADMIN_LOGIN_TIME_KEY)).toBeNull()
+  })
+
+  it('keeps admin session on bootstrap when timestamp is missing and initializes it', async () => {
+    mockedGetSession.mockResolvedValue(adminUser)
+
+    renderHook(() => useAuth())
+
+    await waitFor(() => {
+      expect(useAuthStore.getState().authChecked).toBe(true)
+      expect(useAuthStore.getState().user).toEqual(adminUser)
+    })
+
+    expect(mockedSignOut).not.toHaveBeenCalled()
+    expect(localStorage.getItem(ADMIN_LOGIN_TIME_KEY)).not.toBeNull()
   })
 
   it('forces logout at runtime when an admin session is already expired', async () => {
