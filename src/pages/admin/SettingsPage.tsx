@@ -200,7 +200,7 @@ export default function SettingsPage() {
                     <button
                       onClick={() => toggleDay(i)}
                       style={{
-                        padding: '0.4rem 0.75rem', minHeight: 36, borderRadius: 4, border: 'none',
+                        padding: '0.5rem 0.75rem', minHeight: 40, borderRadius: 4, border: 'none',
                         background: d.open ? 'rgba(109,187,109,0.15)' : 'var(--bg-4)',
                         color: d.open ? 'var(--ok)' : 'var(--fg-3)',
                         fontFamily: 'var(--font-ui)', fontSize: 12, cursor: 'pointer',
@@ -252,7 +252,7 @@ export default function SettingsPage() {
                     <button
                       onClick={() => toggleBarber(b.id)}
                       style={{
-                        padding: '0.5rem 0.875rem', minHeight: 36, borderRadius: 6, flexShrink: 0,
+                        padding: '0.5rem 0.875rem', minHeight: 40, borderRadius: 6, flexShrink: 0,
                         border: `1px solid ${b.active ? 'rgba(109,187,109,0.4)' : 'var(--line)'}`,
                         background: b.active ? 'rgba(109,187,109,0.08)' : 'transparent',
                         color: b.active ? 'var(--ok)' : 'var(--fg-2)',
@@ -285,7 +285,7 @@ export default function SettingsPage() {
                       style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }}
                     />
                     <span style={{ fontSize: 12, color: 'var(--gold)', fontFamily: 'var(--font-ui)' }}>{r.cost} pts</span>
-                    <button onClick={() => deleteReward(r.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 16, minWidth: 32, minHeight: 32 }}>✕</button>
+                    <button onClick={() => deleteReward(r.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 16, minWidth: 44, minHeight: 44 }}>✕</button>
                   </div>
                 ))}
               </div>
