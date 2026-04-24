@@ -50,14 +50,11 @@ export default function AuthPage() {
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', minHeight: '100dvh' }}>
-        {/* Left panel — shop photo */}
-        <div style={{
-          position: 'relative',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-        }} className="auth-left-panel">
+      <div className="grid md:grid-cols-[1.1fr_1fr] min-h-dvh">
+        {/* Left panel — shop photo (hidden on mobile) */}
+        <div
+          className="hidden md:flex flex-col relative overflow-hidden"
+        >
           <img
             src="/assets/shop-interior-1.png"
             alt="Gio Barber Shop interior"
@@ -133,15 +130,10 @@ export default function AuthPage() {
         </div>
 
         {/* Right panel — forms */}
-        <div style={{
-          background: 'var(--bg-0)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '2rem 2.5rem',
-          overflowY: 'auto',
-        }}>
+        <div
+          className="flex flex-col items-center justify-center overflow-y-auto p-5 md:px-10 md:py-8"
+          style={{ background: 'var(--bg-0)' }}
+        >
           <div style={{ width: '100%', maxWidth: 380 }}>
             <div style={{ marginBottom: '2rem' }}>
               <h1 style={{
@@ -191,15 +183,6 @@ export default function AuthPage() {
           </div>
         </div>
       </div>
-
-      <style>{`
-        @media (max-width: 768px) {
-          .auth-left-panel { display: none !important; }
-          div[style*="grid-template-columns: 1.1fr 1fr"] {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
     </>
   )
 }
