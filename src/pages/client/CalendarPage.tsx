@@ -12,6 +12,9 @@ function fmt(date: Date) {
   return date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
+const CARD = 'bg-[var(--bg-2)] border border-[var(--line)] rounded-xl p-4 md:p-5'
+const SECTION_LABEL = 'font-[var(--font-display)] text-[13px] tracking-widest text-[var(--fg-3)] mb-3.5'
+
 export default function CalendarPage() {
   const today = new Date()
   const [month, setMonth] = useState(today.getMonth())
@@ -46,26 +49,25 @@ export default function CalendarPage() {
       </Helmet>
 
       {confirmed && (
-        <div style={{
-          position: 'fixed', top: 24, right: 24, zIndex: 200,
-          background: 'var(--ok)', color: '#fff',
-          padding: '0.75rem 1.25rem', borderRadius: 8,
-          fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 600,
-          boxShadow: 'var(--shadow-md)',
-        }}>
+        <div
+          className="fixed top-[72px] right-3 z-[200] md:top-6 md:right-6"
+          style={{
+            background: 'var(--ok)', color: '#fff',
+            padding: '0.75rem 1.25rem', borderRadius: 8,
+            fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 600,
+            boxShadow: 'var(--shadow-md)',
+          }}
+        >
           ✓ Cita confirmada correctamente
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.9fr', gap: '1.5rem', alignItems: 'start' }}
-        className="calendar-grid">
+      <div className="grid grid-cols-1 md:grid-cols-[1.4fr_0.9fr] gap-4 md:gap-6 items-start">
         {/* Left column */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div className="flex flex-col gap-4">
           {/* Calendar card */}
-          <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '1.25rem' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)', marginBottom: '1rem' }}>
-              SELECCIONAR FECHA
-            </div>
+          <div className={CARD}>
+            <div className={SECTION_LABEL}>SELECCIONAR FECHA</div>
             <MonthCalendar
               selected={selectedDate}
               onSelect={setSelectedDate}
@@ -77,8 +79,8 @@ export default function CalendarPage() {
 
           {/* Time slots */}
           {selectedDate && (
-            <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '1.25rem' }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)', marginBottom: '1rem' }}>
+            <div className={CARD}>
+              <div className={SECTION_LABEL}>
                 HORA — {fmt(selectedDate).toUpperCase()}
               </div>
               <TimeSlots
@@ -90,10 +92,8 @@ export default function CalendarPage() {
           )}
 
           {/* Barbero */}
-          <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '1.25rem' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)', marginBottom: '0.875rem' }}>
-              BARBERO
-            </div>
+          <div className={CARD}>
+            <div className={SECTION_LABEL}>BARBERO</div>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               {MOCK_BARBERS.filter(b => b.active).map(b => (
                 <button
@@ -101,7 +101,7 @@ export default function CalendarPage() {
                   onClick={() => setSelectedBarber(b)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '0.5rem',
-                    padding: '0.4rem 0.75rem', borderRadius: 8,
+                    padding: '0.6rem 1rem', borderRadius: 8, minHeight: 44,
                     border: selectedBarber.id === b.id ? '1px solid var(--led-soft)' : '1px solid var(--line)',
                     background: selectedBarber.id === b.id ? 'rgba(123,79,255,0.1)' : 'var(--bg-3)',
                     color: selectedBarber.id === b.id ? 'var(--fg-0)' : 'var(--fg-1)',
@@ -124,7 +124,7 @@ export default function CalendarPage() {
         </div>
 
         {/* Right column */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div className="flex flex-col gap-4">
           <LoyaltyCard
             points={MOCK_LOYALTY.points}
             target={MOCK_LOYALTY.target}
@@ -133,10 +133,8 @@ export default function CalendarPage() {
           />
 
           {/* Services */}
-          <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '1.25rem' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)', marginBottom: '0.875rem' }}>
-              SERVICIO
-            </div>
+          <div className={CARD}>
+            <div className={SECTION_LABEL}>SERVICIO</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {MOCK_SERVICES.map(s => (
                 <ServiceCard
@@ -150,10 +148,8 @@ export default function CalendarPage() {
           </div>
 
           {/* Summary */}
-          <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '1.25rem' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)', marginBottom: '0.875rem' }}>
-              RESUMEN
-            </div>
+          <div className={CARD}>
+            <div className={SECTION_LABEL}>RESUMEN</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
               {[
                 { label: 'Fecha', value: selectedDate ? fmt(selectedDate) : '—' },
@@ -172,7 +168,7 @@ export default function CalendarPage() {
               disabled={!canConfirm}
               onClick={() => setConfirmOpen(true)}
               style={{
-                width: '100%', padding: '0.75rem',
+                width: '100%', padding: '0.875rem',
                 borderRadius: 8, border: 'none',
                 background: canConfirm ? 'var(--led)' : 'var(--bg-4)',
                 color: canConfirm ? '#fff' : 'var(--fg-3)',
@@ -211,24 +207,28 @@ export default function CalendarPage() {
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <button
             onClick={() => setConfirmOpen(false)}
-            style={{ flex: 1, padding: '0.65rem', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', cursor: 'pointer' }}
+            style={{
+              flex: 1, padding: '0.75rem', borderRadius: 8,
+              border: '1px solid var(--line)', background: 'transparent',
+              color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', cursor: 'pointer',
+              minHeight: 44,
+            }}
           >
             Cancelar
           </button>
           <button
             onClick={handleConfirm}
-            style={{ flex: 1, padding: '0.65rem', borderRadius: 8, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontWeight: 600, cursor: 'pointer', boxShadow: 'var(--glow-led)' }}
+            style={{
+              flex: 1, padding: '0.75rem', borderRadius: 8,
+              border: 'none', background: 'var(--led)', color: '#fff',
+              fontFamily: 'var(--font-ui)', fontWeight: 600, cursor: 'pointer',
+              boxShadow: 'var(--glow-led)', minHeight: 44,
+            }}
           >
             Confirmar
           </button>
         </div>
       </Modal>}
-
-      <style>{`
-        @media (max-width: 768px) {
-          .calendar-grid { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
     </>
   )
 }
