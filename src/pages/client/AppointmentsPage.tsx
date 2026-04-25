@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
+import { getMaxBookingDate } from '@/domain/booking'
 import { LoyaltyCard } from '@/components/loyalty'
-import { ConfirmDialog } from '@/components/ui'
+import { Modal, ConfirmDialog } from '@/components/ui'
+import { MonthCalendar, TimeSlots } from '@/components/calendar'
 import {
   MOCK_APPOINTMENTS, MOCK_HISTORY, MOCK_LOYALTY, MOCK_REWARDS,
-  MOCK_SERVICES, MOCK_BARBERS,
+  MOCK_SERVICES, MOCK_BARBERS, MOCK_TAKEN_SLOTS,
 } from '@/lib/mock-data'
 import type { MockReward } from '@/lib/mock-data'
 
@@ -23,7 +25,8 @@ const CARD = 'bg-[var(--bg-2)] border border-[var(--line)] rounded-xl p-4 md:p-5
 const SECTION_LABEL = 'font-[var(--font-display)] text-[13px] tracking-widest text-[var(--fg-3)] mb-3.5'
 
 export default function AppointmentsPage() {
-  const { name: shopName } = useShopContext()
+  const { name: shopName, maxAdvanceDays } = useShopContext()
+  const maxDate = getMaxBookingDate(maxAdvanceDays)
   const next = MOCK_APPOINTMENTS.find(a => a.status === 'upcoming')
   const nextService = next ? serviceById(next.serviceId) : null
   const nextBarber = next ? barberById(next.barberId) : null
@@ -32,15 +35,39 @@ export default function AppointmentsPage() {
   const [redeemTarget, setRedeemTarget] = useState<MockReward | null>(null)
   const [redeemed, setRedeemed] = useState<string[]>([])
 
+  const [rescheduleOpen, setRescheduleOpen] = useState(false)
+  const [rescheduleDate, setRescheduleDate] = useState<Date | null>(null)
+  const [rescheduleSlot, setRescheduleSlot] = useState<string | null>(null)
+  const [rescheduleMonth, setRescheduleMonth] = useState(() => new Date().getMonth())
+  const [rescheduleYear, setRescheduleYear] = useState(() => new Date().getFullYear())
+  const [rescheduleToast, setRescheduleToast] = useState(false)
+
   const handleRedeem = () => {
     if (!redeemTarget) return
     setRedeemed(r => [...r, redeemTarget.id])
     setRedeemTarget(null)
   }
 
+  const handleRescheduleConfirm = () => {
+    setRescheduleOpen(false)
+    setRescheduleDate(null)
+    setRescheduleSlot(null)
+    setRescheduleToast(true)
+    setTimeout(() => setRescheduleToast(false), 3000)
+  }
+
   return (
     <>
       <Helmet><title>Mis citas — {shopName}</title></Helmet>
+
+      {rescheduleToast && (
+        <div
+          className="fixed top-[72px] right-3 z-[200] md:top-6 md:right-6"
+          style={{ background: 'var(--ok)', color: '#fff', padding: '0.75rem 1.25rem', borderRadius: 8, fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 600, boxShadow: 'var(--shadow-md)' }}
+        >
+          ✓ Cita reprogramada correctamente
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-[1.2fr_0.8fr] gap-4 md:gap-6 items-start">
 
@@ -79,11 +106,14 @@ export default function AppointmentsPage() {
                 ))}
               </div>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <button style={{
-                  flex: 1, padding: '0.75rem', minHeight: 44, borderRadius: 8,
-                  border: '1px solid var(--line)', background: 'transparent',
-                  color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer',
-                }}>
+                <button
+                  onClick={() => setRescheduleOpen(true)}
+                  style={{
+                    flex: 1, padding: '0.75rem', minHeight: 44, borderRadius: 8,
+                    border: '1px solid var(--line)', background: 'transparent',
+                    color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer',
+                  }}
+                >
                   Reprogramar
                 </button>
                 <button
@@ -145,25 +175,7 @@ export default function AppointmentsPage() {
             memberCode={MOCK_LOYALTY.memberCode}
           />
 
-          {/* Stats */}
-          <div className={CARD}>
-            <div className={SECTION_LABEL}>ESTADÍSTICAS</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-              {[
-                { label: 'Visitas totales', value: MOCK_LOYALTY.totalVisits },
-                { label: 'Este año', value: MOCK_LOYALTY.yearVisits },
-                { label: 'Gasto total', value: `${MOCK_LOYALTY.totalSpent}€` },
-                { label: 'Canjeados', value: MOCK_LOYALTY.redeemedCount },
-              ].map(({ label, value }) => (
-                <div key={label} style={{ padding: '0.75rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
-                  <div style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, color: 'var(--fg-0)', marginTop: 4 }}>{value}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Rewards */}
+          {/* Rewards — arriba */}
           <div className={CARD}>
             <div className={SECTION_LABEL}>RECOMPENSAS</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -205,6 +217,24 @@ export default function AppointmentsPage() {
               })}
             </div>
           </div>
+
+          {/* Stats — abajo */}
+          <div className={CARD}>
+            <div className={SECTION_LABEL}>ESTADÍSTICAS</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              {[
+                { label: 'Visitas totales', value: MOCK_LOYALTY.totalVisits },
+                { label: 'Este año', value: MOCK_LOYALTY.yearVisits },
+                { label: 'Gasto total', value: `${MOCK_LOYALTY.totalSpent}€` },
+                { label: 'Canjeados', value: MOCK_LOYALTY.redeemedCount },
+              ].map(({ label, value }) => (
+                <div key={label} style={{ padding: '0.75rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
+                  <div style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, color: 'var(--fg-0)', marginTop: 4 }}>{value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -227,6 +257,48 @@ export default function AppointmentsPage() {
           onConfirm={handleRedeem}
           onCancel={() => setRedeemTarget(null)}
         />
+      )}
+
+      {rescheduleOpen && (
+        <Modal onClose={() => setRescheduleOpen(false)} title="Reprogramar cita">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <MonthCalendar
+              selected={rescheduleDate}
+              onSelect={d => { if (d <= maxDate) { setRescheduleDate(d); setRescheduleSlot(null) } }}
+              month={rescheduleMonth}
+              year={rescheduleYear}
+              onMonthChange={(m, y) => { setRescheduleMonth(m); setRescheduleYear(y) }}
+              maxDate={maxDate}
+            />
+            {rescheduleDate && (
+              <div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.12em', color: 'var(--fg-3)', marginBottom: '0.75rem' }}>
+                  NUEVA HORA
+                </div>
+                <TimeSlots
+                  selected={rescheduleSlot}
+                  onSelect={setRescheduleSlot}
+                  taken={MOCK_TAKEN_SLOTS}
+                />
+              </div>
+            )}
+            <button
+              disabled={!rescheduleDate || !rescheduleSlot}
+              onClick={handleRescheduleConfirm}
+              style={{
+                width: '100%', padding: '0.875rem', minHeight: 48, borderRadius: 8, border: 'none',
+                background: rescheduleDate && rescheduleSlot ? 'var(--led)' : 'var(--bg-4)',
+                color: rescheduleDate && rescheduleSlot ? '#fff' : 'var(--fg-3)',
+                fontFamily: 'var(--font-display)', fontSize: 15, letterSpacing: '0.06em',
+                cursor: rescheduleDate && rescheduleSlot ? 'pointer' : 'default',
+                boxShadow: rescheduleDate && rescheduleSlot ? 'var(--glow-led)' : 'none',
+                transition: 'all 0.15s',
+              }}
+            >
+              CONFIRMAR NUEVA FECHA
+            </button>
+          </div>
+        </Modal>
       )}
     </>
   )
