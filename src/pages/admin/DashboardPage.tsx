@@ -101,20 +101,17 @@ export default function DashboardPage() {
     <>
       <Helmet><title>Agenda — Gio Barber Shop</title></Helmet>
 
-      {/* Mobile-only: metrics + day agenda */}
+      {/* Mobile-only: day agenda first, then metrics */}
       <div className="md:hidden flex flex-col gap-4 mb-4">
-        {/* Metrics grid */}
-        <div className="grid grid-cols-2 gap-3">
-          {metrics.map(m => (
-            <div key={m.label} style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 10, padding: '0.875rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
-                <Icon name={m.icon} size={13} />
-                <span style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{m.label}</span>
-              </div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: m.color }}>{m.value}</div>
-            </div>
-          ))}
-        </div>
+        {/* Day agenda — first */}
+        <AgendaListView
+          items={WEEK_APPOINTMENTS.filter(a => a.day === mobileDayCol)}
+          barbers={MOCK_BARBERS}
+          date={mobileDayDate}
+          onPrevDay={() => setDayOffset(o => Math.max(o - 1, -(todayCols)))}
+          onNextDay={() => setDayOffset(o => Math.min(o + 1, 5 - todayCols))}
+          onSelect={(item) => setSelectedAppt(WEEK_APPOINTMENTS.find(a => a.id === item.id) ?? null)}
+        />
 
         {/* Nueva cita button */}
         <button
@@ -130,15 +127,18 @@ export default function DashboardPage() {
           Nueva cita
         </button>
 
-        {/* Day agenda */}
-        <AgendaListView
-          items={WEEK_APPOINTMENTS.filter(a => a.day === mobileDayCol)}
-          barbers={MOCK_BARBERS}
-          date={mobileDayDate}
-          onPrevDay={() => setDayOffset(o => Math.max(o - 1, -(todayCols)))}
-          onNextDay={() => setDayOffset(o => Math.min(o + 1, 5 - todayCols))}
-          onSelect={(item) => setSelectedAppt(WEEK_APPOINTMENTS.find(a => a.id === item.id) ?? null)}
-        />
+        {/* Metrics grid */}
+        <div className="grid grid-cols-2 gap-3">
+          {metrics.map(m => (
+            <div key={m.label} style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 10, padding: '0.875rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
+                <Icon name={m.icon} size={13} />
+                <span style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{m.label}</span>
+              </div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: m.color }}>{m.value}</div>
+            </div>
+          ))}
+        </div>
 
         {/* Barbers (mobile) */}
         <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '1rem' }}>
@@ -288,20 +288,7 @@ export default function DashboardPage() {
 
         {/* Right column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* Metrics */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-            {metrics.map(m => (
-              <div key={m.label} style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 10, padding: '0.875rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
-                  <Icon name={m.icon} size={13} />
-                  <span style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{m.label}</span>
-                </div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: m.color }}>{m.value}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Upcoming today */}
+          {/* Upcoming today — first */}
           <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '1.25rem' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)', marginBottom: '0.875rem' }}>
               HOY · PRÓXIMAS CITAS
@@ -322,6 +309,19 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Metrics */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            {metrics.map(m => (
+              <div key={m.label} style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 10, padding: '0.875rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
+                  <Icon name={m.icon} size={13} />
+                  <span style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{m.label}</span>
+                </div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: m.color }}>{m.value}</div>
+              </div>
+            ))}
           </div>
 
           {/* Barbers */}

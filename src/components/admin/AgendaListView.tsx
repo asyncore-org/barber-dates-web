@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Icon } from '@/components/ui'
 
 export interface AgendaItem {
@@ -37,9 +38,90 @@ function fmtTime(h: number, m: number) {
 
 const DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
+function isSameDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() &&
+         a.getMonth() === b.getMonth() &&
+         a.getDate() === b.getDate()
+}
+
 export function AgendaListView({ items, barbers, date, onPrevDay, onNextDay, onSelect }: AgendaListViewProps) {
+  const [nowTime, setNowTime] = useState(() => new Date())
+
+  const isToday = isSameDay(date, new Date())
+
+  useEffect(() => {
+    if (!isToday) return
+    const id = setInterval(() => setNowTime(new Date()), 60_000)
+    return () => clearInterval(id)
+  }, [isToday])
+
   const sorted = [...items].sort((a, b) => a.startH * 60 + a.startM - (b.startH * 60 + b.startM))
   const dayLabel = `${DAY_NAMES[date.getDay()]}, ${date.getDate()} ${date.toLocaleDateString('es-ES', { month: 'long' })}`
+
+  const nowTotalMin = nowTime.getHours() * 60 + nowTime.getMinutes()
+  const nowStr = fmtTime(nowTime.getHours(), nowTime.getMinutes())
+
+  const past = isToday ? sorted.filter(a => a.startH * 60 + a.startM < nowTotalMin) : sorted
+  const upcoming = isToday ? sorted.filter(a => a.startH * 60 + a.startM >= nowTotalMin) : []
+
+  function renderItem(item: AgendaItem) {
+    const c = COLOR_MAP[item.color]
+    const barberName = barbers.find(b => b.id === item.barberId)?.name ?? '—'
+    const endH = item.startH + Math.floor((item.startM + item.durationMin) / 60)
+    const endM = (item.startM + item.durationMin) % 60
+
+    return (
+      <button
+        key={item.id}
+        onClick={() => onSelect(item)}
+        className="w-full text-left rounded-xl p-4 transition-opacity active:opacity-70"
+        style={{
+          background: c.badge,
+          border: `1px solid ${c.dot}33`,
+          cursor: 'pointer',
+          minHeight: 72,
+        }}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="w-2 h-2 rounded-full shrink-0 mt-1"
+              style={{ background: c.dot, boxShadow: `0 0 6px ${c.dot}` }}
+            />
+            <div className="min-w-0">
+              <div
+                className="font-semibold text-sm truncate"
+                style={{ color: 'var(--fg-0)', fontFamily: 'var(--font-ui)' }}
+              >
+                {item.client}
+              </div>
+              <div
+                className="text-xs truncate mt-0.5"
+                style={{ color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}
+              >
+                {item.service} · {barberName}
+              </div>
+            </div>
+          </div>
+
+          <div className="shrink-0 text-right">
+            <div
+              className="text-sm font-semibold"
+              style={{ color: c.dot, fontFamily: 'var(--font-mono, monospace)' }}
+            >
+              {fmtTime(item.startH, item.startM)}
+            </div>
+            <div
+              className="text-xs mt-0.5"
+              style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}
+            >
+              hasta {fmtTime(endH, endM)}
+            </div>
+          </div>
+        </div>
+      </button>
+    )
+  }
 
   return (
     <div
@@ -85,64 +167,37 @@ export function AgendaListView({ items, barbers, date, onPrevDay, onNextDay, onS
           </div>
         )}
 
-        {sorted.map(item => {
-          const c = COLOR_MAP[item.color]
-          const barberName = barbers.find(b => b.id === item.barberId)?.name ?? '—'
-          const endH = item.startH + Math.floor((item.startM + item.durationMin) / 60)
-          const endM = (item.startM + item.durationMin) % 60
+        {isToday ? (
+          <>
+            {past.map(renderItem)}
 
-          return (
-            <button
-              key={item.id}
-              onClick={() => onSelect(item)}
-              className="w-full text-left rounded-xl p-4 transition-opacity active:opacity-70"
-              style={{
-                background: c.badge,
-                border: `1px solid ${c.dot}33`,
-                cursor: 'pointer',
-                minHeight: 72,
-              }}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className="w-2 h-2 rounded-full shrink-0 mt-1"
-                    style={{ background: c.dot, boxShadow: `0 0 6px ${c.dot}` }}
-                  />
-                  <div className="min-w-0">
-                    <div
-                      className="font-semibold text-sm truncate"
-                      style={{ color: 'var(--fg-0)', fontFamily: 'var(--font-ui)' }}
-                    >
-                      {item.client}
-                    </div>
-                    <div
-                      className="text-xs truncate mt-0.5"
-                      style={{ color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}
-                    >
-                      {item.service} · {barberName}
-                    </div>
-                  </div>
-                </div>
+            {/* Current time indicator */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0' }}>
+              <div style={{
+                width: 10, height: 10, borderRadius: '50%',
+                background: 'var(--led)',
+                boxShadow: '0 0 8px rgba(123,79,255,0.9)',
+                flexShrink: 0,
+              }} />
+              <div style={{
+                flex: 1, height: 2,
+                background: 'linear-gradient(90deg, var(--led), rgba(123,79,255,0.1))',
+                boxShadow: '0 0 4px rgba(123,79,255,0.4)',
+              }} />
+              <span style={{
+                fontSize: 10, color: 'var(--led-soft)',
+                fontFamily: 'var(--font-mono, monospace)',
+                flexShrink: 0, letterSpacing: '0.04em',
+              }}>
+                {nowStr}
+              </span>
+            </div>
 
-                <div className="shrink-0 text-right">
-                  <div
-                    className="text-sm font-semibold"
-                    style={{ color: c.dot, fontFamily: 'var(--font-mono, monospace)' }}
-                  >
-                    {fmtTime(item.startH, item.startM)}
-                  </div>
-                  <div
-                    className="text-xs mt-0.5"
-                    style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}
-                  >
-                    hasta {fmtTime(endH, endM)}
-                  </div>
-                </div>
-              </div>
-            </button>
-          )
-        })}
+            {upcoming.map(renderItem)}
+          </>
+        ) : (
+          sorted.map(renderItem)
+        )}
       </div>
     </div>
   )
