@@ -535,15 +535,15 @@ export default function SettingsPage() {
             <div>
               <SectionTitle>DATOS DE LA BARBERÍA</SectionTitle>
               <Row label="Nombre" value={shop.name} onChange={v => { setShop(s => ({ ...s, name: v })); updateShop({ name: v }) }} />
-              <Row label="Teléfono" value={shop.phone} onChange={v => setShop(s => ({ ...s, phone: v }))} />
-              <Row label="Email" value={shop.email} onChange={v => setShop(s => ({ ...s, email: v }))} />
-              <Row label="Instagram" value={shop.instagram} onChange={v => setShop(s => ({ ...s, instagram: v }))} />
-              <Row label="Dirección" value={shop.address} onChange={v => setShop(s => ({ ...s, address: v }))} />
+              <Row label="Teléfono" value={shop.phone} onChange={v => { setShop(s => ({ ...s, phone: v })); updateShop({ phone: v }) }} />
+              <Row label="Email" value={shop.email} onChange={v => { setShop(s => ({ ...s, email: v })); updateShop({ email: v }) }} />
+              <Row label="Instagram" value={shop.instagram} onChange={v => { setShop(s => ({ ...s, instagram: v })); updateShop({ instagram: v }) }} />
+              <Row label="Dirección" value={shop.address} onChange={v => { setShop(s => ({ ...s, address: v })); updateShop({ address: v }) }} />
               <div className="flex flex-col gap-1 mb-3 md:grid md:grid-cols-[160px_1fr] md:items-start md:gap-3">
                 <label style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)', paddingTop: 6 }}>Descripción</label>
                 <textarea
                   value={shop.description}
-                  onChange={e => setShop(s => ({ ...s, description: e.target.value }))}
+                  onChange={e => { const v = e.target.value; setShop(s => ({ ...s, description: v })); updateShop({ description: v }) }}
                   rows={3}
                   style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.5rem 0.6rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, resize: 'vertical', outline: 'none', width: '100%', boxSizing: 'border-box' }}
                 />

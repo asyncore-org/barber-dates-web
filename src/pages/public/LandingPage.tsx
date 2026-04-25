@@ -15,14 +15,8 @@ const STEPS = [
   { n: '3', title: 'Ven y disfruta', desc: 'Preséntate y nosotros hacemos el resto.' },
 ]
 
-const INFO = [
-  { icon: 'mapPin' as const, label: 'Calle Gran Via 12, Barcelona' },
-  { icon: 'clock' as const, label: 'Lun – Sáb · 9:00 – 20:00' },
-  { icon: 'phone' as const, label: '+34 931 234 567' },
-]
-
 export default function LandingPage() {
-  const { name: shopName } = useShopContext()
+  const { name: shopName, phone, address, instagram } = useShopContext()
   return (
     <>
       <Helmet>
@@ -152,12 +146,24 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col gap-4 mb-10">
-            {INFO.map(({ icon, label }) => (
-              <div key={label} className="flex items-center justify-center gap-3 text-white/55 text-sm">
-                <Icon name={icon} size={16} className="text-[#C8A44E] shrink-0" />
-                <span>{label}</span>
+            {address && (
+              <div className="flex items-center justify-center gap-3 text-white/55 text-sm">
+                <Icon name="mapPin" size={16} className="text-[#C8A44E] shrink-0" />
+                <span>{address}</span>
               </div>
-            ))}
+            )}
+            {phone && (
+              <div className="flex items-center justify-center gap-3 text-white/55 text-sm">
+                <Icon name="phone" size={16} className="text-[#C8A44E] shrink-0" />
+                <span>{phone}</span>
+              </div>
+            )}
+            {instagram && (
+              <div className="flex items-center justify-center gap-3 text-white/55 text-sm">
+                <Icon name="sparkle" size={16} className="text-[#C8A44E] shrink-0" />
+                <span>{instagram}</span>
+              </div>
+            )}
           </div>
 
           <Link
