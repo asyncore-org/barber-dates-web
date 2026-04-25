@@ -173,6 +173,7 @@ export default function AppointmentsPage() {
             target={MOCK_LOYALTY.target}
             stamps={MOCK_LOYALTY.stamps}
             memberCode={MOCK_LOYALTY.memberCode}
+            rewards={MOCK_REWARDS.filter(r => r.active)}
           />
 
           {/* Rewards — arriba */}
