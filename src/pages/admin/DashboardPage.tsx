@@ -2,14 +2,14 @@ import { useState, useEffect, useRef } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
 import { Icon } from '@/components/ui'
-import { AgendaListView, NewAppointmentModal } from '@/components/admin'
-import type { WeekAppt } from '@/components/admin'
-import { MOCK_BARBERS } from '@/lib/mock-data'
+import { AgendaListView, NewAppointmentModal, RescheduleModal } from '@/components/admin'
+import type { WeekAppt, RescheduleUpdate } from '@/components/admin'
+import { MOCK_BARBERS, MOCK_SERVICES } from '@/lib/mock-data'
 
 const DAYS_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const HOURS = Array.from({ length: 11 }, (_, i) => i + 9) // 9 → 19
 
-const WEEK_APPOINTMENTS: WeekAppt[] = [
+const INITIAL_APPOINTMENTS: WeekAppt[] = [
   { id: 'w1',  day: 0, startH: 10, startM: 0,  durationMin: 45, client: 'Carlos M.',   service: 'Corte + Barba',         barberId: 'b1', color: 'led' },
   { id: 'w2',  day: 0, startH: 11, startM: 30, durationMin: 30, client: 'Rubén G.',    service: 'Corte Clásico',          barberId: 'b2', color: 'brick' },
   { id: 'w3',  day: 0, startH: 14, startM: 0,  durationMin: 60, client: 'Javier P.',   service: 'Corte Premium',          barberId: 'b1', color: 'led' },
@@ -58,15 +58,44 @@ export default function DashboardPage() {
   const { name: shopName } = useShopContext()
   const [weekOffset, setWeekOffset] = useState(0)
   const [dayOffset, setDayOffset] = useState(0)
+  const [appointments, setAppointments] = useState<WeekAppt[]>(INITIAL_APPOINTMENTS)
   const [selectedAppt, setSelectedAppt] = useState<WeekAppt | null>(null)
+  const [rescheduleAppt, setRescheduleAppt] = useState<WeekAppt | null>(null)
   const [newApptOpen, setNewApptOpen] = useState(false)
   const [newApptToast, setNewApptToast] = useState(false)
+  const [rescheduleToast, setRescheduleToast] = useState(false)
   const nowLineRef = useRef<HTMLDivElement>(null)
 
   const handleNewApptConfirm = () => {
     setNewApptOpen(false)
     setNewApptToast(true)
     setTimeout(() => setNewApptToast(false), 3000)
+  }
+
+  const handleRescheduleConfirm = async (update: RescheduleUpdate) => {
+    if (!rescheduleAppt) return
+    const [newH, newM] = update.slot.split(':').map(Number)
+    const newDayIdx = Math.round((update.date.getTime() - weekStart.getTime()) / 86_400_000)
+    const newService = MOCK_SERVICES.find(s => s.id === update.serviceId)?.name ?? rescheduleAppt.service
+
+    setAppointments(prev => prev.map(a =>
+      a.id === rescheduleAppt.id
+        ? { ...a, day: newDayIdx, startH: newH, startM: newM, service: newService, barberId: update.barberId }
+        : a
+    ))
+
+    try {
+      await fetch(`/rest/v1/appointments?id=eq.${rescheduleAppt.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scheduled_at: update.date.toISOString() }),
+      })
+    } catch { /* mock data — ignorar */ }
+
+    setRescheduleAppt(null)
+    setSelectedAppt(null)
+    setRescheduleToast(true)
+    setTimeout(() => setRescheduleToast(false), 3000)
   }
 
   const weekStart = getWeekStart(new Date())
@@ -87,13 +116,13 @@ export default function DashboardPage() {
   mobileDayDate.setDate(mobileDayDate.getDate() + mobileDayCol)
 
   const metrics = [
-    { label: 'Citas hoy', value: WEEK_APPOINTMENTS.filter(a => a.day === todayCols).length, icon: 'calendar' as const, color: 'var(--led)' },
+    { label: 'Citas hoy', value: appointments.filter(a => a.day === todayCols).length, icon: 'calendar' as const, color: 'var(--led)' },
     { label: 'Ingresos est.', value: '214€', icon: 'euro' as const, color: 'var(--gold)' },
     { label: 'Barberos activos', value: MOCK_BARBERS.filter(b => b.active).length, icon: 'users' as const, color: 'var(--brick-warm)' },
     { label: 'Lista de espera', value: 3, icon: 'clock' as const, color: 'var(--fg-2)' },
   ]
 
-  const upcomingToday = WEEK_APPOINTMENTS.filter(a => a.day === todayCols)
+  const upcomingToday = appointments.filter(a => a.day === todayCols)
     .sort((a, b) => a.startH * 60 + a.startM - (b.startH * 60 + b.startM))
 
   return (
@@ -109,16 +138,25 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {rescheduleToast && (
+        <div
+          className="fixed top-[72px] right-3 z-[200] md:top-6 md:right-6"
+          style={{ background: 'var(--ok)', color: '#fff', padding: '0.75rem 1.25rem', borderRadius: 8, fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 600, boxShadow: 'var(--shadow-md)' }}
+        >
+          ✓ Cita reprogramada correctamente
+        </div>
+      )}
+
       {/* Mobile-only: day agenda first, then metrics */}
       <div className="md:hidden flex flex-col gap-4 mb-4">
         {/* Day agenda — first */}
         <AgendaListView
-          items={WEEK_APPOINTMENTS.filter(a => a.day === mobileDayCol)}
+          items={appointments.filter(a => a.day === mobileDayCol)}
           barbers={MOCK_BARBERS}
           date={mobileDayDate}
           onPrevDay={() => setDayOffset(o => Math.max(o - 1, -(todayCols)))}
           onNextDay={() => setDayOffset(o => Math.min(o + 1, 5 - todayCols))}
-          onSelect={(item) => setSelectedAppt(WEEK_APPOINTMENTS.find(a => a.id === item.id) ?? null)}
+          onSelect={(item) => setSelectedAppt(appointments.find(a => a.id === item.id) ?? null)}
         />
 
         {/* Nueva cita button */}
@@ -261,7 +299,7 @@ export default function DashboardPage() {
                     />
                   )}
 
-                  {WEEK_APPOINTMENTS.filter(a => a.day === colIdx).map(appt => {
+                  {appointments.filter(a => a.day === colIdx).map(appt => {
                     const c = COLOR_MAP[appt.color]
                     return (
                       <div
@@ -396,14 +434,31 @@ export default function DashboardPage() {
                 <span style={{ fontSize: 13, color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontWeight: 500 }}>{value}</span>
               </div>
             ))}
-            <button
-              onClick={() => setSelectedAppt(null)}
-              style={{ width: '100%', marginTop: '1rem', padding: '0.75rem', minHeight: 44, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', cursor: 'pointer' }}
-            >
-              Cerrar
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+              <button
+                onClick={() => setRescheduleAppt(selectedAppt)}
+                style={{ flex: 1, padding: '0.75rem', minHeight: 44, borderRadius: 8, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: 'var(--glow-led)' }}
+              >
+                Reprogramar
+              </button>
+              <button
+                onClick={() => setSelectedAppt(null)}
+                style={{ flex: 1, padding: '0.75rem', minHeight: 44, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
+      )}
+
+      {rescheduleAppt && (
+        <RescheduleModal
+          appt={rescheduleAppt}
+          weekStart={weekStart}
+          onClose={() => setRescheduleAppt(null)}
+          onConfirm={handleRescheduleConfirm}
+        />
       )}
     </>
   )
