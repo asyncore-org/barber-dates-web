@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
+import { useShopContext } from '@/context/ShopContext'
 import { Icon } from '@/components/ui'
 
 const SERVICES = [
@@ -21,10 +22,11 @@ const INFO = [
 ]
 
 export default function LandingPage() {
+  const { name: shopName } = useShopContext()
   return (
     <>
       <Helmet>
-        <title>Gio Barber Shop — Reserva tu cita online</title>
+        <title>{shopName} — Reserva tu cita online</title>
         <meta name="description" content="Barbería premium en Barcelona. Reserva tu cita online, acumula puntos y disfruta de recompensas exclusivas." />
       </Helmet>
 
@@ -170,7 +172,7 @@ export default function LandingPage() {
       {/* ── Footer ───────────────────────────────────── */}
       <footer className="bg-[#0d0d0d] px-5 py-6 text-center">
         <p className="text-white/25 text-xs">
-          © {new Date().getFullYear()} Gio Barber Shop · Barcelona
+          © {new Date().getFullYear()} {shopName} · Barcelona
         </p>
       </footer>
     </>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Helmet } from 'react-helmet-async'
+import { useShopContext } from '@/context/ShopContext'
 import { MonthCalendar } from '@/components/calendar'
 import { TimeSlots } from '@/components/calendar'
 import { LoyaltyCard } from '@/components/loyalty'
@@ -16,6 +17,7 @@ const CARD = 'bg-[var(--bg-2)] border border-[var(--line)] rounded-xl p-4 md:p-5
 const SECTION_LABEL = 'font-[var(--font-display)] text-[13px] tracking-widest text-[var(--fg-3)] mb-3.5'
 
 export default function CalendarPage() {
+  const { name: shopName } = useShopContext()
   const today = new Date()
   const [month, setMonth] = useState(today.getMonth())
   const [year, setYear] = useState(today.getFullYear())
@@ -45,7 +47,7 @@ export default function CalendarPage() {
   return (
     <>
       <Helmet>
-        <title>Pedir cita — Gio Barber Shop</title>
+        <title>Pedir cita — {shopName}</title>
       </Helmet>
 
       {confirmed && (

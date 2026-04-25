@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { ConfirmDialog } from '@/components/ui'
 import { useTheme } from '@/hooks'
+import { useShopContext } from '@/context/ShopContext'
 import {
   MOCK_SERVICES, MOCK_BARBERS, MOCK_HOURS, MOCK_CLOSURES,
   MOCK_REWARDS, MOCK_LOYALTY, MOCK_SHOP,
@@ -52,7 +53,9 @@ function Row({ label, value, onChange }: { label: string; value: string; onChang
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme()
+  const { name: shopName, updateShop, maxAdvanceDays: ctxMaxDays } = useShopContext()
   const [section, setSection] = useState<Section>('servicios')
+  const [maxAdvanceDays, setMaxAdvanceDays] = useState(String(ctxMaxDays))
 
   const [services, setServices] = useState<MockService[]>(MOCK_SERVICES)
   const [deleteService, setDeleteService] = useState<MockService | null>(null)
@@ -145,7 +148,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <Helmet><title>Configuración — Gio Barber Shop</title></Helmet>
+      <Helmet><title>Configuración — {shopName}</title></Helmet>
 
       {/* Mobile section tabs */}
       <div className="md:hidden overflow-x-auto pb-2 mb-4 -mx-4 px-4">
@@ -266,6 +269,25 @@ export default function SettingsPage() {
                   </div>
                 ))}
               </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem', padding: '0.875rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
+                <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>Reservas anticipadas</div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={maxAdvanceDays}
+                    onChange={e => {
+                      setMaxAdvanceDays(e.target.value)
+                      const n = Number(e.target.value)
+                      if (n > 0) updateShop({ maxAdvanceDays: n })
+                    }}
+                    style={{ width: 72, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, textAlign: 'center' }}
+                  />
+                  <span style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>días máx. de antelación</span>
+                </div>
+              </div>
+
               <SectionTitle>CIERRES ESPECIALES</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {closures.map(c => (
@@ -512,7 +534,7 @@ export default function SettingsPage() {
           {section === 'barberia' && (
             <div>
               <SectionTitle>DATOS DE LA BARBERÍA</SectionTitle>
-              <Row label="Nombre" value={shop.name} onChange={v => setShop(s => ({ ...s, name: v }))} />
+              <Row label="Nombre" value={shop.name} onChange={v => { setShop(s => ({ ...s, name: v })); updateShop({ name: v }) }} />
               <Row label="Teléfono" value={shop.phone} onChange={v => setShop(s => ({ ...s, phone: v }))} />
               <Row label="Email" value={shop.email} onChange={v => setShop(s => ({ ...s, email: v }))} />
               <Row label="Instagram" value={shop.instagram} onChange={v => setShop(s => ({ ...s, instagram: v }))} />

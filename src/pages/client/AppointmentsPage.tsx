@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Helmet } from 'react-helmet-async'
+import { useShopContext } from '@/context/ShopContext'
 import { LoyaltyCard } from '@/components/loyalty'
 import { ConfirmDialog } from '@/components/ui'
 import {
@@ -22,6 +23,7 @@ const CARD = 'bg-[var(--bg-2)] border border-[var(--line)] rounded-xl p-4 md:p-5
 const SECTION_LABEL = 'font-[var(--font-display)] text-[13px] tracking-widest text-[var(--fg-3)] mb-3.5'
 
 export default function AppointmentsPage() {
+  const { name: shopName } = useShopContext()
   const next = MOCK_APPOINTMENTS.find(a => a.status === 'upcoming')
   const nextService = next ? serviceById(next.serviceId) : null
   const nextBarber = next ? barberById(next.barberId) : null
@@ -38,7 +40,7 @@ export default function AppointmentsPage() {
 
   return (
     <>
-      <Helmet><title>Mis citas — Gio Barber Shop</title></Helmet>
+      <Helmet><title>Mis citas — {shopName}</title></Helmet>
 
       <div className="grid grid-cols-1 md:grid-cols-[1.2fr_0.8fr] gap-4 md:gap-6 items-start">
 

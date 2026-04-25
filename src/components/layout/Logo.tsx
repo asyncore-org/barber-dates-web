@@ -1,8 +1,15 @@
+import { useShopContext } from '@/context/ShopContext'
+
 interface LogoProps {
   size?: number
 }
 
 export function Logo({ size = 36 }: LogoProps) {
+  const { name } = useShopContext()
+  const parts = name.toUpperCase().trim().split(/\s+/)
+  const line1 = parts.length > 1 ? parts.slice(0, -1).join(' ') : parts[0]
+  const line2 = parts.length > 1 ? `— ${parts[parts.length - 1]} —` : '— SHOP —'
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
       <div style={{
@@ -26,6 +33,7 @@ export function Logo({ size = 36 }: LogoProps) {
           strokeWidth="1.6"
           strokeLinecap="round"
           strokeLinejoin="round"
+          aria-label={name}
         >
           <circle cx="6" cy="6" r="3"/>
           <circle cx="6" cy="18" r="3"/>
@@ -36,10 +44,10 @@ export function Logo({ size = 36 }: LogoProps) {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1, whiteSpace: 'nowrap' }}>
         <span style={{ fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: '.14em', color: 'var(--fg-0)' }}>
-          GIO BARBER
+          {line1}
         </span>
         <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '.32em', color: 'var(--fg-2)', marginTop: 2 }}>
-          — SHOP —
+          {line2}
         </span>
       </div>
     </div>

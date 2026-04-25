@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Helmet } from 'react-helmet-async'
+import { useShopContext } from '@/context/ShopContext'
 import { Icon } from '@/components/ui'
 import { AgendaListView } from '@/components/admin'
 import { MOCK_BARBERS } from '@/lib/mock-data'
@@ -65,6 +66,7 @@ function getWeekStart(ref: Date) {
 }
 
 export default function DashboardPage() {
+  const { name: shopName } = useShopContext()
   const [weekOffset, setWeekOffset] = useState(0)
   const [dayOffset, setDayOffset] = useState(0)
   const [selectedAppt, setSelectedAppt] = useState<WeekAppt | null>(null)
@@ -99,7 +101,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Helmet><title>Agenda — Gio Barber Shop</title></Helmet>
+      <Helmet><title>Agenda — {shopName}</title></Helmet>
 
       {/* Mobile-only: day agenda first, then metrics */}
       <div className="md:hidden flex flex-col gap-4 mb-4">

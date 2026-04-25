@@ -6,6 +6,7 @@ import { RegisterForm } from '@/components/auth/RegisterForm'
 import { ForgotPasswordForm } from '@/components/auth/ForgotPasswordForm'
 import { ResetPasswordForm } from '@/components/auth/ResetPasswordForm'
 import { useAuth } from '@/hooks'
+import { useShopContext } from '@/context/ShopContext'
 import { Logo } from '@/components/layout'
 
 type AuthMode = 'login' | 'register' | 'forgot' | 'reset'
@@ -27,6 +28,7 @@ function getInitialMode(): AuthMode {
 }
 
 export default function AuthPage() {
+  const { name: shopName } = useShopContext()
   const [mode, setMode] = useState<AuthMode>(getInitialMode)
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -46,7 +48,7 @@ export default function AuthPage() {
   return (
     <>
       <Helmet>
-        <title>{pageTitles[mode]} — Gio Barber Shop</title>
+        <title>{pageTitles[mode]} — {shopName}</title>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
@@ -57,7 +59,7 @@ export default function AuthPage() {
         >
           <img
             src="/assets/shop-interior-1.png"
-            alt="Gio Barber Shop interior"
+            alt={`${shopName} interior`}
             style={{
               position: 'absolute',
               inset: 0,
