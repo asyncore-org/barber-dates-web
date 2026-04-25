@@ -3,22 +3,11 @@ import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
 import { Icon } from '@/components/ui'
 import { AgendaListView, NewAppointmentModal } from '@/components/admin'
+import type { WeekAppt } from '@/components/admin'
 import { MOCK_BARBERS } from '@/lib/mock-data'
 
 const DAYS_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const HOURS = Array.from({ length: 11 }, (_, i) => i + 9) // 9 → 19
-
-interface WeekAppt {
-  id: string
-  day: number
-  startH: number
-  startM: number
-  durationMin: number
-  client: string
-  service: string
-  barberId: string
-  color: 'led' | 'brick' | 'gold'
-}
 
 const WEEK_APPOINTMENTS: WeekAppt[] = [
   { id: 'w1',  day: 0, startH: 10, startM: 0,  durationMin: 45, client: 'Carlos M.',   service: 'Corte + Barba',         barberId: 'b1', color: 'led' },
