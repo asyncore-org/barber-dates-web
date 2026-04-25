@@ -228,7 +228,9 @@ export default function SettingsPage() {
           {section === 'servicios' && (
             <div>
               <SectionTitle>SERVICIOS</SectionTitle>
-              <div style={{ overflowX: 'auto' }}>
+
+              {/* Desktop table */}
+              <div className="hidden md:block" style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-ui)', fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--line)' }}>
@@ -262,6 +264,40 @@ export default function SettingsPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Mobile cards */}
+              <div className="md:hidden flex flex-col gap-3">
+                {services.map(svc => (
+                  <div key={svc.id} style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 8, padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                      <input
+                        value={svc.name}
+                        onChange={e => updateService(svc.id, 'name', e.target.value)}
+                        style={{ flex: 1, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.35rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 500 }}
+                      />
+                      <button
+                        onClick={() => setDeleteService(svc)}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 14, flexShrink: 0, padding: '0.25rem' }}
+                      >✕</button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+                      {(['duration', 'price', 'points'] as const).map(f => (
+                        <div key={f}>
+                          <div style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>
+                            {f === 'duration' ? 'Min' : f === 'price' ? '€' : 'Pts'}
+                          </div>
+                          <input
+                            value={String(svc[f])}
+                            onChange={e => updateService(svc.id, f, Number(e.target.value))}
+                            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.3rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, textAlign: 'center' }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
               <button
                 onClick={addService}
                 style={{ marginTop: '1rem', padding: '0.6rem 1rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}
