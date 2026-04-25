@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
 import { Icon } from '@/components/ui'
-import { AgendaListView } from '@/components/admin'
+import { AgendaListView, NewAppointmentModal } from '@/components/admin'
 import { MOCK_BARBERS } from '@/lib/mock-data'
 
 const DAYS_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
@@ -70,7 +70,15 @@ export default function DashboardPage() {
   const [weekOffset, setWeekOffset] = useState(0)
   const [dayOffset, setDayOffset] = useState(0)
   const [selectedAppt, setSelectedAppt] = useState<WeekAppt | null>(null)
+  const [newApptOpen, setNewApptOpen] = useState(false)
+  const [newApptToast, setNewApptToast] = useState(false)
   const nowLineRef = useRef<HTMLDivElement>(null)
+
+  const handleNewApptConfirm = () => {
+    setNewApptOpen(false)
+    setNewApptToast(true)
+    setTimeout(() => setNewApptToast(false), 3000)
+  }
 
   const weekStart = getWeekStart(new Date())
   weekStart.setDate(weekStart.getDate() + weekOffset * 7)
@@ -103,6 +111,15 @@ export default function DashboardPage() {
     <>
       <Helmet><title>Agenda — {shopName}</title></Helmet>
 
+      {newApptToast && (
+        <div
+          className="fixed top-[72px] right-3 z-[200] md:top-6 md:right-6"
+          style={{ background: 'var(--ok)', color: '#fff', padding: '0.75rem 1.25rem', borderRadius: 8, fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 600, boxShadow: 'var(--shadow-md)' }}
+        >
+          ✓ Cita añadida correctamente
+        </div>
+      )}
+
       {/* Mobile-only: day agenda first, then metrics */}
       <div className="md:hidden flex flex-col gap-4 mb-4">
         {/* Day agenda — first */}
@@ -117,6 +134,7 @@ export default function DashboardPage() {
 
         {/* Nueva cita button */}
         <button
+          onClick={() => setNewApptOpen(true)}
           className="flex items-center justify-center gap-2 w-full rounded-xl"
           style={{
             padding: '0.875rem', minHeight: 48,
@@ -186,7 +204,10 @@ export default function DashboardPage() {
               <button onClick={() => setWeekOffset(0)} style={{ ...navBtn, padding: '0.25rem 0.6rem', fontSize: 11, fontFamily: 'var(--font-ui)' }}>
                 Hoy
               </button>
-              <button style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.75rem', borderRadius: 6, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer', boxShadow: 'var(--glow-led)' }}>
+              <button
+                onClick={() => setNewApptOpen(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.75rem', borderRadius: 6, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer', boxShadow: 'var(--glow-led)' }}
+              >
                 <Icon name="plus" size={13} />
                 Nueva cita
               </button>
@@ -352,6 +373,14 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* New appointment modal */}
+      {newApptOpen && (
+        <NewAppointmentModal
+          onClose={() => setNewApptOpen(false)}
+          onConfirm={handleNewApptConfirm}
+        />
+      )}
 
       {/* Appointment detail modal */}
       {selectedAppt && (
