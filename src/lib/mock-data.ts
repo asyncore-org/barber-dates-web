@@ -74,6 +74,7 @@ export interface MockClosure {
   date: string
   reason: string
   all: boolean
+  closingTime?: string
 }
 
 export const MOCK_SERVICES: MockService[] = [
@@ -150,7 +151,7 @@ export const MOCK_HOURS: MockHourEntry[] = [
 export const MOCK_CLOSURES: MockClosure[] = [
   { id: 'c1', date: '01 May 2026', reason: 'Día del trabajador', all: true },
   { id: 'c2', date: '14–21 Ago 2026', reason: 'Vacaciones de verano', all: true },
-  { id: 'c3', date: '24 Dic 2026', reason: 'Nochebuena (cierre a las 15h)', all: false },
+  { id: 'c3', date: '24 Dic 2026', reason: 'Nochebuena', all: false, closingTime: '15:00' },
 ]
 
 export const MOCK_TAKEN_SLOTS: string[] = ['11:00', '11:30', '13:00', '15:30', '18:00', '19:30']
