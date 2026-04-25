@@ -19,6 +19,10 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: 'apariencia',    label: 'Apariencia' },
 ]
 
+function calcInitials(name: string): string {
+  return name.trim().split(/\s+/).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '?'
+}
+
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)', marginBottom: '1rem' }}>
@@ -53,6 +57,10 @@ export default function SettingsPage() {
   const [services, setServices] = useState<MockService[]>(MOCK_SERVICES)
   const [deleteService, setDeleteService] = useState<MockService | null>(null)
   const [barbers, setBarbers] = useState<MockBarber[]>(MOCK_BARBERS)
+  const [editingBarberId, setEditingBarberId] = useState<string | null>(null)
+  const [deleteBarber, setDeleteBarber] = useState<MockBarber | null>(null)
+  const [showBarberForm, setShowBarberForm] = useState(false)
+  const [newBarber, setNewBarber] = useState({ name: '', role: 'Barbero', email: '', phone: '' })
   const [hours, setHours] = useState<MockHourEntry[]>(MOCK_HOURS)
   const [closures, setClosures] = useState<MockClosure[]>(MOCK_CLOSURES)
   const [showClosureForm, setShowClosureForm] = useState(false)
@@ -79,6 +87,30 @@ export default function SettingsPage() {
 
   const toggleBarber = (id: string) => {
     setBarbers(b => b.map(br => br.id === id ? { ...br, active: !br.active } : br))
+  }
+  const updateBarber = (id: string, field: keyof MockBarber, val: string | boolean) => {
+    setBarbers(b => b.map(br => {
+      if (br.id !== id) return br
+      const updated = { ...br, [field]: val }
+      if (field === 'name') updated.initials = calcInitials(val as string)
+      return updated
+    }))
+  }
+  const confirmDeleteBarber = () => {
+    if (!deleteBarber) return
+    setBarbers(b => b.filter(br => br.id !== deleteBarber.id))
+    setDeleteBarber(null)
+  }
+  const addBarber = () => {
+    if (!newBarber.name.trim()) return
+    setBarbers(b => [...b, {
+      id: `b${Date.now()}`, name: newBarber.name.trim(),
+      role: newBarber.role.trim() || 'Barbero',
+      initials: calcInitials(newBarber.name),
+      active: true, phone: newBarber.phone, email: newBarber.email,
+    }])
+    setNewBarber({ name: '', role: 'Barbero', email: '', phone: '' })
+    setShowBarberForm(false)
   }
 
   const toggleDay = (i: number) => {
@@ -322,30 +354,128 @@ export default function SettingsPage() {
           {section === 'barberos' && (
             <div>
               <SectionTitle>BARBEROS</SectionTitle>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                 {barbers.map(b => (
-                  <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: b.active ? 'var(--led)' : 'var(--bg-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, color: b.active ? '#fff' : 'var(--fg-3)', flexShrink: 0 }}>
-                      {b.initials}
+                  <div key={b.id} style={{ background: 'var(--bg-3)', borderRadius: 10, border: '1px solid var(--line)', overflow: 'hidden' }}>
+                    {/* Header row */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0.75rem' }}>
+                      <div style={{ width: 38, height: 38, borderRadius: '50%', background: b.active ? 'var(--led)' : 'var(--bg-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: b.active ? '#fff' : 'var(--fg-3)', flexShrink: 0 }}>
+                        {b.initials}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500, lineHeight: 1.2 }}>{b.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', marginTop: 1 }}>{b.role}</div>
+                      </div>
+                      <button
+                        onClick={() => toggleBarber(b.id)}
+                        style={{
+                          padding: '0.4rem 0.625rem', minHeight: 36, borderRadius: 6, flexShrink: 0,
+                          border: `1px solid ${b.active ? 'rgba(109,187,109,0.4)' : 'var(--line)'}`,
+                          background: b.active ? 'rgba(109,187,109,0.08)' : 'transparent',
+                          color: b.active ? 'var(--ok)' : 'var(--fg-2)',
+                          fontFamily: 'var(--font-ui)', fontSize: 11, cursor: 'pointer',
+                        }}
+                      >
+                        {b.active ? 'Activo' : 'Baja'}
+                      </button>
+                      <button
+                        onClick={() => setEditingBarberId(id => id === b.id ? null : b.id)}
+                        style={{
+                          padding: '0.4rem 0.625rem', minHeight: 36, borderRadius: 6, flexShrink: 0,
+                          border: `1px solid ${editingBarberId === b.id ? 'var(--led)' : 'var(--line)'}`,
+                          background: editingBarberId === b.id ? 'rgba(123,79,255,0.1)' : 'transparent',
+                          color: editingBarberId === b.id ? 'var(--led-soft)' : 'var(--fg-2)',
+                          fontFamily: 'var(--font-ui)', fontSize: 11, cursor: 'pointer',
+                        }}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => setDeleteBarber(b)}
+                        style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', minWidth: 32, minHeight: 32, borderRadius: 4, fontSize: 14, flexShrink: 0 }}
+                      >✕</button>
                     </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{b.name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>{b.role}</div>
-                    </div>
-                    <button
-                      onClick={() => toggleBarber(b.id)}
-                      style={{
-                        padding: '0.5rem 0.875rem', minHeight: 40, borderRadius: 6, flexShrink: 0,
-                        border: `1px solid ${b.active ? 'rgba(109,187,109,0.4)' : 'var(--line)'}`,
-                        background: b.active ? 'rgba(109,187,109,0.08)' : 'transparent',
-                        color: b.active ? 'var(--ok)' : 'var(--fg-2)',
-                        fontFamily: 'var(--font-ui)', fontSize: 12, cursor: 'pointer',
-                      }}
-                    >
-                      {b.active ? 'Activo' : 'Descanso'}
-                    </button>
+
+                    {/* Expandable edit panel */}
+                    {editingBarberId === b.id && (
+                      <div style={{ borderTop: '1px solid var(--line)', padding: '0.875rem', background: 'var(--bg-4)', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {([
+                            { field: 'name', label: 'Nombre', type: 'text' },
+                            { field: 'role', label: 'Rol', type: 'text' },
+                            { field: 'email', label: 'Email', type: 'email' },
+                            { field: 'phone', label: 'Teléfono', type: 'tel' },
+                          ] as const).map(({ field, label, type }) => (
+                            <div key={field}>
+                              <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>{label}</label>
+                              <input
+                                type={type}
+                                value={(b[field] as string) ?? ''}
+                                onChange={e => updateBarber(b.id, field, e.target.value)}
+                                style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
+
+                {/* New barber form */}
+                {showBarberForm && (
+                  <div style={{ background: 'var(--bg-3)', borderRadius: 10, border: '1px dashed var(--line)', padding: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--led)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: '#fff', flexShrink: 0 }}>
+                        {calcInitials(newBarber.name) || '+'}
+                      </div>
+                      <div style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>Nuevo barbero</div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {([
+                        { key: 'name', label: 'Nombre *', type: 'text', ph: 'Ej: Ana García' },
+                        { key: 'role', label: 'Rol', type: 'text', ph: 'Barbero / Barbera' },
+                        { key: 'email', label: 'Email', type: 'email', ph: 'ana@giobarber.es' },
+                        { key: 'phone', label: 'Teléfono', type: 'tel', ph: '6XX XX XX XX' },
+                      ] as const).map(({ key, label, type, ph }) => (
+                        <div key={key}>
+                          <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>{label}</label>
+                          <input
+                            type={type}
+                            value={newBarber[key]}
+                            onChange={e => setNewBarber(nb => ({ ...nb, [key]: e.target.value }))}
+                            placeholder={ph}
+                            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        onClick={addBarber}
+                        disabled={!newBarber.name.trim()}
+                        style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: 'none', background: newBarber.name.trim() ? 'var(--led)' : 'var(--bg-4)', color: newBarber.name.trim() ? '#fff' : 'var(--fg-3)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: newBarber.name.trim() ? 'pointer' : 'default' }}
+                      >
+                        Dar de alta
+                      </button>
+                      <button
+                        onClick={() => { setShowBarberForm(false); setNewBarber({ name: '', role: 'Barbero', email: '', phone: '' }) }}
+                        style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {!showBarberForm && (
+                  <button
+                    onClick={() => setShowBarberForm(true)}
+                    style={{ alignSelf: 'flex-start', padding: '0.5rem 0.875rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}
+                  >
+                    + Añadir barbero
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -434,6 +564,17 @@ export default function SettingsPage() {
           danger
           onConfirm={confirmDeleteService}
           onCancel={() => setDeleteService(null)}
+        />
+      )}
+
+      {deleteBarber && (
+        <ConfirmDialog
+          title="Eliminar barbero"
+          message={`¿Eliminar a ${deleteBarber.name}? Sus citas no se verán afectadas.`}
+          confirmLabel="Eliminar"
+          danger
+          onConfirm={confirmDeleteBarber}
+          onCancel={() => setDeleteBarber(null)}
         />
       )}
     </>
