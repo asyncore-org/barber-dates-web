@@ -116,7 +116,8 @@ redeemed_rewards  id, card_id→loyalty_cards, reward_id→rewards, redeemed_at
 App carga
   └─ ¿Sesión activa?
        ├─ SÍ → admin? → < 15 días? → /admin/dashboard  (else signOut → /)
-       │     → client? → /calendar
+       │     → client? → ¿tiene cita upcoming? → /appointments
+       │                                       → (sin cita) /calendar
        └─ NO → /
 ```
 
