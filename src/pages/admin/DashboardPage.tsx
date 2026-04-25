@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Helmet } from 'react-helmet-async'
+import { useShopContext } from '@/context/ShopContext'
 import { Icon } from '@/components/ui'
+import { AgendaListView, NewAppointmentModal } from '@/components/admin'
 import { MOCK_BARBERS } from '@/lib/mock-data'
 
 const DAYS_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
@@ -64,9 +66,19 @@ function getWeekStart(ref: Date) {
 }
 
 export default function DashboardPage() {
+  const { name: shopName } = useShopContext()
   const [weekOffset, setWeekOffset] = useState(0)
+  const [dayOffset, setDayOffset] = useState(0)
   const [selectedAppt, setSelectedAppt] = useState<WeekAppt | null>(null)
+  const [newApptOpen, setNewApptOpen] = useState(false)
+  const [newApptToast, setNewApptToast] = useState(false)
   const nowLineRef = useRef<HTMLDivElement>(null)
+
+  const handleNewApptConfirm = () => {
+    setNewApptOpen(false)
+    setNewApptToast(true)
+    setTimeout(() => setNewApptToast(false), 3000)
+  }
 
   const weekStart = getWeekStart(new Date())
   weekStart.setDate(weekStart.getDate() + weekOffset * 7)
@@ -80,6 +92,11 @@ export default function DashboardPage() {
 
   const todayCols = (now.getDay() + 6) % 7
 
+  // Mobile: current day column (0=Mon, capped at 0-5)
+  const mobileDayCol = Math.max(0, Math.min(5, todayCols + dayOffset))
+  const mobileDayDate = new Date(getWeekStart(new Date()))
+  mobileDayDate.setDate(mobileDayDate.getDate() + mobileDayCol)
+
   const metrics = [
     { label: 'Citas hoy', value: WEEK_APPOINTMENTS.filter(a => a.day === todayCols).length, icon: 'calendar' as const, color: 'var(--led)' },
     { label: 'Ingresos est.', value: '214€', icon: 'euro' as const, color: 'var(--gold)' },
@@ -92,10 +109,85 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Helmet><title>Agenda — Gio Barber Shop</title></Helmet>
+      <Helmet><title>Agenda — {shopName}</title></Helmet>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '1.5rem', alignItems: 'start' }}
-        className="dashboard-grid">
+      {newApptToast && (
+        <div
+          className="fixed top-[72px] right-3 z-[200] md:top-6 md:right-6"
+          style={{ background: 'var(--ok)', color: '#fff', padding: '0.75rem 1.25rem', borderRadius: 8, fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 600, boxShadow: 'var(--shadow-md)' }}
+        >
+          ✓ Cita añadida correctamente
+        </div>
+      )}
+
+      {/* Mobile-only: day agenda first, then metrics */}
+      <div className="md:hidden flex flex-col gap-4 mb-4">
+        {/* Day agenda — first */}
+        <AgendaListView
+          items={WEEK_APPOINTMENTS.filter(a => a.day === mobileDayCol)}
+          barbers={MOCK_BARBERS}
+          date={mobileDayDate}
+          onPrevDay={() => setDayOffset(o => Math.max(o - 1, -(todayCols)))}
+          onNextDay={() => setDayOffset(o => Math.min(o + 1, 5 - todayCols))}
+          onSelect={(item) => setSelectedAppt(WEEK_APPOINTMENTS.find(a => a.id === item.id) ?? null)}
+        />
+
+        {/* Nueva cita button */}
+        <button
+          onClick={() => setNewApptOpen(true)}
+          className="flex items-center justify-center gap-2 w-full rounded-xl"
+          style={{
+            padding: '0.875rem', minHeight: 48,
+            border: 'none', background: 'var(--led)', color: '#fff',
+            fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 600,
+            cursor: 'pointer', boxShadow: 'var(--glow-led)',
+          }}
+        >
+          <Icon name="plus" size={16} />
+          Nueva cita
+        </button>
+
+        {/* Metrics grid */}
+        <div className="grid grid-cols-2 gap-3">
+          {metrics.map(m => (
+            <div key={m.label} style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 10, padding: '0.875rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
+                <Icon name={m.icon} size={13} />
+                <span style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{m.label}</span>
+              </div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: m.color }}>{m.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Barbers (mobile) */}
+        <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '1rem' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)', marginBottom: '0.875rem' }}>
+            BARBEROS
+          </div>
+          <div className="flex flex-col gap-2">
+            {MOCK_BARBERS.map(b => (
+              <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: 8, background: 'var(--bg-3)', border: '1px solid var(--line)' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: b.active ? 'var(--led)' : 'var(--bg-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: b.active ? '#fff' : 'var(--fg-3)' }}>
+                  {b.initials}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{b.name}</div>
+                  <div style={{ fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>{b.role}</div>
+                </div>
+                <div style={{
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: b.active ? 'var(--ok)' : 'var(--fg-3)',
+                  boxShadow: b.active ? '0 0 6px var(--ok)' : 'none',
+                }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop: two-column layout */}
+      <div className="hidden md:grid md:grid-cols-[1fr_360px] gap-6 items-start">
 
         {/* Left: agenda semanal */}
         <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden' }}>
@@ -112,7 +204,10 @@ export default function DashboardPage() {
               <button onClick={() => setWeekOffset(0)} style={{ ...navBtn, padding: '0.25rem 0.6rem', fontSize: 11, fontFamily: 'var(--font-ui)' }}>
                 Hoy
               </button>
-              <button style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.75rem', borderRadius: 6, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer', boxShadow: 'var(--glow-led)' }}>
+              <button
+                onClick={() => setNewApptOpen(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.75rem', borderRadius: 6, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer', boxShadow: 'var(--glow-led)' }}
+              >
                 <Icon name="plus" size={13} />
                 Nueva cita
               </button>
@@ -157,12 +252,10 @@ export default function DashboardPage() {
               {/* Day columns */}
               {DAYS_ES.map((_, colIdx) => (
                 <div key={colIdx} style={{ borderLeft: '1px solid var(--line)', position: 'relative', minHeight: CELL_HEIGHT_PX * HOURS.length }}>
-                  {/* Hour lines */}
                   {HOURS.map(h => (
                     <div key={h} style={{ height: CELL_HEIGHT_PX, borderTop: '1px solid var(--line)', opacity: 0.4 }} />
                   ))}
 
-                  {/* Now line */}
                   {weekOffset === 0 && colIdx === todayCols && (
                     <div
                       ref={nowLineRef}
@@ -179,7 +272,6 @@ export default function DashboardPage() {
                     />
                   )}
 
-                  {/* Appointments */}
                   {WEEK_APPOINTMENTS.filter(a => a.day === colIdx).map(appt => {
                     const c = COLOR_MAP[appt.color]
                     return (
@@ -219,20 +311,7 @@ export default function DashboardPage() {
 
         {/* Right column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* Metrics */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-            {metrics.map(m => (
-              <div key={m.label} style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 10, padding: '0.875rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
-                  <Icon name={m.icon} size={13} />
-                  <span style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{m.label}</span>
-                </div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: m.color }}>{m.value}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Upcoming today */}
+          {/* Upcoming today — first */}
           <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '1.25rem' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)', marginBottom: '0.875rem' }}>
               HOY · PRÓXIMAS CITAS
@@ -253,6 +332,19 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Metrics */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            {metrics.map(m => (
+              <div key={m.label} style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 10, padding: '0.875rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
+                  <Icon name={m.icon} size={13} />
+                  <span style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{m.label}</span>
+                </div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: m.color }}>{m.value}</div>
+              </div>
+            ))}
           </div>
 
           {/* Barbers */}
@@ -282,15 +374,23 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* New appointment modal */}
+      {newApptOpen && (
+        <NewAppointmentModal
+          onClose={() => setNewApptOpen(false)}
+          onConfirm={handleNewApptConfirm}
+        />
+      )}
+
       {/* Appointment detail modal */}
       {selectedAppt && (
         <div
           onClick={() => setSelectedAppt(null)}
-          style={{ position: 'fixed', inset: 0, background: 'var(--overlay)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ position: 'fixed', inset: 0, background: 'var(--overlay)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '1.5rem', minWidth: 300, boxShadow: 'var(--shadow-lg)' }}
+            style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '1.5rem', width: '100%', maxWidth: 360, boxShadow: 'var(--shadow-lg)' }}
           >
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)', marginBottom: '1rem' }}>
               DETALLE DE CITA
@@ -309,26 +409,20 @@ export default function DashboardPage() {
             ))}
             <button
               onClick={() => setSelectedAppt(null)}
-              style={{ width: '100%', marginTop: '1rem', padding: '0.6rem', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', cursor: 'pointer' }}
+              style={{ width: '100%', marginTop: '1rem', padding: '0.75rem', minHeight: 44, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', cursor: 'pointer' }}
             >
               Cerrar
             </button>
           </div>
         </div>
       )}
-
-      <style>{`
-        @media (max-width: 900px) {
-          .dashboard-grid { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
     </>
   )
 }
 
 const navBtn: React.CSSProperties = {
   display: 'flex', alignItems: 'center', justifyContent: 'center',
-  width: 28, height: 28, borderRadius: 6,
+  width: 32, height: 32, borderRadius: 6,
   border: '1px solid var(--line)', background: 'transparent',
   color: 'var(--fg-2)', cursor: 'pointer',
 }

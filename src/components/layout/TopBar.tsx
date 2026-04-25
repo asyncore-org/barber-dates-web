@@ -1,13 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks'
-import { useTheme } from '@/hooks'
 import { Logo } from './Logo'
 import { Icon } from '@/components/ui'
 
 export function TopBar() {
   const { user, signOut } = useAuth()
-  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -58,7 +56,7 @@ export function TopBar() {
       }}>
         <Logo size={32} />
 
-        <nav style={{ display: 'flex', gap: '0.25rem', flex: 1 }}>
+        <nav className="hidden md:flex" style={{ gap: '0.25rem', flex: 1 }}>
           {links.map(({ to, label, icon }) => (
             <NavLink
               key={to}
@@ -85,25 +83,6 @@ export function TopBar() {
         </nav>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <button
-            onClick={toggleTheme}
-            title={`Cambiar a modo ${theme === 'dark' ? 'claro' : 'oscuro'}`}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 34,
-              height: 34,
-              borderRadius: 6,
-              border: '1px solid var(--line)',
-              background: 'transparent',
-              color: 'var(--fg-2)',
-              cursor: 'pointer',
-            }}
-          >
-            <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={15} />
-          </button>
-
           <button
             style={{
               display: 'flex',

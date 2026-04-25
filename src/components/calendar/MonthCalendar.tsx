@@ -7,6 +7,7 @@ interface MonthCalendarProps {
   year: number
   onMonthChange: (month: number, year: number) => void
   busyDays?: number[]
+  maxDate?: Date
 }
 
 const DAYS = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do']
@@ -26,9 +27,10 @@ const MONTH_NAMES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
 
-export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, busyDays = [] }: MonthCalendarProps) {
+export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, busyDays = [], maxDate }: MonthCalendarProps) {
   const today = new Date()
   const todayNorm = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const maxNorm = maxDate ? new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate()) : null
 
   const days = getMonthDays(year, month)
 
@@ -52,7 +54,7 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
           </span>
           <button onClick={next} style={navBtn}><Icon name="chevronR" size={14} /></button>
         </div>
-        <button onClick={goToday} style={{ ...navBtn, padding: '0.25rem 0.6rem', fontSize: 11, fontFamily: 'var(--font-ui)' }}>
+        <button onClick={goToday} style={{ ...navBtn, width: 'auto', padding: '0 0.75rem', fontSize: 12, fontFamily: 'var(--font-ui)' }}>
           Hoy
         </button>
       </div>
@@ -70,6 +72,8 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
           if (!current) return <div key={`e${i}`} />
           const date = new Date(year, month, day)
           const isPast = date < todayNorm
+          const isBeyondMax = maxNorm ? date > maxNorm : false
+          const isDisabled = isPast || isBeyondMax
           const isToday = date.getTime() === todayNorm.getTime()
           const isSelected = selected
             ? selected.getFullYear() === year && selected.getMonth() === month && selected.getDate() === day
@@ -79,7 +83,7 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
           return (
             <button
               key={day}
-              disabled={isPast}
+              disabled={isDisabled}
               onClick={() => onSelect(date)}
               style={{
                 position: 'relative',
@@ -90,12 +94,12 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
                 borderRadius: 6,
                 border: isToday ? '1px solid var(--led)' : '1px solid transparent',
                 background: isSelected ? '#fff' : 'transparent',
-                color: isPast ? 'var(--fg-3)' : isSelected ? '#0a0a0b' : 'var(--fg-0)',
+                color: isDisabled ? 'var(--fg-3)' : isSelected ? '#0a0a0b' : 'var(--fg-0)',
                 fontSize: 13,
                 fontFamily: 'var(--font-ui)',
-                cursor: isPast ? 'default' : 'pointer',
+                cursor: isDisabled ? 'not-allowed' : 'pointer',
                 boxShadow: isToday ? 'var(--glow-led)' : 'none',
-                opacity: isPast ? 0.4 : 1,
+                opacity: isDisabled ? (isBeyondMax ? 0.25 : 0.4) : 1,
                 transition: 'all 0.12s',
               }}
             >
@@ -122,9 +126,9 @@ const navBtn: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: 28,
-  height: 28,
-  borderRadius: 6,
+  width: 40,
+  height: 40,
+  borderRadius: 8,
   border: '1px solid var(--line)',
   background: 'transparent',
   color: 'var(--fg-2)',

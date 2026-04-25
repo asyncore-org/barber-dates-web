@@ -13,6 +13,8 @@ export interface MockBarber {
   role: string
   initials: string
   active: boolean
+  phone?: string
+  email?: string
 }
 
 export interface MockAppointment {
@@ -84,9 +86,9 @@ export const MOCK_SERVICES: MockService[] = [
 ]
 
 export const MOCK_BARBERS: MockBarber[] = [
-  { id: 'b1', name: 'Gio', role: 'Maestro barbero', initials: 'GV', active: true },
-  { id: 'b2', name: 'Marcos', role: 'Barbero', initials: 'MC', active: true },
-  { id: 'b3', name: 'Lucía', role: 'Barbera', initials: 'LP', active: false },
+  { id: 'b1', name: 'Gio', role: 'Maestro barbero', initials: 'GV', active: true, phone: '641 36 13 52', email: 'gio@giobarber.es' },
+  { id: 'b2', name: 'Marcos', role: 'Barbero', initials: 'MC', active: true, phone: '612 44 78 91', email: 'marcos@giobarber.es' },
+  { id: 'b3', name: 'Lucía', role: 'Barbera', initials: 'LP', active: false, phone: '698 21 05 37', email: 'lucia@giobarber.es' },
 ]
 
 export const MOCK_APPOINTMENTS: MockAppointment[] = [

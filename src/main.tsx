@@ -7,6 +7,7 @@ import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
 import './styles/globals.css'
 import App from './App.tsx'
+import { ShopProvider } from './context/ShopContext'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,7 +29,9 @@ async function bootstrap() {
       <HelmetProvider>
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
-            <App />
+            <ShopProvider>
+              <App />
+            </ShopProvider>
           </BrowserRouter>
         </QueryClientProvider>
       </HelmetProvider>

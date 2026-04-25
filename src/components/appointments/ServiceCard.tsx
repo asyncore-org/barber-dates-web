@@ -13,7 +13,8 @@ export function ServiceCard({ service, selected, onClick }: ServiceCardProps) {
       style={{
         width: '100%',
         textAlign: 'left',
-        padding: '0.75rem 1rem',
+        padding: '0.875rem 1rem',
+        minHeight: 44,
         borderRadius: 8,
         border: selected ? '1px solid var(--led-soft)' : '1px solid var(--line)',
         background: selected ? 'rgba(123,79,255,0.08)' : 'var(--bg-3)',
