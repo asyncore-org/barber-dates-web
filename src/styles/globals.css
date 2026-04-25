@@ -449,3 +449,24 @@ h3,
     padding: 14px 16px;
   }
 }
+
+/* ============ THEME TRANSITION ============ */
+
+@keyframes theme-reveal {
+  from {
+    clip-path: circle(0% at 50% 0%);
+  }
+  to {
+    clip-path: circle(150% at 50% 0%);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) {
+    animation: none;
+  }
+
+  ::view-transition-new(root) {
+    animation: theme-reveal 0.38s ease-in-out;
+  }
+}

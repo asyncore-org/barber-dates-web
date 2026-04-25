@@ -4,8 +4,9 @@ type Theme = 'dark' | 'light'
 
 const STORAGE_KEY = 'gio_theme'
 
-function applyTheme(theme: Theme) {
+function applyThemeToDOM(theme: Theme) {
   document.documentElement.dataset.theme = theme
+  localStorage.setItem(STORAGE_KEY, theme)
 }
 
 export function useTheme() {
@@ -15,11 +16,21 @@ export function useTheme() {
   })
 
   useEffect(() => {
-    applyTheme(theme)
-    localStorage.setItem(STORAGE_KEY, theme)
+    applyThemeToDOM(theme)
   }, [theme])
 
-  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark'
+    const doToggle = () => {
+      applyThemeToDOM(newTheme)
+      setTheme(newTheme)
+    }
+    if (!document.startViewTransition) {
+      doToggle()
+      return
+    }
+    document.startViewTransition(doToggle)
+  }
 
   return { theme, setTheme, toggleTheme }
 }
