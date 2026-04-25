@@ -110,6 +110,8 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
               disabled={isDisabled}
               onClick={() => onSelect(date)}
               className="cal-day"
+              data-selected={isSelected || undefined}
+              data-today={isToday || undefined}
               style={{
                 position: 'relative',
                 aspectRatio: '1',

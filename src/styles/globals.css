@@ -477,9 +477,9 @@ h3,
   cursor: default;
 }
 
-.cal-day:not(:disabled):hover {
-  background: var(--bg-3) !important;
-  border-color: var(--line-2) !important;
+.cal-day:not(:disabled):not([data-selected]):not([data-today]):hover {
+  background: var(--bg-3);
+  border-color: var(--line-2);
 }
 
 /* ============ THEME TRANSITION ============ */
