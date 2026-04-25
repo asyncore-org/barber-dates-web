@@ -54,7 +54,11 @@ export default function SettingsPage() {
   const [deleteService, setDeleteService] = useState<MockService | null>(null)
   const [barbers, setBarbers] = useState<MockBarber[]>(MOCK_BARBERS)
   const [hours, setHours] = useState<MockHourEntry[]>(MOCK_HOURS)
-  const [closures] = useState<MockClosure[]>(MOCK_CLOSURES)
+  const [closures, setClosures] = useState<MockClosure[]>(MOCK_CLOSURES)
+  const [showClosureForm, setShowClosureForm] = useState(false)
+  const [newClosureDate, setNewClosureDate] = useState('')
+  const [newClosureReason, setNewClosureReason] = useState('')
+  const [newClosureAll, setNewClosureAll] = useState(true)
   const [rewards, setRewards] = useState<MockReward[]>(MOCK_REWARDS)
   const [loyaltyRatio, setLoyaltyRatio] = useState('1')
   const [welcomePoints, setWelcomePoints] = useState('10')
@@ -79,6 +83,18 @@ export default function SettingsPage() {
 
   const toggleDay = (i: number) => {
     setHours(h => h.map((d, idx) => idx === i ? { ...d, open: !d.open } : d))
+  }
+
+  const deleteClosure = (id: string) => setClosures(c => c.filter(cl => cl.id !== id))
+  const addClosure = () => {
+    if (!newClosureDate || !newClosureReason.trim()) return
+    const d = new Date(newClosureDate + 'T12:00:00')
+    const label = d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
+    setClosures(c => [...c, { id: `cl${Date.now()}`, date: label, reason: newClosureReason.trim(), all: newClosureAll }])
+    setNewClosureDate('')
+    setNewClosureReason('')
+    setNewClosureAll(true)
+    setShowClosureForm(false)
   }
 
   const deleteReward = (id: string) => setRewards(r => r.filter(rw => rw.id !== id))
@@ -221,16 +237,83 @@ export default function SettingsPage() {
               <SectionTitle>CIERRES ESPECIALES</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {closures.map(c => (
-                  <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
-                    <div>
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{c.reason}</div>
-                      <div style={{ fontSize: 11, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>{c.date}</div>
+                      <div style={{ fontSize: 11, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', marginTop: 2 }}>{c.date}</div>
                     </div>
-                    <div style={{ fontSize: 11, color: c.all ? 'var(--danger)' : 'var(--fg-2)', fontFamily: 'var(--font-ui)', alignSelf: 'center' }}>
-                      {c.all ? 'Cierre total' : 'Cierre parcial'}
+                    <div style={{ fontSize: 11, color: c.all ? 'var(--danger)' : 'var(--fg-2)', fontFamily: 'var(--font-ui)', flexShrink: 0 }}>
+                      {c.all ? 'Cierre total' : 'Parcial'}
                     </div>
+                    <button
+                      onClick={() => deleteClosure(c.id)}
+                      style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', minWidth: 32, minHeight: 32, borderRadius: 4, fontSize: 14, flexShrink: 0 }}
+                    >✕</button>
                   </div>
                 ))}
+
+                {showClosureForm && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', padding: '0.875rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px dashed var(--line)' }}>
+                    <div className="flex flex-col gap-1 md:grid md:grid-cols-2 md:gap-3">
+                      <div>
+                        <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 4 }}>Fecha</label>
+                        <input
+                          type="date"
+                          value={newClosureDate}
+                          onChange={e => setNewClosureDate(e.target.value)}
+                          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13 }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 4 }}>Motivo</label>
+                        <input
+                          type="text"
+                          value={newClosureReason}
+                          onChange={e => setNewClosureReason(e.target.value)}
+                          placeholder="Ej: Vacaciones, festivo..."
+                          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13 }}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <button
+                        onClick={() => setNewClosureAll(v => !v)}
+                        style={{
+                          padding: '0.4rem 0.75rem', minHeight: 36, borderRadius: 6, border: 'none',
+                          background: newClosureAll ? 'rgba(220,53,69,0.12)' : 'rgba(109,187,109,0.12)',
+                          color: newClosureAll ? 'var(--danger)' : 'var(--ok)',
+                          fontFamily: 'var(--font-ui)', fontSize: 12, cursor: 'pointer',
+                        }}
+                      >
+                        {newClosureAll ? 'Cierre total' : 'Cierre parcial'}
+                      </button>
+                      <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}>clic para cambiar</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        onClick={addClosure}
+                        style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}
+                      >
+                        Añadir
+                      </button>
+                      <button
+                        onClick={() => setShowClosureForm(false)}
+                        style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {!showClosureForm && (
+                  <button
+                    onClick={() => setShowClosureForm(true)}
+                    style={{ alignSelf: 'flex-start', padding: '0.5rem 0.875rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}
+                  >
+                    + Añadir cierre
+                  </button>
+                )}
               </div>
             </div>
           )}
