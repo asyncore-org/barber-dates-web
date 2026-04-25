@@ -4,10 +4,9 @@ import { useShopContext } from '@/context/ShopContext'
 import { getMaxBookingDate } from '@/domain/booking'
 import { MonthCalendar } from '@/components/calendar'
 import { TimeSlots } from '@/components/calendar'
-import { LoyaltyCard } from '@/components/loyalty'
 import { ServiceCard } from '@/components/appointments'
 import { Modal } from '@/components/ui'
-import { MOCK_SERVICES, MOCK_BARBERS, MOCK_LOYALTY, MOCK_TAKEN_SLOTS } from '@/lib/mock-data'
+import { MOCK_SERVICES, MOCK_BARBERS, MOCK_TAKEN_SLOTS } from '@/lib/mock-data'
 import type { MockService, MockBarber } from '@/lib/mock-data'
 
 function fmt(date: Date) {
@@ -130,13 +129,6 @@ export default function CalendarPage() {
 
         {/* Right column */}
         <div className="flex flex-col gap-4">
-          <LoyaltyCard
-            points={MOCK_LOYALTY.points}
-            target={MOCK_LOYALTY.target}
-            stamps={MOCK_LOYALTY.stamps}
-            memberCode={MOCK_LOYALTY.memberCode}
-          />
-
           {/* Services */}
           <div className={CARD}>
             <div className={SECTION_LABEL}>SERVICIO</div>
@@ -168,6 +160,15 @@ export default function CalendarPage() {
                   <span style={{ fontSize: 13, color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontWeight: 500 }}>{value}</span>
                 </div>
               ))}
+
+              {selectedService && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.375rem', borderTop: '1px solid var(--line)' }}>
+                  <span style={{ fontSize: 12, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>Ganarás</span>
+                  <span style={{ fontSize: 13, color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontWeight: 600 }}>
+                    ★ {selectedService.points} pts
+                  </span>
+                </div>
+              )}
             </div>
             <button
               disabled={!canConfirm}
