@@ -253,7 +253,7 @@ export default function DashboardPage() {
               {DAYS_ES.map((_, colIdx) => (
                 <div key={colIdx} style={{ borderLeft: '1px solid var(--line)', position: 'relative', minHeight: CELL_HEIGHT_PX * HOURS.length }}>
                   {HOURS.map(h => (
-                    <div key={h} style={{ height: CELL_HEIGHT_PX, borderTop: '1px solid var(--line)', opacity: 0.4 }} />
+                    <div key={h} style={{ height: CELL_HEIGHT_PX, borderTop: '1px solid var(--line)', opacity: 0.4, boxSizing: 'border-box' }} />
                   ))}
 
                   {weekOffset === 0 && colIdx === todayCols && (
