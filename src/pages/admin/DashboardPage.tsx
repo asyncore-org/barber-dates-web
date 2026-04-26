@@ -241,31 +241,31 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Day headers */}
-          <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(6, 1fr)', borderBottom: '1px solid var(--line)' }}>
-            <div />
-            {DAYS_ES.map((d, i) => {
-              const dayDate = new Date(weekStart)
-              dayDate.setDate(dayDate.getDate() + i)
-              const isToday = weekOffset === 0 && i === todayCols
-              return (
-                <div key={d} style={{ padding: '0.6rem 0', textAlign: 'center', borderLeft: '1px solid var(--line)' }}>
-                  <div style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{d}</div>
-                  <div style={{
-                    fontFamily: 'var(--font-display)', fontSize: 20,
-                    color: isToday ? 'var(--led-soft)' : 'var(--fg-0)',
-                    lineHeight: 1.1,
-                    textShadow: isToday ? '0 0 16px rgba(123,79,255,0.5)' : 'none',
-                  }}>
-                    {dayDate.getDate()}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Grid body */}
+          {/* Grid body — day headers are sticky inside this container to prevent scrollbar misalignment */}
           <div style={{ maxHeight: 520, overflowY: 'auto' }}>
+            {/* Day headers — sticky so scrollbar width is shared with the content grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(6, 1fr)', borderBottom: '1px solid var(--line)', position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-2)' }}>
+              <div />
+              {DAYS_ES.map((d, i) => {
+                const dayDate = new Date(weekStart)
+                dayDate.setDate(dayDate.getDate() + i)
+                const isToday = weekOffset === 0 && i === todayCols
+                return (
+                  <div key={d} style={{ padding: '0.6rem 0', textAlign: 'center', borderLeft: '1px solid var(--line)' }}>
+                    <div style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{d}</div>
+                    <div style={{
+                      fontFamily: 'var(--font-display)', fontSize: 20,
+                      color: isToday ? 'var(--led-soft)' : 'var(--fg-0)',
+                      lineHeight: 1.1,
+                      textShadow: isToday ? '0 0 16px rgba(123,79,255,0.5)' : 'none',
+                    }}>
+                      {dayDate.getDate()}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(6, 1fr)', position: 'relative' }}>
               {/* Hour labels */}
               <div>
