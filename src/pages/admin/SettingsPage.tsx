@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { ConfirmDialog } from '@/components/ui'
+import { MonthCalendar } from '@/components/calendar'
 import { useTheme } from '@/hooks'
 import { useShopContext } from '@/context/ShopContext'
 import {
@@ -67,9 +68,15 @@ export default function SettingsPage() {
   const [hours, setHours] = useState<MockHourEntry[]>(MOCK_HOURS)
   const [closures, setClosures] = useState<MockClosure[]>(MOCK_CLOSURES)
   const [showClosureForm, setShowClosureForm] = useState(false)
-  const [newClosureDate, setNewClosureDate] = useState('')
+  const [newClosureSelectedDate, setNewClosureSelectedDate] = useState<Date | null>(null)
+  const [showAddDatePicker, setShowAddDatePicker] = useState(false)
+  const [newPickerMonth, setNewPickerMonth] = useState(new Date().getMonth())
+  const [newPickerYear, setNewPickerYear] = useState(new Date().getFullYear())
   const [newClosureReason, setNewClosureReason] = useState('')
   const [newClosureAll, setNewClosureAll] = useState(true)
+  const [newClosureTime, setNewClosureTime] = useState('')
+  const [editingClosureId, setEditingClosureId] = useState<string | null>(null)
+  const [editClosureData, setEditClosureData] = useState<{ date: string; reason: string; all: boolean; closingTime: string } | null>(null)
   const [rewards, setRewards] = useState<MockReward[]>(MOCK_REWARDS)
   const [loyaltyRatio, setLoyaltyRatio] = useState('1')
   const [welcomePoints, setWelcomePoints] = useState('10')
@@ -121,15 +128,39 @@ export default function SettingsPage() {
   }
 
   const deleteClosure = (id: string) => setClosures(c => c.filter(cl => cl.id !== id))
+
+  const fmtClosureDate = (d: Date) =>
+    d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
+
   const addClosure = () => {
-    if (!newClosureDate || !newClosureReason.trim()) return
-    const d = new Date(newClosureDate + 'T12:00:00')
-    const label = d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
-    setClosures(c => [...c, { id: `cl${Date.now()}`, date: label, reason: newClosureReason.trim(), all: newClosureAll }])
-    setNewClosureDate('')
+    if (!newClosureSelectedDate || !newClosureReason.trim()) return
+    setClosures(c => [...c, {
+      id: `cl${Date.now()}`,
+      date: fmtClosureDate(newClosureSelectedDate),
+      reason: newClosureReason.trim(),
+      all: newClosureAll,
+      closingTime: !newClosureAll && newClosureTime ? newClosureTime : undefined,
+    }])
+    setNewClosureSelectedDate(null)
     setNewClosureReason('')
     setNewClosureAll(true)
+    setNewClosureTime('')
     setShowClosureForm(false)
+    setShowAddDatePicker(false)
+  }
+
+  const startEditClosure = (c: MockClosure) => {
+    setEditingClosureId(c.id)
+    setEditClosureData({ date: c.date, reason: c.reason, all: c.all, closingTime: c.closingTime ?? '' })
+  }
+
+  const saveEditClosure = () => {
+    if (!editingClosureId || !editClosureData) return
+    setClosures(cs => cs.map(c => c.id === editingClosureId
+      ? { ...c, ...editClosureData, closingTime: !editClosureData.all && editClosureData.closingTime ? editClosureData.closingTime : undefined }
+      : c))
+    setEditingClosureId(null)
+    setEditClosureData(null)
   }
 
   const deleteReward = (id: string) => setRewards(r => r.filter(rw => rw.id !== id))
@@ -197,7 +228,9 @@ export default function SettingsPage() {
           {section === 'servicios' && (
             <div>
               <SectionTitle>SERVICIOS</SectionTitle>
-              <div style={{ overflowX: 'auto' }}>
+
+              {/* Desktop table */}
+              <div className="hidden md:block" style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-ui)', fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--line)' }}>
@@ -231,6 +264,40 @@ export default function SettingsPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Mobile cards */}
+              <div className="md:hidden flex flex-col gap-3">
+                {services.map(svc => (
+                  <div key={svc.id} style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 8, padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                      <input
+                        value={svc.name}
+                        onChange={e => updateService(svc.id, 'name', e.target.value)}
+                        style={{ flex: 1, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.35rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 500 }}
+                      />
+                      <button
+                        onClick={() => setDeleteService(svc)}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 14, flexShrink: 0, padding: '0.25rem' }}
+                      >✕</button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+                      {(['duration', 'price', 'points'] as const).map(f => (
+                        <div key={f}>
+                          <div style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>
+                            {f === 'duration' ? 'Min' : f === 'price' ? '€' : 'Pts'}
+                          </div>
+                          <input
+                            value={String(svc[f])}
+                            onChange={e => updateService(svc.id, f, Number(e.target.value))}
+                            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.3rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, textAlign: 'center' }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
               <button
                 onClick={addService}
                 style={{ marginTop: '1rem', padding: '0.6rem 1rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}
@@ -291,45 +358,123 @@ export default function SettingsPage() {
               <SectionTitle>CIERRES ESPECIALES</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {closures.map(c => (
-                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{c.reason}</div>
-                      <div style={{ fontSize: 11, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', marginTop: 2 }}>{c.date}</div>
-                    </div>
-                    <div style={{ fontSize: 11, color: c.all ? 'var(--danger)' : 'var(--fg-2)', fontFamily: 'var(--font-ui)', flexShrink: 0 }}>
-                      {c.all ? 'Cierre total' : 'Parcial'}
-                    </div>
-                    <button
-                      onClick={() => deleteClosure(c.id)}
-                      style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', minWidth: 32, minHeight: 32, borderRadius: 4, fontSize: 14, flexShrink: 0 }}
-                    >✕</button>
+                  <div key={c.id}>
+                    {editingClosureId === c.id && editClosureData ? (
+                      /* ── Inline edit form ── */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', padding: '0.875rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px dashed var(--led-soft)' }}>
+                        <div style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', marginBottom: 2 }}>
+                          Editando: <strong style={{ color: 'var(--fg-1)' }}>{c.date}</strong>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 4 }}>Motivo</label>
+                          <input
+                            type="text"
+                            value={editClosureData.reason}
+                            onChange={e => setEditClosureData(d => d ? { ...d, reason: e.target.value } : d)}
+                            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13 }}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => setEditClosureData(d => d ? { ...d, all: !d.all } : d)}
+                            style={{
+                              padding: '0.4rem 0.75rem', minHeight: 36, borderRadius: 6, border: 'none',
+                              background: editClosureData.all ? 'rgba(220,53,69,0.12)' : 'rgba(109,187,109,0.12)',
+                              color: editClosureData.all ? 'var(--danger)' : 'var(--ok)',
+                              fontFamily: 'var(--font-ui)', fontSize: 12, cursor: 'pointer',
+                            }}
+                          >
+                            {editClosureData.all ? 'Cierre total' : 'Cierre parcial'}
+                          </button>
+                          {!editClosureData.all && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}>Cierra a las</label>
+                              <input
+                                type="time"
+                                value={editClosureData.closingTime}
+                                onChange={e => setEditClosureData(d => d ? { ...d, closingTime: e.target.value } : d)}
+                                style={{ background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.35rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-mono, monospace)', fontSize: 13 }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button onClick={saveEditClosure} style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>
+                            Guardar
+                          </button>
+                          <button onClick={() => { setEditingClosureId(null); setEditClosureData(null) }} style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* ── Display row ── */
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{c.reason}</div>
+                          <div style={{ fontSize: 11, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', marginTop: 2 }}>
+                            {c.date}
+                            {!c.all && c.closingTime && ` · hasta ${c.closingTime}`}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 11, color: c.all ? 'var(--danger)' : 'var(--ok)', fontFamily: 'var(--font-ui)', flexShrink: 0 }}>
+                          {c.all ? 'Cierre total' : 'Parcial'}
+                        </div>
+                        <button
+                          onClick={() => startEditClosure(c)}
+                          style={{ background: 'none', border: '1px solid var(--line)', color: 'var(--fg-2)', cursor: 'pointer', minWidth: 32, minHeight: 32, borderRadius: 4, fontSize: 12, flexShrink: 0, fontFamily: 'var(--font-ui)' }}
+                          title="Editar"
+                        >✎</button>
+                        <button
+                          onClick={() => deleteClosure(c.id)}
+                          style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', minWidth: 32, minHeight: 32, borderRadius: 4, fontSize: 14, flexShrink: 0 }}
+                        >✕</button>
+                      </div>
+                    )}
                   </div>
                 ))}
 
                 {showClosureForm && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', padding: '0.875rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px dashed var(--line)' }}>
-                    <div className="flex flex-col gap-1 md:grid md:grid-cols-2 md:gap-3">
-                      <div>
-                        <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 4 }}>Fecha</label>
-                        <input
-                          type="date"
-                          value={newClosureDate}
-                          onChange={e => setNewClosureDate(e.target.value)}
-                          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13 }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 4 }}>Motivo</label>
-                        <input
-                          type="text"
-                          value={newClosureReason}
-                          onChange={e => setNewClosureReason(e.target.value)}
-                          placeholder="Ej: Vacaciones, festivo..."
-                          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13 }}
-                        />
-                      </div>
+                    {/* Date picker */}
+                    <div>
+                      <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 4 }}>Fecha</label>
+                      <button
+                        onClick={() => setShowAddDatePicker(v => !v)}
+                        style={{
+                          width: '100%', textAlign: 'left', padding: '0.4rem 0.5rem', borderRadius: 6,
+                          border: '1px solid var(--line)', background: 'var(--bg-4)',
+                          color: newClosureSelectedDate ? 'var(--fg-0)' : 'var(--fg-3)',
+                          fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer',
+                        }}
+                      >
+                        {newClosureSelectedDate ? fmtClosureDate(newClosureSelectedDate) : 'Seleccionar fecha…'}
+                      </button>
+                      {showAddDatePicker && (
+                        <div style={{ marginTop: 8, padding: '0.875rem', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 8 }}>
+                          <MonthCalendar
+                            selected={newClosureSelectedDate}
+                            onSelect={d => { setNewClosureSelectedDate(d); setShowAddDatePicker(false) }}
+                            month={newPickerMonth}
+                            year={newPickerYear}
+                            onMonthChange={(m, y) => { setNewPickerMonth(m); setNewPickerYear(y) }}
+                          />
+                        </div>
+                      )}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+
+                    <div>
+                      <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 4 }}>Motivo</label>
+                      <input
+                        type="text"
+                        value={newClosureReason}
+                        onChange={e => setNewClosureReason(e.target.value)}
+                        placeholder="Ej: Vacaciones, festivo..."
+                        style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13 }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                       <button
                         onClick={() => setNewClosureAll(v => !v)}
                         style={{
@@ -341,8 +486,19 @@ export default function SettingsPage() {
                       >
                         {newClosureAll ? 'Cierre total' : 'Cierre parcial'}
                       </button>
-                      <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}>clic para cambiar</span>
+                      {!newClosureAll && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}>Cierra a las</label>
+                          <input
+                            type="time"
+                            value={newClosureTime}
+                            onChange={e => setNewClosureTime(e.target.value)}
+                            style={{ background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.35rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-mono, monospace)', fontSize: 13 }}
+                          />
+                        </div>
+                      )}
                     </div>
+
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button
                         onClick={addClosure}
@@ -351,7 +507,7 @@ export default function SettingsPage() {
                         Añadir
                       </button>
                       <button
-                        onClick={() => setShowClosureForm(false)}
+                        onClick={() => { setShowClosureForm(false); setShowAddDatePicker(false); setNewClosureSelectedDate(null) }}
                         style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}
                       >
                         Cancelar
@@ -535,15 +691,15 @@ export default function SettingsPage() {
             <div>
               <SectionTitle>DATOS DE LA BARBERÍA</SectionTitle>
               <Row label="Nombre" value={shop.name} onChange={v => { setShop(s => ({ ...s, name: v })); updateShop({ name: v }) }} />
-              <Row label="Teléfono" value={shop.phone} onChange={v => setShop(s => ({ ...s, phone: v }))} />
-              <Row label="Email" value={shop.email} onChange={v => setShop(s => ({ ...s, email: v }))} />
-              <Row label="Instagram" value={shop.instagram} onChange={v => setShop(s => ({ ...s, instagram: v }))} />
-              <Row label="Dirección" value={shop.address} onChange={v => setShop(s => ({ ...s, address: v }))} />
+              <Row label="Teléfono" value={shop.phone} onChange={v => { setShop(s => ({ ...s, phone: v })); updateShop({ phone: v }) }} />
+              <Row label="Email" value={shop.email} onChange={v => { setShop(s => ({ ...s, email: v })); updateShop({ email: v }) }} />
+              <Row label="Instagram" value={shop.instagram} onChange={v => { setShop(s => ({ ...s, instagram: v })); updateShop({ instagram: v }) }} />
+              <Row label="Dirección" value={shop.address} onChange={v => { setShop(s => ({ ...s, address: v })); updateShop({ address: v }) }} />
               <div className="flex flex-col gap-1 mb-3 md:grid md:grid-cols-[160px_1fr] md:items-start md:gap-3">
                 <label style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)', paddingTop: 6 }}>Descripción</label>
                 <textarea
                   value={shop.description}
-                  onChange={e => setShop(s => ({ ...s, description: e.target.value }))}
+                  onChange={e => { const v = e.target.value; setShop(s => ({ ...s, description: v })); updateShop({ description: v }) }}
                   rows={3}
                   style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.5rem 0.6rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, resize: 'vertical', outline: 'none', width: '100%', boxSizing: 'border-box' }}
                 />

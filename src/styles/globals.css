@@ -449,3 +449,56 @@ h3,
     padding: 14px 16px;
   }
 }
+
+/* ============ CALENDAR ============ */
+
+.cal-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--fg-2);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.cal-nav-btn:not(:disabled):hover {
+  background: var(--bg-3);
+  color: var(--fg-0);
+  border-color: var(--line-2);
+}
+
+.cal-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.cal-day:not(:disabled):not([data-selected]):not([data-today]):hover {
+  background: var(--bg-3);
+  border-color: var(--line-2);
+}
+
+/* ============ THEME TRANSITION ============ */
+
+@keyframes theme-reveal {
+  from {
+    clip-path: circle(0% at 50% 0%);
+  }
+  to {
+    clip-path: circle(150% at 50% 0%);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) {
+    animation: none;
+  }
+
+  ::view-transition-new(root) {
+    animation: theme-reveal 0.38s ease-in-out;
+  }
+}

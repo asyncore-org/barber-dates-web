@@ -25,7 +25,7 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
   const [selectedService, setSelectedService] = useState<MockService | null>(null)
-  const [selectedBarber, setSelectedBarber] = useState<MockBarber>(MOCK_BARBERS[0])
+  const [selectedBarber, setSelectedBarber] = useState<MockBarber | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmed, setConfirmed] = useState(false)
 
@@ -99,6 +99,30 @@ export default function CalendarPage() {
           <div className={CARD}>
             <div className={SECTION_LABEL}>BARBERO</div>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {/* Any-barber option */}
+              <button
+                onClick={() => setSelectedBarber(null)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  padding: '0.6rem 1rem', borderRadius: 8, minHeight: 44,
+                  border: selectedBarber === null ? '1px solid var(--led-soft)' : '1px solid var(--line)',
+                  background: selectedBarber === null ? 'rgba(123,79,255,0.1)' : 'var(--bg-3)',
+                  color: selectedBarber === null ? 'var(--fg-0)' : 'var(--fg-1)',
+                  cursor: 'pointer', fontSize: 13, fontFamily: 'var(--font-ui)',
+                  transition: 'all 0.12s',
+                }}
+              >
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: selectedBarber === null ? 'var(--led)' : 'var(--bg-4)',
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', fontSize: 13, color: selectedBarber === null ? '#fff' : 'var(--fg-2)',
+                }}>
+                  ✦
+                </div>
+                Cualquier barbero
+              </button>
+
               {MOCK_BARBERS.filter(b => b.active).map(b => (
                 <button
                   key={b.id}
@@ -106,9 +130,9 @@ export default function CalendarPage() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: '0.5rem',
                     padding: '0.6rem 1rem', borderRadius: 8, minHeight: 44,
-                    border: selectedBarber.id === b.id ? '1px solid var(--led-soft)' : '1px solid var(--line)',
-                    background: selectedBarber.id === b.id ? 'rgba(123,79,255,0.1)' : 'var(--bg-3)',
-                    color: selectedBarber.id === b.id ? 'var(--fg-0)' : 'var(--fg-1)',
+                    border: selectedBarber?.id === b.id ? '1px solid var(--led-soft)' : '1px solid var(--line)',
+                    background: selectedBarber?.id === b.id ? 'rgba(123,79,255,0.1)' : 'var(--bg-3)',
+                    color: selectedBarber?.id === b.id ? 'var(--fg-0)' : 'var(--fg-1)',
                     cursor: 'pointer', fontSize: 13, fontFamily: 'var(--font-ui)',
                     transition: 'all 0.12s',
                   }}
@@ -152,7 +176,7 @@ export default function CalendarPage() {
                 { label: 'Fecha', value: selectedDate ? fmt(selectedDate) : '—' },
                 { label: 'Hora', value: selectedSlot ?? '—' },
                 { label: 'Servicio', value: selectedService?.name ?? '—' },
-                { label: 'Barbero', value: selectedBarber.name },
+                { label: 'Barbero', value: selectedBarber?.name ?? 'Cualquier barbero' },
                 { label: 'Precio', value: selectedService ? `${selectedService.price}€` : '—' },
               ].map(({ label, value }) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -200,7 +224,7 @@ export default function CalendarPage() {
             { label: 'Fecha', value: selectedDate ? fmt(selectedDate) : '' },
             { label: 'Hora', value: selectedSlot ?? '' },
             { label: 'Servicio', value: selectedService?.name ?? '' },
-            { label: 'Barbero', value: selectedBarber.name },
+            { label: 'Barbero', value: selectedBarber?.name ?? 'Cualquier barbero' },
             { label: 'Duración', value: selectedService ? `${selectedService.duration} min` : '' },
             { label: 'Precio', value: selectedService ? `${selectedService.price}€` : '' },
           ].map(({ label, value }) => (

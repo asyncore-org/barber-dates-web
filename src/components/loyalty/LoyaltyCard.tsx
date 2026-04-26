@@ -1,21 +1,31 @@
+interface Reward {
+  cost: number
+  label: string
+}
+
 interface LoyaltyCardProps {
   points: number
   target: number
   stamps: number
   memberCode: string
+  rewards?: Reward[]
 }
 
-const MILESTONES = [25, 50, 75, 100]
-
-export function LoyaltyCard({ points, target, memberCode }: LoyaltyCardProps) {
+export function LoyaltyCard({ points, target, memberCode, rewards = [] }: LoyaltyCardProps) {
   const pct = Math.min((points / target) * 100, 100)
-  const ptsToNext = Math.max(target - points, 0)
 
-  const milestones = MILESTONES.map(p => ({
-    pct: p,
-    pts: Math.round((p / 100) * target),
-    reached: pct >= p,
-  }))
+  const milestones = rewards
+    .filter(r => r.cost <= target)
+    .sort((a, b) => a.cost - b.cost)
+    .map(r => ({
+      pts: r.cost,
+      label: r.label,
+      pct: Math.min((r.cost / target) * 100, 100),
+      reached: points >= r.cost,
+    }))
+
+  const nextReward = milestones.find(m => !m.reached)
+  const ptsToNext = nextReward ? nextReward.pts - points : 0
 
   return (
     <div
@@ -52,36 +62,48 @@ export function LoyaltyCard({ points, target, memberCode }: LoyaltyCardProps) {
         </div>
       </div>
 
-      {/* Epic progress section */}
+      {/* Progress section */}
       <div>
         {/* Milestone labels + ticks */}
-        <div style={{ position: 'relative', height: 28, marginBottom: 2 }}>
-          {milestones.map(m => (
-            <div
-              key={m.pct}
-              style={{
-                position: 'absolute',
-                left: m.pct === 100 ? 'calc(100% - 1px)' : `${m.pct}%`,
-                transform: m.pct === 100 ? 'translateX(-100%)' : 'translateX(-50%)',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-              }}
-            >
-              <span style={{
-                fontFamily: 'var(--font-mono, monospace)', fontSize: 9,
-                color: m.reached ? 'var(--gold)' : 'rgba(255,255,255,0.25)',
-                transition: 'color 0.4s ease',
-                whiteSpace: 'nowrap',
-              }}>
-                {m.pts}
-              </span>
-              <div style={{
-                width: 1, height: 8,
-                background: m.reached ? 'rgba(201,162,74,0.7)' : 'rgba(255,255,255,0.12)',
-                transition: 'background 0.4s ease',
-              }} />
-            </div>
-          ))}
-        </div>
+        {milestones.length > 0 && (
+          <div style={{ position: 'relative', height: 36, marginBottom: 2 }}>
+            {milestones.map(m => (
+              <div
+                key={m.pts}
+                style={{
+                  position: 'absolute',
+                  left: m.pct >= 98 ? 'calc(100% - 1px)' : `${m.pct}%`,
+                  transform: m.pct >= 98 ? 'translateX(-100%)' : 'translateX(-50%)',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+                }}
+              >
+                <span style={{
+                  fontFamily: 'var(--font-mono, monospace)', fontSize: 8,
+                  color: m.reached ? 'var(--gold)' : 'rgba(255,255,255,0.25)',
+                  transition: 'color 0.4s ease',
+                  whiteSpace: 'nowrap',
+                  maxWidth: 60,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  textAlign: 'center',
+                }}>
+                  {m.label}
+                </span>
+                <span style={{
+                  fontFamily: 'var(--font-mono, monospace)', fontSize: 8,
+                  color: m.reached ? 'rgba(201,162,74,0.7)' : 'rgba(255,255,255,0.2)',
+                }}>
+                  {m.pts}
+                </span>
+                <div style={{
+                  width: 1, height: 6,
+                  background: m.reached ? 'rgba(201,162,74,0.7)' : 'rgba(255,255,255,0.12)',
+                  transition: 'background 0.4s ease',
+                }} />
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Bar track */}
         <div style={{ position: 'relative', height: 12, background: 'rgba(255,255,255,0.07)', borderRadius: 8 }}>
@@ -98,9 +120,9 @@ export function LoyaltyCard({ points, target, memberCode }: LoyaltyCardProps) {
           />
 
           {/* Milestone pulse rings */}
-          {milestones.filter(m => m.reached && m.pct < 100).map(m => (
+          {milestones.filter(m => m.reached && m.pct < 98).map(m => (
             <div
-              key={m.pct}
+              key={m.pts}
               style={{
                 position: 'absolute',
                 left: `${m.pct}%`,
@@ -149,8 +171,8 @@ export function LoyaltyCard({ points, target, memberCode }: LoyaltyCardProps) {
         }}>
           <span style={{ fontSize: 13 }}>★</span>
           <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--gold)', flex: 1 }}>
-            {ptsToNext > 0
-              ? <><strong>{ptsToNext} pts</strong> para tu próxima recompensa</>
+            {ptsToNext > 0 && nextReward
+              ? <><strong>{ptsToNext} pts</strong> para <strong>{nextReward.label}</strong></>
               : <strong>¡Meta alcanzada! Canjea tu recompensa</strong>
             }
           </span>

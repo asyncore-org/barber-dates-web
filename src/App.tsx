@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import { useAuth } from '@/hooks'
 import { AppLoader, AppLayout } from '@/components/layout'
 import { AuthGuard } from '@/components/auth'
+import { MOCK_APPOINTMENTS } from '@/lib/mock-data'
 
 const AuthPage = lazy(() => import('@/pages/auth/AuthPage'))
 const CalendarPage = lazy(() => import('@/pages/client/CalendarPage'))
@@ -18,9 +19,16 @@ export default function App() {
   // On bootstrap completion: redirect authenticated users to their home route
   useEffect(() => {
     if (!authChecked || !user) return
-    const target = user.role === 'admin' ? '/admin/dashboard' : '/calendar'
-    if (location.pathname === target) return
-    navigate(target, { replace: true })
+    const clientDest = ['/calendar', '/appointments']
+    const adminDest = ['/admin/dashboard', '/admin/settings']
+    if (user.role === 'admin') {
+      if (adminDest.includes(location.pathname)) return
+      navigate('/admin/dashboard', { replace: true })
+    } else {
+      if (clientDest.includes(location.pathname)) return
+      const hasUpcoming = MOCK_APPOINTMENTS.some(a => a.status === 'upcoming')
+      navigate(hasUpcoming ? '/appointments' : '/calendar', { replace: true })
+    }
   }, [authChecked, user]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!authChecked) return <AppLoader />

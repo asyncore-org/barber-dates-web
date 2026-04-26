@@ -82,7 +82,7 @@ export function TopBar() {
           ))}
         </nav>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto' }}>
           <button
             style={{
               display: 'flex',
