@@ -9,35 +9,45 @@
 
 export const queryKeys = {
   shop: {
-    all: () => ['shop'] as const,
-    config: () => ['shop', 'config'] as const,
+    all:     () => ['shop'] as const,
+    info:    () => ['shop', 'info'] as const,
+    booking: () => ['shop', 'booking'] as const,
+    loyalty: () => ['shop', 'loyalty'] as const,
+    /** @deprecated use shop.info / shop.booking instead */
+    config:  () => ['shop', 'config'] as const,
   },
 
   services: {
-    all: () => ['services'] as const,
+    all:  () => ['services'] as const,
     list: () => ['services', 'list'] as const,
   },
 
   barbers: {
-    all: () => ['barbers'] as const,
+    all:  () => ['barbers'] as const,
     list: () => ['barbers', 'list'] as const,
     byId: (id: string) => ['barbers', id] as const,
   },
 
+  schedule: {
+    all:     () => ['schedule'] as const,
+    weekly:  () => ['schedule', 'weekly'] as const,
+    blocks:  () => ['schedule', 'blocks'] as const,
+  },
+
   appointments: {
-    all: () => ['appointments'] as const,
-    list: (userId: string) => ['appointments', 'list', userId] as const,
-    byId: (id: string) => ['appointments', id] as const,
+    all:    () => ['appointments'] as const,
+    list:   (userId: string) => ['appointments', 'list', userId] as const,
+    byId:   (id: string) => ['appointments', id] as const,
   },
 
   slots: {
-    all: () => ['slots'] as const,
-    byDate: (date: string) => ['slots', date] as const,
-    byDateBarber: (date: string, barberId: string) => ['slots', date, barberId] as const,
+    all:           () => ['slots'] as const,
+    byDate:        (date: string) => ['slots', date] as const,
+    byDateBarber:  (date: string, barberId: string) => ['slots', date, barberId] as const,
   },
 
   loyalty: {
-    all: () => ['loyalty'] as const,
+    all:    () => ['loyalty'] as const,
     byUser: (userId: string) => ['loyalty', userId] as const,
   },
 } as const

@@ -1,3 +1,8 @@
 export { useAuth } from './useAuth'
 export { useTheme } from './useTheme'
 export { queryKeys, STALE } from './queryKeys'
+export { useServices } from './useServices'
+export { useBarbers } from './useBarbers'
+export { useWeeklySchedule, useScheduleBlocks, useMutateWeeklySchedule, useAddScheduleBlock, useDeleteScheduleBlock } from './useSchedule'
+export { useShopInfo, useBookingConfig, useMutateShopInfo, useMutateBookingConfig } from './useShopConfig'
+export { useClientAppointments, useAllAppointments, useCreateAppointment, useCancelAppointment, useUpdateAppointmentStatus } from './useAppointments'
