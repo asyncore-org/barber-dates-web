@@ -9,6 +9,11 @@ import './styles/globals.css'
 import App from './App.tsx'
 import { ShopProvider } from './context/ShopContext'
 
+// Global fallback: 60 s. Individual hooks override via STALE.* from @/hooks/queryKeys.
+// Strategy: services/barbers/shop → STALE.LONG (10 min)
+//           appointments          → STALE.MEDIUM (2 min)
+//           available slots       → STALE.SHORT (30 s)
+//           loyalty               → STALE.LOYALTY (5 min)
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
