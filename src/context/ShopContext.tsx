@@ -9,6 +9,7 @@ interface ShopInfo {
   address: string
   description: string
   maxAdvanceDays: number
+  allowBarberChoice: boolean
 }
 
 interface ShopContextValue extends ShopInfo {
@@ -26,6 +27,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     address: MOCK_SHOP.address,
     description: MOCK_SHOP.description,
     maxAdvanceDays: 14,
+    allowBarberChoice: MOCK_SHOP.allowBarberChoice,
   })
 
   const updateShop = (partial: Partial<ShopInfo>) =>

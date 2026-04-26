@@ -60,6 +60,7 @@ export interface MockShop {
   instagram: string
   address: string
   description: string
+  allowBarberChoice: boolean
 }
 
 export interface MockHourEntry {
@@ -67,6 +68,7 @@ export interface MockHourEntry {
   open: boolean
   from: string
   to: string
+  barberIds: string[]
 }
 
 export interface MockClosure {
@@ -75,6 +77,7 @@ export interface MockClosure {
   reason: string
   all: boolean
   closingTime?: string
+  barberIds?: string[]
 }
 
 export const MOCK_SERVICES: MockService[] = [
@@ -136,22 +139,23 @@ export const MOCK_SHOP: MockShop = {
   instagram: '@gio_barber_19',
   address: 'Calle Mayor 42, 28013 Madrid',
   description: 'Barbería moderna con luces LED hexagonales, pared de ladrillo visto y ambiente masculino.',
+  allowBarberChoice: true,
 }
 
 export const MOCK_HOURS: MockHourEntry[] = [
-  { name: 'Lunes', open: false, from: '', to: '' },
-  { name: 'Martes', open: true, from: '10:00', to: '20:00' },
-  { name: 'Miércoles', open: true, from: '10:00', to: '20:00' },
-  { name: 'Jueves', open: true, from: '10:00', to: '20:00' },
-  { name: 'Viernes', open: true, from: '10:00', to: '21:00' },
-  { name: 'Sábado', open: true, from: '09:00', to: '15:00' },
-  { name: 'Domingo', open: false, from: '', to: '' },
+  { name: 'Lunes',     open: false, from: '',      to: '',      barberIds: [] },
+  { name: 'Martes',   open: true,  from: '10:00', to: '20:00', barberIds: ['b1', 'b2'] },
+  { name: 'Miércoles',open: true,  from: '10:00', to: '20:00', barberIds: ['b1', 'b2'] },
+  { name: 'Jueves',   open: true,  from: '10:00', to: '20:00', barberIds: ['b1', 'b2'] },
+  { name: 'Viernes',  open: true,  from: '10:00', to: '21:00', barberIds: ['b1', 'b2'] },
+  { name: 'Sábado',   open: true,  from: '09:00', to: '15:00', barberIds: ['b1'] },
+  { name: 'Domingo',  open: false, from: '',      to: '',      barberIds: [] },
 ]
 
 export const MOCK_CLOSURES: MockClosure[] = [
   { id: 'c1', date: '01 May 2026', reason: 'Día del trabajador', all: true },
   { id: 'c2', date: '14–21 Ago 2026', reason: 'Vacaciones de verano', all: true },
-  { id: 'c3', date: '24 Dic 2026', reason: 'Nochebuena', all: false, closingTime: '15:00' },
+  { id: 'c3', date: '24 Dic 2026', reason: 'Nochebuena', all: false, closingTime: '15:00', barberIds: ['b1'] },
 ]
 
 export const MOCK_TAKEN_SLOTS: string[] = ['11:00', '11:30', '13:00', '15:30', '18:00', '19:30']

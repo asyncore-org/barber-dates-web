@@ -54,7 +54,7 @@ function Row({ label, value, onChange }: { label: string; value: string; onChang
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme()
-  const { name: shopName, updateShop, maxAdvanceDays: ctxMaxDays } = useShopContext()
+  const { name: shopName, updateShop, maxAdvanceDays: ctxMaxDays, allowBarberChoice } = useShopContext()
   const [section, setSection] = useState<Section>('servicios')
   const [maxAdvanceDays, setMaxAdvanceDays] = useState(String(ctxMaxDays))
 
@@ -76,7 +76,8 @@ export default function SettingsPage() {
   const [newClosureAll, setNewClosureAll] = useState(true)
   const [newClosureTime, setNewClosureTime] = useState('')
   const [editingClosureId, setEditingClosureId] = useState<string | null>(null)
-  const [editClosureData, setEditClosureData] = useState<{ date: string; reason: string; all: boolean; closingTime: string } | null>(null)
+  const [editClosureData, setEditClosureData] = useState<{ date: string; reason: string; all: boolean; closingTime: string; barberIds: string[] } | null>(null)
+  const [newClosureBarberIds, setNewClosureBarberIds] = useState<string[]>([])
   const [rewards, setRewards] = useState<MockReward[]>(MOCK_REWARDS)
   const [loyaltyRatio, setLoyaltyRatio] = useState('1')
   const [welcomePoints, setWelcomePoints] = useState('10')
@@ -140,24 +141,32 @@ export default function SettingsPage() {
       reason: newClosureReason.trim(),
       all: newClosureAll,
       closingTime: !newClosureAll && newClosureTime ? newClosureTime : undefined,
+      barberIds: !newClosureAll ? newClosureBarberIds : undefined,
     }])
     setNewClosureSelectedDate(null)
     setNewClosureReason('')
     setNewClosureAll(true)
     setNewClosureTime('')
+    setNewClosureBarberIds([])
     setShowClosureForm(false)
     setShowAddDatePicker(false)
   }
 
   const startEditClosure = (c: MockClosure) => {
     setEditingClosureId(c.id)
-    setEditClosureData({ date: c.date, reason: c.reason, all: c.all, closingTime: c.closingTime ?? '' })
+    setEditClosureData({ date: c.date, reason: c.reason, all: c.all, closingTime: c.closingTime ?? '', barberIds: c.barberIds ?? [] })
   }
 
   const saveEditClosure = () => {
     if (!editingClosureId || !editClosureData) return
     setClosures(cs => cs.map(c => c.id === editingClosureId
-      ? { ...c, ...editClosureData, closingTime: !editClosureData.all && editClosureData.closingTime ? editClosureData.closingTime : undefined }
+      ? {
+          ...c,
+          reason: editClosureData.reason,
+          all: editClosureData.all,
+          closingTime: !editClosureData.all && editClosureData.closingTime ? editClosureData.closingTime : undefined,
+          barberIds: !editClosureData.all ? editClosureData.barberIds : undefined,
+        }
       : c))
     setEditingClosureId(null)
     setEditClosureData(null)
@@ -313,25 +322,56 @@ export default function SettingsPage() {
               <SectionTitle>HORARIOS</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
                 {hours.map((d, i) => (
-                  <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)', flexWrap: 'wrap' }}>
-                    <div style={{ width: 90, fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{d.name}</div>
-                    <button
-                      onClick={() => toggleDay(i)}
-                      style={{
-                        padding: '0.5rem 0.75rem', minHeight: 40, borderRadius: 4, border: 'none',
-                        background: d.open ? 'rgba(109,187,109,0.15)' : 'var(--bg-4)',
-                        color: d.open ? 'var(--ok)' : 'var(--fg-3)',
-                        fontFamily: 'var(--font-ui)', fontSize: 12, cursor: 'pointer',
-                      }}
-                    >
-                      {d.open ? 'Abierto' : 'Cerrado'}
-                    </button>
+                  <div key={d.name} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.75rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <div style={{ width: 90, fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{d.name}</div>
+                      <button
+                        onClick={() => toggleDay(i)}
+                        style={{
+                          padding: '0.5rem 0.75rem', minHeight: 40, borderRadius: 4, border: 'none',
+                          background: d.open ? 'rgba(109,187,109,0.15)' : 'var(--bg-4)',
+                          color: d.open ? 'var(--ok)' : 'var(--fg-3)',
+                          fontFamily: 'var(--font-ui)', fontSize: 12, cursor: 'pointer',
+                        }}
+                      >
+                        {d.open ? 'Abierto' : 'Cerrado'}
+                      </button>
+                      {d.open && (
+                        <>
+                          <input defaultValue={d.from} style={{ width: 64, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.35rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }} />
+                          <span style={{ color: 'var(--fg-3)', fontSize: 13 }}>–</span>
+                          <input defaultValue={d.to} style={{ width: 64, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.35rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }} />
+                        </>
+                      )}
+                    </div>
                     {d.open && (
-                      <>
-                        <input defaultValue={d.from} style={{ width: 64, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.35rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }} />
-                        <span style={{ color: 'var(--fg-3)', fontSize: 13 }}>–</span>
-                        <input defaultValue={d.to} style={{ width: 64, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.35rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }} />
-                      </>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', paddingLeft: 2 }}>
+                        <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', marginRight: 2 }}>Barberos:</span>
+                        {barbers.filter(b => b.active).map(b => {
+                          const on = d.barberIds.includes(b.id)
+                          return (
+                            <button
+                              key={b.id}
+                              onClick={() => setHours(hs => hs.map((h, idx) => idx !== i ? h : {
+                                ...h,
+                                barberIds: on
+                                  ? h.barberIds.filter(id => id !== b.id)
+                                  : [...h.barberIds, b.id],
+                              }))}
+                              style={{
+                                padding: '0.25rem 0.6rem', minHeight: 28, borderRadius: 20,
+                                border: on ? '1px solid var(--led-soft)' : '1px solid var(--line)',
+                                background: on ? 'rgba(123,79,255,0.1)' : 'var(--bg-4)',
+                                color: on ? 'var(--fg-0)' : 'var(--fg-3)',
+                                fontFamily: 'var(--font-ui)', fontSize: 11, cursor: 'pointer',
+                                transition: 'all 0.12s',
+                              }}
+                            >
+                              {b.name}
+                            </button>
+                          )
+                        })}
+                      </div>
                     )}
                   </div>
                 ))}
@@ -398,6 +438,35 @@ export default function SettingsPage() {
                             </div>
                           )}
                         </div>
+                        {!editClosureData.all && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', marginRight: 2 }}>Barberos disponibles:</span>
+                            {barbers.filter(b => b.active).map(b => {
+                              const on = editClosureData.barberIds.includes(b.id)
+                              return (
+                                <button
+                                  key={b.id}
+                                  onClick={() => setEditClosureData(d => d ? {
+                                    ...d,
+                                    barberIds: on
+                                      ? d.barberIds.filter(id => id !== b.id)
+                                      : [...d.barberIds, b.id],
+                                  } : d)}
+                                  style={{
+                                    padding: '0.25rem 0.6rem', minHeight: 28, borderRadius: 20,
+                                    border: on ? '1px solid var(--led-soft)' : '1px solid var(--line)',
+                                    background: on ? 'rgba(123,79,255,0.1)' : 'var(--bg-4)',
+                                    color: on ? 'var(--fg-0)' : 'var(--fg-3)',
+                                    fontFamily: 'var(--font-ui)', fontSize: 11, cursor: 'pointer',
+                                    transition: 'all 0.12s',
+                                  }}
+                                >
+                                  {b.name}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                           <button onClick={saveEditClosure} style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>
                             Guardar
@@ -415,6 +484,7 @@ export default function SettingsPage() {
                           <div style={{ fontSize: 11, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', marginTop: 2 }}>
                             {c.date}
                             {!c.all && c.closingTime && ` · hasta ${c.closingTime}`}
+                            {!c.all && c.barberIds && c.barberIds.length > 0 && ` · ${c.barberIds.map(id => barbers.find(b => b.id === id)?.name ?? id).join(', ')}`}
                           </div>
                         </div>
                         <div style={{ fontSize: 11, color: c.all ? 'var(--danger)' : 'var(--ok)', fontFamily: 'var(--font-ui)', flexShrink: 0 }}>
@@ -498,6 +568,31 @@ export default function SettingsPage() {
                         </div>
                       )}
                     </div>
+
+                    {!newClosureAll && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', marginRight: 2 }}>Barberos disponibles:</span>
+                        {barbers.filter(b => b.active).map(b => {
+                          const on = newClosureBarberIds.includes(b.id)
+                          return (
+                            <button
+                              key={b.id}
+                              onClick={() => setNewClosureBarberIds(ids => on ? ids.filter(id => id !== b.id) : [...ids, b.id])}
+                              style={{
+                                padding: '0.25rem 0.6rem', minHeight: 28, borderRadius: 20,
+                                border: on ? '1px solid var(--led-soft)' : '1px solid var(--line)',
+                                background: on ? 'rgba(123,79,255,0.1)' : 'var(--bg-4)',
+                                color: on ? 'var(--fg-0)' : 'var(--fg-3)',
+                                fontFamily: 'var(--font-ui)', fontSize: 11, cursor: 'pointer',
+                                transition: 'all 0.12s',
+                              }}
+                            >
+                              {b.name}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
 
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button
@@ -654,6 +749,34 @@ export default function SettingsPage() {
                     + Añadir barbero
                   </button>
                 )}
+              </div>
+
+              <div style={{ height: 1, background: 'var(--line)', margin: '1.5rem 0' }} />
+              <SectionTitle>OPCIONES DE RESERVA</SectionTitle>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
+                <div>
+                  <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>Permitir elegir barbero</div>
+                  <div style={{ fontSize: 11, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', marginTop: 2 }}>
+                    {allowBarberChoice ? 'Los clientes pueden seleccionar barbero al reservar' : 'El sistema asignará barbero automáticamente'}
+                  </div>
+                </div>
+                <button
+                  onClick={() => updateShop({ allowBarberChoice: !allowBarberChoice })}
+                  style={{
+                    width: 44, height: 26, borderRadius: 13, border: 'none', cursor: 'pointer', flexShrink: 0,
+                    background: allowBarberChoice ? 'var(--led)' : 'var(--bg-4)',
+                    position: 'relative', transition: 'background 0.2s',
+                    boxShadow: allowBarberChoice ? 'var(--glow-led)' : 'none',
+                  }}
+                  aria-label="Toggle allow barber choice"
+                >
+                  <span style={{
+                    position: 'absolute', top: 3, left: allowBarberChoice ? 21 : 3,
+                    width: 20, height: 20, borderRadius: '50%', background: '#fff',
+                    transition: 'left 0.2s', display: 'block',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                  }} />
+                </button>
               </div>
             </div>
           )}

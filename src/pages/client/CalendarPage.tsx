@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
-import { getMaxBookingDate } from '@/domain/booking'
+import { getMaxBookingDate, getAvailableBarbersForDate } from '@/domain/booking'
 import { MonthCalendar } from '@/components/calendar'
 import { TimeSlots } from '@/components/calendar'
 import { ServiceCard } from '@/components/appointments'
 import { Modal } from '@/components/ui'
-import { MOCK_SERVICES, MOCK_BARBERS, MOCK_TAKEN_SLOTS } from '@/lib/mock-data'
+import { MOCK_SERVICES, MOCK_BARBERS, MOCK_HOURS, MOCK_CLOSURES, MOCK_TAKEN_SLOTS } from '@/lib/mock-data'
 import type { MockService, MockBarber } from '@/lib/mock-data'
 
 function fmt(date: Date) {
@@ -17,7 +17,7 @@ const CARD = 'bg-[var(--bg-2)] border border-[var(--line)] rounded-xl p-4 md:p-5
 const SECTION_LABEL = 'font-[var(--font-display)] text-[13px] tracking-widest text-[var(--fg-3)] mb-3.5'
 
 export default function CalendarPage() {
-  const { name: shopName, maxAdvanceDays } = useShopContext()
+  const { name: shopName, maxAdvanceDays, allowBarberChoice } = useShopContext()
   const maxDate = getMaxBookingDate(maxAdvanceDays)
   const today = new Date()
   const [month, setMonth] = useState(today.getMonth())
@@ -29,9 +29,26 @@ export default function CalendarPage() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmed, setConfirmed] = useState(false)
 
+  const availableBarbers = useMemo<MockBarber[]>(() => {
+    if (!selectedDate) return MOCK_BARBERS.filter(b => b.active)
+    return getAvailableBarbersForDate(selectedDate, MOCK_HOURS, MOCK_CLOSURES, MOCK_BARBERS) as MockBarber[]
+  }, [selectedDate])
+
   const handleMonthChange = (m: number, y: number) => {
     setMonth(m)
     setYear(y)
+  }
+
+  const handleDateSelect = (d: Date) => {
+    if (d > maxDate) return
+    setSelectedDate(d)
+    setSelectedSlot(null)
+    // Reset barber if no longer available on the new date
+    if (selectedBarber) {
+      const stillAvailable = getAvailableBarbersForDate(d, MOCK_HOURS, MOCK_CLOSURES, MOCK_BARBERS)
+        .some(b => b.id === selectedBarber.id)
+      if (!stillAvailable) setSelectedBarber(null)
+    }
   }
 
   const canConfirm = selectedDate && selectedSlot && selectedService
@@ -73,7 +90,7 @@ export default function CalendarPage() {
             <div className={SECTION_LABEL}>SELECCIONAR FECHA</div>
             <MonthCalendar
               selected={selectedDate}
-              onSelect={d => { if (d <= maxDate) setSelectedDate(d) }}
+              onSelect={handleDateSelect}
               month={month}
               year={year}
               onMonthChange={handleMonthChange}
@@ -95,60 +112,62 @@ export default function CalendarPage() {
             </div>
           )}
 
-          {/* Barbero */}
-          <div className={CARD}>
-            <div className={SECTION_LABEL}>BARBERO</div>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              {/* Any-barber option */}
-              <button
-                onClick={() => setSelectedBarber(null)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '0.5rem',
-                  padding: '0.6rem 1rem', borderRadius: 8, minHeight: 44,
-                  border: selectedBarber === null ? '1px solid var(--led-soft)' : '1px solid var(--line)',
-                  background: selectedBarber === null ? 'rgba(123,79,255,0.1)' : 'var(--bg-3)',
-                  color: selectedBarber === null ? 'var(--fg-0)' : 'var(--fg-1)',
-                  cursor: 'pointer', fontSize: 13, fontFamily: 'var(--font-ui)',
-                  transition: 'all 0.12s',
-                }}
-              >
-                <div style={{
-                  width: 28, height: 28, borderRadius: '50%',
-                  background: selectedBarber === null ? 'var(--led)' : 'var(--bg-4)',
-                  display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', fontSize: 13, color: selectedBarber === null ? '#fff' : 'var(--fg-2)',
-                }}>
-                  ✦
-                </div>
-                Cualquier barbero
-              </button>
-
-              {MOCK_BARBERS.filter(b => b.active).map(b => (
+          {/* Barbero — hidden when allowBarberChoice is disabled */}
+          {allowBarberChoice && (
+            <div className={CARD}>
+              <div className={SECTION_LABEL}>BARBERO</div>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {/* Any-barber option */}
                 <button
-                  key={b.id}
-                  onClick={() => setSelectedBarber(b)}
+                  onClick={() => setSelectedBarber(null)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '0.5rem',
                     padding: '0.6rem 1rem', borderRadius: 8, minHeight: 44,
-                    border: selectedBarber?.id === b.id ? '1px solid var(--led-soft)' : '1px solid var(--line)',
-                    background: selectedBarber?.id === b.id ? 'rgba(123,79,255,0.1)' : 'var(--bg-3)',
-                    color: selectedBarber?.id === b.id ? 'var(--fg-0)' : 'var(--fg-1)',
+                    border: selectedBarber === null ? '1px solid var(--led-soft)' : '1px solid var(--line)',
+                    background: selectedBarber === null ? 'rgba(123,79,255,0.1)' : 'var(--bg-3)',
+                    color: selectedBarber === null ? 'var(--fg-0)' : 'var(--fg-1)',
                     cursor: 'pointer', fontSize: 13, fontFamily: 'var(--font-ui)',
                     transition: 'all 0.12s',
                   }}
                 >
                   <div style={{
                     width: 28, height: 28, borderRadius: '50%',
-                    background: 'var(--bg-4)', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--fg-1)',
+                    background: selectedBarber === null ? 'var(--led)' : 'var(--bg-4)',
+                    display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', fontSize: 13, color: selectedBarber === null ? '#fff' : 'var(--fg-2)',
                   }}>
-                    {b.initials}
+                    ✦
                   </div>
-                  {b.name}
+                  Cualquier barbero
                 </button>
-              ))}
+
+                {availableBarbers.map(b => (
+                  <button
+                    key={b.id}
+                    onClick={() => setSelectedBarber(b)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '0.5rem',
+                      padding: '0.6rem 1rem', borderRadius: 8, minHeight: 44,
+                      border: selectedBarber?.id === b.id ? '1px solid var(--led-soft)' : '1px solid var(--line)',
+                      background: selectedBarber?.id === b.id ? 'rgba(123,79,255,0.1)' : 'var(--bg-3)',
+                      color: selectedBarber?.id === b.id ? 'var(--fg-0)' : 'var(--fg-1)',
+                      cursor: 'pointer', fontSize: 13, fontFamily: 'var(--font-ui)',
+                      transition: 'all 0.12s',
+                    }}
+                  >
+                    <div style={{
+                      width: 28, height: 28, borderRadius: '50%',
+                      background: 'var(--bg-4)', display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--fg-1)',
+                    }}>
+                      {b.initials}
+                    </div>
+                    {b.name}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Right column */}
