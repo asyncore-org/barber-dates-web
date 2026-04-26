@@ -46,6 +46,29 @@ export interface AvailabilityClosure {
  *
  * Only returns active barbers whose id is in the resolved list.
  */
+// Spanish short-month → 0-based month index used by closures date strings ("DD Mes YYYY")
+const ES_MONTH: Record<string, number> = {
+  ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5,
+  jul: 6, ago: 7, sep: 8, oct: 9, nov: 10, dic: 11,
+}
+
+function parseClosureDate(str: string): Date | null {
+  // First try native parse (handles "01 May 2026" in V8)
+  const native = new Date(str)
+  if (!isNaN(native.getTime())) return native
+
+  // "DD Mes YYYY" with Spanish month abbreviation
+  const parts = str.trim().split(/\s+/)
+  if (parts.length >= 3) {
+    const monthIdx = ES_MONTH[parts[1].toLowerCase()]
+    if (monthIdx !== undefined) {
+      const d = new Date(Number(parts[2]), monthIdx, Number(parts[0]))
+      if (!isNaN(d.getTime())) return d
+    }
+  }
+  return null
+}
+
 export function getAvailableBarbersForDate(
   date: Date,
   hours: AvailabilityHourEntry[],
@@ -57,18 +80,8 @@ export function getAvailableBarbersForDate(
   const year = date.getFullYear()
 
   const matchingClosure = closures.find(c => {
-    // closures use formatted strings like "01 May 2026" — try JS Date parse first
-    const ref = new Date(c.date)
-    if (!isNaN(ref.getTime())) {
-      return ref.getDate() === day && ref.getMonth() === month && ref.getFullYear() === year
-    }
-    // Fallback: "DD Mes YYYY" → "Mes DD, YYYY"
-    const parts = c.date.split(' ')
-    if (parts.length >= 3) {
-      const testDate = new Date(`${parts[1]} ${parts[0]}, ${parts[2]}`)
-      return testDate.getDate() === day && testDate.getMonth() === month && testDate.getFullYear() === year
-    }
-    return false
+    const ref = parseClosureDate(c.date)
+    return ref !== null && ref.getDate() === day && ref.getMonth() === month && ref.getFullYear() === year
   })
 
   let resolvedIds: string[]
