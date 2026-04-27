@@ -161,7 +161,8 @@ export default function SettingsPage() {
   const localMaxDays = pendingMaxDays ?? String(bookingConfig?.maxAdvanceDays ?? 14)
 
   // ── Rewards local state ─────────────────────────────────────────────────────
-  const [rewardEdits, setRewardEdits] = useState<Record<string, string>>({})
+  const [editingRewardId, setEditingRewardId] = useState<string | null>(null)
+  const [rewardEdits, setRewardEdits] = useState<Record<string, { label: string; cost: number }>>({})
 
   // ── Handlers: services ──────────────────────────────────────────────────────
   const handleAddService = () => {
@@ -282,9 +283,12 @@ export default function SettingsPage() {
 
   // ── Handlers: rewards ────────────────────────────────────────────────────────
   const handleSaveReward = (r: Reward) => {
-    const label = rewardEdits[r.id] ?? r.label
-    updateRewardMut.mutate({ id: r.id, data: { label } }, {
-      onSuccess: () => setRewardEdits(e => { const copy = { ...e }; delete copy[r.id]; return copy }),
+    const edits = rewardEdits[r.id]
+    updateRewardMut.mutate({ id: r.id, data: { label: edits?.label ?? r.label, cost: edits?.cost ?? r.cost } }, {
+      onSuccess: () => {
+        setRewardEdits(e => { const copy = { ...e }; delete copy[r.id]; return copy })
+        setEditingRewardId(null)
+      },
     })
   }
 
@@ -772,16 +776,50 @@ export default function SettingsPage() {
               <SectionTitle>RECOMPENSAS</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {rewardsData.map(r => (
-                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0.75rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
-                    <input
-                      value={rewardEdits[r.id] ?? r.label}
-                      onChange={e => setRewardEdits(ed => ({ ...ed, [r.id]: e.target.value }))}
-                      onBlur={() => { if (rewardEdits[r.id] !== undefined) handleSaveReward(r) }}
-                      style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }}
-                    />
-                    <span style={{ fontSize: 12, color: 'var(--gold)', fontFamily: 'var(--font-ui)' }}>{r.cost} pts</span>
-                    <button onClick={() => deleteReward.mutate(r.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 16, minWidth: 44, minHeight: 44 }}>✕</button>
-                  </div>
+                  editingRewardId === r.id ? (
+                    <div key={r.id} style={{ background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--led)', padding: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px', gap: '0.5rem' }}>
+                        <div>
+                          <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Nombre</label>
+                          <input
+                            value={rewardEdits[r.id]?.label ?? r.label}
+                            onChange={e => setRewardEdits(ed => ({ ...ed, [r.id]: { label: e.target.value, cost: ed[r.id]?.cost ?? r.cost } }))}
+                            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Puntos</label>
+                          <input
+                            type="number"
+                            value={rewardEdits[r.id]?.cost ?? r.cost}
+                            onChange={e => setRewardEdits(ed => ({ ...ed, [r.id]: { label: ed[r.id]?.label ?? r.label, cost: Number(e.target.value) } }))}
+                            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none', textAlign: 'center' }}
+                          />
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <SaveBtn onClick={() => handleSaveReward(r)} loading={updateRewardMut.isPending} isDirty={!!rewardEdits[r.id]} />
+                        <button
+                          onClick={() => { setEditingRewardId(null); setRewardEdits(e => { const c = { ...e }; delete c[r.id]; return c }) }}
+                          style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0.75rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
+                      <div style={{ flex: 1, fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)' }}>{r.label}</div>
+                      <span style={{ fontSize: 12, color: 'var(--gold)', fontFamily: 'var(--font-ui)', flexShrink: 0 }}>{r.cost} pts</span>
+                      <button
+                        onClick={() => setEditingRewardId(r.id)}
+                        style={{ padding: '0.3rem 0.6rem', minHeight: 32, borderRadius: 6, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 12, cursor: 'pointer', flexShrink: 0 }}
+                      >
+                        Editar
+                      </button>
+                      <button onClick={() => deleteReward.mutate(r.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 16, minWidth: 32, minHeight: 32, flexShrink: 0 }}>✕</button>
+                    </div>
+                  )
                 ))}
               </div>
               <button onClick={handleAddReward} style={{ marginTop: '0.75rem', padding: '0.5rem 0.875rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>
