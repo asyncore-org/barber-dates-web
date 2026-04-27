@@ -7,7 +7,7 @@ import type { WeekAppt, RescheduleUpdate } from '@/components/admin'
 import { useBarbers } from '@/hooks/useBarbers'
 import { useAllServices } from '@/hooks/useServices'
 
-const DAYS_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+const DAYS_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 const HOURS = Array.from({ length: 11 }, (_, i) => i + 9) // 9 → 19
 
 const INITIAL_APPOINTMENTS: WeekAppt[] = [
@@ -39,6 +39,7 @@ const COLOR_MAP = {
 
 const CELL_HEIGHT_PX = 56
 const DAY_START_H = 9
+const MAX_TOP_PX = CELL_HEIGHT_PX * (HOURS.length - 1) // clamp now-line to last visible row
 
 function topPx(h: number, m: number) {
   return ((h - DAY_START_H) * 60 + m) / 60 * CELL_HEIGHT_PX
@@ -106,7 +107,7 @@ export default function DashboardPage() {
   weekStart.setDate(weekStart.getDate() + weekOffset * 7)
 
   const now = new Date()
-  const nowTop = topPx(now.getHours(), now.getMinutes())
+  const nowTop = Math.min(topPx(now.getHours(), now.getMinutes()), MAX_TOP_PX)
 
   useEffect(() => {
     nowLineRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
@@ -114,8 +115,8 @@ export default function DashboardPage() {
 
   const todayCols = (now.getDay() + 6) % 7
 
-  // Mobile: current day column (0=Mon, capped at 0-5)
-  const mobileDayCol = Math.max(0, Math.min(5, todayCols + dayOffset))
+  // Mobile: current day column (0=Mon, capped at 0-6 for full week)
+  const mobileDayCol = Math.max(0, Math.min(6, todayCols + dayOffset))
   const mobileDayDate = new Date(getWeekStart(new Date()))
   mobileDayDate.setDate(mobileDayDate.getDate() + mobileDayCol)
 
@@ -159,7 +160,7 @@ export default function DashboardPage() {
           barbers={barbers.map(b => ({ id: b.id, name: b.fullName }))}
           date={mobileDayDate}
           onPrevDay={() => setDayOffset(o => Math.max(o - 1, -(todayCols)))}
-          onNextDay={() => setDayOffset(o => Math.min(o + 1, 5 - todayCols))}
+          onNextDay={() => setDayOffset(o => Math.min(o + 1, 6 - todayCols))}
           onSelect={(item) => setSelectedAppt(appointments.find(a => a.id === item.id) ?? null)}
         />
 
@@ -245,10 +246,11 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Grid body — day headers are sticky inside this container to prevent scrollbar misalignment */}
-          <div style={{ maxHeight: 520, overflowY: 'auto' }}>
+          {/* Grid body — outer div enables horizontal scroll on mobile */}
+          <div style={{ overflowX: 'auto' }}>
+          <div style={{ maxHeight: 520, overflowY: 'auto', minWidth: 600 }}>
             {/* Day headers — sticky so scrollbar width is shared with the content grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(6, 1fr)', borderBottom: '1px solid var(--line)', position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-2)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', borderBottom: '1px solid var(--line)', position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-2)' }}>
               <div />
               {DAYS_ES.map((d, i) => {
                 const dayDate = new Date(weekStart)
@@ -270,7 +272,7 @@ export default function DashboardPage() {
               })}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(6, 1fr)', position: 'relative' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', position: 'relative' }}>
               {/* Hour labels */}
               <div>
                 {HOURS.map(h => (
@@ -338,6 +340,7 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
+          </div>{/* end overflow-x */}
         </div>
 
         {/* Right column */}
