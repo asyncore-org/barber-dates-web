@@ -334,7 +334,7 @@ export default function SettingsPage() {
 
   // ── Sidebar style helper ─────────────────────────────────────────────────────
   const sidebarBtn = (id: Section) => ({
-    display: 'block' as const, width: '100%', textAlign: 'left' as const,
+    display: 'flex' as const, alignItems: 'center' as const, width: '100%',
     padding: '0.6rem 0.875rem', borderRadius: 8, marginBottom: 2,
     border: 'none',
     background: section === id ? 'var(--bg-3)' : 'transparent',
@@ -357,6 +357,7 @@ export default function SettingsPage() {
               key={s.id}
               onClick={() => handleSectionChange(s.id)}
               style={{
+                display: 'flex', alignItems: 'center', gap: 5,
                 padding: '0.5rem 1rem', borderRadius: 20, border: 'none', minHeight: 40,
                 background: section === s.id ? '#C8A44E' : 'var(--bg-3)',
                 color: section === s.id ? '#000' : 'var(--fg-2)',
@@ -366,6 +367,9 @@ export default function SettingsPage() {
               }}
             >
               {s.label}
+              {sectionDirty[s.id] && (
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: section === s.id ? '#000' : 'var(--led)', flexShrink: 0 }} />
+              )}
             </button>
           ))}
         </div>
@@ -380,7 +384,10 @@ export default function SettingsPage() {
         >
           {SECTIONS.map(s => (
             <button key={s.id} onClick={() => handleSectionChange(s.id)} style={sidebarBtn(s.id)}>
-              {s.label}
+              <span style={{ flex: 1 }}>{s.label}</span>
+              {sectionDirty[s.id] && (
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--led)', flexShrink: 0 }} />
+              )}
             </button>
           ))}
         </div>
