@@ -1,9 +1,14 @@
 import { useState } from 'react'
 import { Modal } from '@/components/ui'
 import { MonthCalendar, TimeSlots } from '@/components/calendar'
-import { MOCK_SERVICES, MOCK_BARBERS, MOCK_TAKEN_SLOTS } from '@/lib/mock-data'
+import { useServices } from '@/hooks/useServices'
+import { useBarbers } from '@/hooks/useBarbers'
 
-const MOCK_CLIENT_EMAILS = [
+function calcInitials(name: string): string {
+  return name.trim().split(/\s+/).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '?'
+}
+
+const DEMO_EMAILS = [
   'carlos.martinez@gmail.com',
   'ruben.garcia@hotmail.com',
   'javier.perez@outlook.com',
@@ -21,25 +26,26 @@ interface Props {
 
 export function NewAppointmentModal({ onClose, onConfirm }: Props) {
   const today = new Date()
+  const { data: services = [] } = useServices()
+  const { data: barbers = [] } = useBarbers()
+  const activeBarbers = barbers.filter(b => b.isActive)
+  const activeServices = services.filter(s => s.isActive)
+
   const [email, setEmail] = useState('')
   const [serviceId, setServiceId] = useState<string | null>(null)
-  const [barberId, setBarberId] = useState<string>(MOCK_BARBERS.filter(b => b.active)[0]?.id ?? '')
+  const [barberId, setBarberId] = useState<string>(() => activeBarbers[0]?.id ?? '')
   const [date, setDate] = useState<Date | null>(null)
   const [slot, setSlot] = useState<string | null>(null)
   const [month, setMonth] = useState(today.getMonth())
   const [year, setYear] = useState(today.getFullYear())
 
-  const selectedService = MOCK_SERVICES.find(s => s.id === serviceId) ?? null
-  const selectedBarber = MOCK_BARBERS.find(b => b.id === barberId)
+  const selectedService = activeServices.find(s => s.id === serviceId) ?? null
+  const selectedBarber = activeBarbers.find(b => b.id === barberId)
   const canConfirm = email.trim().length > 3 && serviceId && barberId && date && slot
 
   const emailSuggestions = email.length > 1
-    ? MOCK_CLIENT_EMAILS.filter(e => e.toLowerCase().includes(email.toLowerCase()))
+    ? DEMO_EMAILS.filter(e => e.toLowerCase().includes(email.toLowerCase()))
     : []
-
-  const handleConfirm = () => {
-    onConfirm()
-  }
 
   const LABEL = {
     fontFamily: 'var(--font-display)',
@@ -86,7 +92,7 @@ export function NewAppointmentModal({ onClose, onConfirm }: Props) {
         <div>
           <div style={LABEL}>SERVICIO</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-            {MOCK_SERVICES.filter(s => s.active).map(s => (
+            {activeServices.map(s => (
               <button
                 key={s.id}
                 onClick={() => setServiceId(s.id)}
@@ -107,7 +113,7 @@ export function NewAppointmentModal({ onClose, onConfirm }: Props) {
               >
                 <span style={{ fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 500 }}>{s.name}</span>
                 <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-2)' }}>
-                  {s.duration} min · {s.price}€
+                  {s.durationMinutes} min · {s.price}€
                 </span>
               </button>
             ))}
@@ -118,7 +124,7 @@ export function NewAppointmentModal({ onClose, onConfirm }: Props) {
         <div>
           <div style={LABEL}>BARBERO</div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {MOCK_BARBERS.filter(b => b.active).map(b => (
+            {activeBarbers.map(b => (
               <button
                 key={b.id}
                 onClick={() => setBarberId(b.id)}
@@ -144,9 +150,9 @@ export function NewAppointmentModal({ onClose, onConfirm }: Props) {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 10, fontWeight: 700, color: 'var(--fg-1)',
                 }}>
-                  {b.initials}
+                  {calcInitials(b.fullName)}
                 </div>
-                {b.name}
+                {b.fullName}
               </button>
             ))}
           </div>
@@ -171,7 +177,7 @@ export function NewAppointmentModal({ onClose, onConfirm }: Props) {
             <TimeSlots
               selected={slot}
               onSelect={setSlot}
-              taken={MOCK_TAKEN_SLOTS}
+              taken={[]}
             />
           </div>
         )}
@@ -191,14 +197,14 @@ export function NewAppointmentModal({ onClose, onConfirm }: Props) {
             gap: '0.25rem',
           }}>
             <span><strong style={{ color: 'var(--fg-0)' }}>{email}</strong></span>
-            <span>{selectedService.name} · {selectedBarber.name} · {date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })} {slot}</span>
+            <span>{selectedService.name} · {selectedBarber.fullName} · {date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })} {slot}</span>
           </div>
         )}
 
         {/* Confirm button */}
         <button
           disabled={!canConfirm}
-          onClick={handleConfirm}
+          onClick={onConfirm}
           style={{
             width: '100%',
             padding: '0.875rem',

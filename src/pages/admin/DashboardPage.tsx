@@ -4,7 +4,8 @@ import { useShopContext } from '@/context/ShopContext'
 import { Icon } from '@/components/ui'
 import { AgendaListView, NewAppointmentModal, RescheduleModal } from '@/components/admin'
 import type { WeekAppt, RescheduleUpdate } from '@/components/admin'
-import { MOCK_BARBERS, MOCK_SERVICES } from '@/lib/mock-data'
+import { useBarbers } from '@/hooks/useBarbers'
+import { useAllServices } from '@/hooks/useServices'
 
 const DAYS_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const HOURS = Array.from({ length: 11 }, (_, i) => i + 9) // 9 → 19
@@ -56,6 +57,9 @@ function getWeekStart(ref: Date) {
 
 export default function DashboardPage() {
   const { name: shopName } = useShopContext()
+  const { data: barbers = [] } = useBarbers()
+  const { data: services = [] } = useAllServices()
+  const activeBarbers = barbers.filter(b => b.isActive)
   const [weekOffset, setWeekOffset] = useState(0)
   const [dayOffset, setDayOffset] = useState(0)
   const [appointments, setAppointments] = useState<WeekAppt[]>(INITIAL_APPOINTMENTS)
@@ -76,7 +80,7 @@ export default function DashboardPage() {
     if (!rescheduleAppt) return
     const [newH, newM] = update.slot.split(':').map(Number)
     const newDayIdx = Math.round((update.date.getTime() - weekStart.getTime()) / 86_400_000)
-    const newService = MOCK_SERVICES.find(s => s.id === update.serviceId)?.name ?? rescheduleAppt.service
+    const newService = services.find(s => s.id === update.serviceId)?.name ?? rescheduleAppt.service
 
     setAppointments(prev => prev.map(a =>
       a.id === rescheduleAppt.id
@@ -90,7 +94,7 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scheduled_at: update.date.toISOString() }),
       })
-    } catch { /* mock data — ignorar */ }
+    } catch { /* ignorar */ }
 
     setRescheduleAppt(null)
     setSelectedAppt(null)
@@ -118,7 +122,7 @@ export default function DashboardPage() {
   const metrics = [
     { label: 'Citas hoy', value: appointments.filter(a => a.day === todayCols).length, icon: 'calendar' as const, color: 'var(--led)' },
     { label: 'Ingresos est.', value: '214€', icon: 'euro' as const, color: 'var(--gold)' },
-    { label: 'Barberos activos', value: MOCK_BARBERS.filter(b => b.active).length, icon: 'users' as const, color: 'var(--brick-warm)' },
+    { label: 'Barberos activos', value: activeBarbers.length, icon: 'users' as const, color: 'var(--brick-warm)' },
     { label: 'Lista de espera', value: 3, icon: 'clock' as const, color: 'var(--fg-2)' },
   ]
 
@@ -152,7 +156,7 @@ export default function DashboardPage() {
         {/* Day agenda — first */}
         <AgendaListView
           items={appointments.filter(a => a.day === mobileDayCol)}
-          barbers={MOCK_BARBERS}
+          barbers={barbers.map(b => ({ id: b.id, name: b.fullName }))}
           date={mobileDayDate}
           onPrevDay={() => setDayOffset(o => Math.max(o - 1, -(todayCols)))}
           onNextDay={() => setDayOffset(o => Math.min(o + 1, 5 - todayCols))}
@@ -193,19 +197,19 @@ export default function DashboardPage() {
             BARBEROS
           </div>
           <div className="flex flex-col gap-2">
-            {MOCK_BARBERS.map(b => (
+            {barbers.map(b => (
               <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: 8, background: 'var(--bg-3)', border: '1px solid var(--line)' }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: b.active ? 'var(--led)' : 'var(--bg-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: b.active ? '#fff' : 'var(--fg-3)' }}>
-                  {b.initials}
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: b.isActive ? 'var(--led)' : 'var(--bg-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: b.isActive ? '#fff' : 'var(--fg-3)' }}>
+                  {calcInitials(b.fullName)}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{b.name}</div>
-                  <div style={{ fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>{b.role}</div>
+                  <div style={{ fontSize: 14, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{b.fullName}</div>
+                  <div style={{ fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>{b.role ?? 'Barbero'}</div>
                 </div>
                 <div style={{
                   width: 8, height: 8, borderRadius: '50%',
-                  background: b.active ? 'var(--ok)' : 'var(--fg-3)',
-                  boxShadow: b.active ? '0 0 6px var(--ok)' : 'none',
+                  background: b.isActive ? 'var(--ok)' : 'var(--fg-3)',
+                  boxShadow: b.isActive ? '0 0 6px var(--ok)' : 'none',
                 }} />
               </div>
             ))}
@@ -380,19 +384,19 @@ export default function DashboardPage() {
               BARBEROS
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {MOCK_BARBERS.map(b => (
+              {barbers.map(b => (
                 <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem', borderRadius: 8, background: 'var(--bg-3)', border: '1px solid var(--line)' }}>
-                  <div style={{ width: 34, height: 34, borderRadius: '50%', background: b.active ? 'var(--led)' : 'var(--bg-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, color: b.active ? '#fff' : 'var(--fg-3)' }}>
-                    {b.initials}
+                  <div style={{ width: 34, height: 34, borderRadius: '50%', background: b.isActive ? 'var(--led)' : 'var(--bg-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, color: b.isActive ? '#fff' : 'var(--fg-3)' }}>
+                    {calcInitials(b.fullName)}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{b.name}</div>
-                    <div style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>{b.role}</div>
+                    <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{b.fullName}</div>
+                    <div style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>{b.role ?? 'Barbero'}</div>
                   </div>
                   <div style={{
                     width: 8, height: 8, borderRadius: '50%',
-                    background: b.active ? 'var(--ok)' : 'var(--fg-3)',
-                    boxShadow: b.active ? '0 0 6px var(--ok)' : 'none',
+                    background: b.isActive ? 'var(--ok)' : 'var(--fg-3)',
+                    boxShadow: b.isActive ? '0 0 6px var(--ok)' : 'none',
                   }} />
                 </div>
               ))}
@@ -427,7 +431,7 @@ export default function DashboardPage() {
               { label: 'Servicio', value: selectedAppt.service },
               { label: 'Hora', value: `${selectedAppt.startH.toString().padStart(2,'0')}:${selectedAppt.startM.toString().padStart(2,'0')}` },
               { label: 'Duración', value: `${selectedAppt.durationMin} min` },
-              { label: 'Barbero', value: MOCK_BARBERS.find(b => b.id === selectedAppt.barberId)?.name ?? '—' },
+              { label: 'Barbero', value: barbers.find(b => b.id === selectedAppt.barberId)?.fullName ?? '—' },
             ].map(({ label, value }) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
                 <span style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>{label}</span>
@@ -462,6 +466,10 @@ export default function DashboardPage() {
       )}
     </>
   )
+}
+
+function calcInitials(name: string): string {
+  return name.trim().split(/\s+/).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '?'
 }
 
 const navBtn: React.CSSProperties = {
