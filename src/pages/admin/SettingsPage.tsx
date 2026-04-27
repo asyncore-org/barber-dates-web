@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { ConfirmDialog } from '@/components/ui'
+import { ConfirmDialog, Modal } from '@/components/ui'
 import { MonthCalendar } from '@/components/calendar'
 import { useTheme } from '@/hooks'
 import { useShopContext } from '@/context/ShopContext'
@@ -56,6 +56,26 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   )
 }
 
+function DirtyGuardDialog({ onSave, onDiscard, onCancel }: { onSave: () => void; onDiscard: () => void; onCancel: () => void }) {
+  return (
+    <Modal
+      title="Cambios sin guardar"
+      onClose={onCancel}
+      footer={
+        <>
+          <button className="btn ghost" onClick={onCancel}>Cancelar</button>
+          <button className="btn ghost" style={{ color: 'var(--danger)' }} onClick={onDiscard}>Descartar</button>
+          <button className="btn primary" onClick={onSave}>Guardar</button>
+        </>
+      }
+    >
+      <p style={{ margin: 0, color: 'var(--fg-1)', fontSize: 14, lineHeight: 1.6 }}>
+        Esta sección tiene cambios sin guardar. ¿Qué quieres hacer antes de continuar?
+      </p>
+    </Modal>
+  )
+}
+
 function SaveBtn({ onClick, loading }: { onClick: () => void; loading?: boolean }) {
   return (
     <button
@@ -72,6 +92,7 @@ export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme()
   const { name: shopName, allowBarberChoice } = useShopContext()
   const [section, setSection] = useState<Section>('servicios')
+  const [pendingNavSection, setPendingNavSection] = useState<Section | null>(null)
 
   // ── Data hooks ──────────────────────────────────────────────────────────────
   const { data: servicesData = [] } = useAllServices()
@@ -263,6 +284,54 @@ export default function SettingsPage() {
     createReward.mutate({ label: 'Nueva recompensa', cost: 50 })
   }
 
+  // ── Dirty state ──────────────────────────────────────────────────────────────
+  const sectionDirty: Record<Section, boolean> = {
+    servicios:    Object.keys(serviceEdits).length > 0,
+    horarios:     pendingSchedule !== null || pendingMaxDays !== null,
+    barberos:     Object.keys(barberEdits).length > 0 || pendingAllowBarber !== null,
+    fidelizacion: Object.keys(rewardEdits).length > 0,
+    barberia:     Object.keys(shopEdits).length > 0,
+    apariencia:   false,
+  }
+  const anyDirty = Object.values(sectionDirty).some(Boolean)
+
+  const discardSection = (sec: Section) => {
+    if (sec === 'servicios')    setServiceEdits({})
+    if (sec === 'horarios')     { setPendingSchedule(null); setPendingMaxDays(null) }
+    if (sec === 'barberos')     { setBarberEdits({}); setPendingAllowBarber(null) }
+    if (sec === 'fidelizacion') setRewardEdits({})
+    if (sec === 'barberia')     setShopEdits({})
+  }
+
+  const saveSection = (sec: Section) => {
+    if (sec === 'horarios') {
+      if (pendingSchedule !== null) handleSaveSchedule()
+      if (pendingMaxDays !== null) handleSaveBookingConfig()
+    } else if (sec === 'barberos') {
+      barbersData
+        .filter(b => barberEdits[b.id] && Object.keys(barberEdits[b.id]).length > 0)
+        .forEach(b => handleSaveBarber(b))
+      if (pendingAllowBarber !== null) handleSaveBookingConfig()
+    } else if (sec === 'barberia') {
+      handleSaveShopInfo()
+    }
+  }
+
+  const handleSectionChange = (target: Section) => {
+    if (!sectionDirty[section]) {
+      setSection(target)
+    } else {
+      setPendingNavSection(target)
+    }
+  }
+
+  useEffect(() => {
+    if (!anyDirty) return
+    const onBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault() }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [anyDirty])
+
   // ── Sidebar style helper ─────────────────────────────────────────────────────
   const sidebarBtn = (id: Section) => ({
     display: 'block' as const, width: '100%', textAlign: 'left' as const,
@@ -286,7 +355,7 @@ export default function SettingsPage() {
           {SECTIONS.map(s => (
             <button
               key={s.id}
-              onClick={() => setSection(s.id)}
+              onClick={() => handleSectionChange(s.id)}
               style={{
                 padding: '0.5rem 1rem', borderRadius: 20, border: 'none', minHeight: 40,
                 background: section === s.id ? '#C8A44E' : 'var(--bg-3)',
@@ -310,7 +379,7 @@ export default function SettingsPage() {
           style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '0.5rem', position: 'sticky', top: 72 }}
         >
           {SECTIONS.map(s => (
-            <button key={s.id} onClick={() => setSection(s.id)} style={sidebarBtn(s.id)}>
+            <button key={s.id} onClick={() => handleSectionChange(s.id)} style={sidebarBtn(s.id)}>
               {s.label}
             </button>
           ))}
@@ -775,6 +844,23 @@ export default function SettingsPage() {
           danger
           onConfirm={handleConfirmDeleteBarber}
           onCancel={() => setDeleteBarberTarget(null)}
+        />
+      )}
+
+      {pendingNavSection !== null && (
+        <DirtyGuardDialog
+          onSave={() => {
+            saveSection(section)
+            discardSection(section)
+            setSection(pendingNavSection)
+            setPendingNavSection(null)
+          }}
+          onDiscard={() => {
+            discardSection(section)
+            setSection(pendingNavSection)
+            setPendingNavSection(null)
+          }}
+          onCancel={() => setPendingNavSection(null)}
         />
       )}
     </>
