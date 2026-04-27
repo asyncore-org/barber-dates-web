@@ -8,6 +8,10 @@ interface MonthCalendarProps {
   onMonthChange: (month: number, year: number) => void
   busyDays?: number[]
   maxDate?: Date
+  /** Day-of-week numbers (0=Mon … 6=Sun, ISO) that are fully closed. Rendered as disabled + line-through. */
+  closedDayOfWeeks?: number[]
+  /** 'YYYY-MM-DD' dates with a partial schedule block. Rendered with an orange indicator dot. */
+  partialDates?: string[]
 }
 
 const DAYS = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do']
@@ -27,7 +31,7 @@ const MONTH_NAMES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
 
-export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, busyDays = [], maxDate }: MonthCalendarProps) {
+export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, busyDays = [], maxDate, closedDayOfWeeks = [], partialDates = [] }: MonthCalendarProps) {
   const today = new Date()
   const todayNorm = new Date(today.getFullYear(), today.getMonth(), today.getDate())
   const maxNorm = maxDate ? new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate()) : null
@@ -97,12 +101,17 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
           const date = new Date(year, month, day)
           const isPast = date < todayNorm
           const isBeyondMax = maxNorm ? date > maxNorm : false
-          const isDisabled = isPast || isBeyondMax
+          // 0=Mon … 6=Sun (ISO convention matching closedDayOfWeeks)
+          const dayOfWeek = (date.getDay() + 6) % 7
+          const isClosed = closedDayOfWeeks.includes(dayOfWeek)
+          const isDisabled = isPast || isBeyondMax || isClosed
           const isToday = date.getTime() === todayNorm.getTime()
           const isSelected = selected
             ? selected.getFullYear() === year && selected.getMonth() === month && selected.getDate() === day
             : false
           const isBusy = busyDays.includes(day)
+          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+          const isPartial = !isClosed && partialDates.includes(dateStr)
 
           return (
             <button
@@ -133,21 +142,22 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
                 fontSize: 13,
                 fontFamily: 'var(--font-ui)',
                 fontWeight: isToday || isSelected ? 600 : 400,
-                cursor: isDisabled ? 'default' : 'pointer',
+                cursor: isDisabled ? 'not-allowed' : 'pointer',
                 boxShadow: isSelected ? 'var(--glow-led)' : 'none',
-                opacity: isDisabled ? (isBeyondMax ? 0.2 : 0.35) : 1,
+                opacity: isDisabled ? (isClosed ? 0.4 : isBeyondMax ? 0.2 : 0.35) : 1,
+                textDecoration: isClosed ? 'line-through' : 'none',
                 transition: 'all 0.12s',
               }}
             >
               {day}
-              {isBusy && !isSelected && (
+              {(isBusy || isPartial) && !isSelected && (
                 <div style={{
                   position: 'absolute',
                   bottom: 3,
                   width: 4,
                   height: 4,
                   borderRadius: '50%',
-                  background: 'var(--brick)',
+                  background: isPartial ? 'var(--gold)' : 'var(--brick)',
                 }} />
               )}
             </button>

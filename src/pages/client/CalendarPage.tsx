@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
 import { getMaxBookingDate, getAvailableBarbersForDate } from '@/domain/booking'
-import { DEFAULT_WEEKLY_SCHEDULE } from '@/domain/schedule'
+import { DEFAULT_WEEKLY_SCHEDULE, type DayKey } from '@/domain/schedule'
 import { MonthCalendar } from '@/components/calendar'
 import { TimeSlots } from '@/components/calendar'
 import { ServiceCard } from '@/components/appointments'
@@ -60,6 +60,21 @@ export default function CalendarPage() {
     return getAvailableBarbersForDate(selectedDate, schedule, blocks, allBarbers)
   }, [selectedDate, allBarbers, schedule, blocks, loadingSchedule])
 
+  // Day-of-week numbers (0=Mon … 6=Sun ISO) that are fully closed per the weekly schedule
+  const closedDayOfWeeks = useMemo<number[]>(() => {
+    const DOW_MAP: Record<DayKey, number> = { mon: 0, tue: 1, wed: 2, thu: 3, fri: 4, sat: 5, sun: 6 }
+    return (Object.entries(schedule) as [DayKey, { open: boolean }][])
+      .filter(([, day]) => !day.open)
+      .map(([key]) => DOW_MAP[key])
+  }, [schedule])
+
+  // 'YYYY-MM-DD' dates with a partial schedule_block (has specific start_time, not an all-day block)
+  const partialDates = useMemo<string[]>(() => {
+    return blocks
+      .filter(b => b.blockDate !== null && b.startTime !== null && !b.isRecurring)
+      .map(b => b.blockDate!)
+  }, [blocks])
+
   const handleMonthChange = (m: number, y: number) => {
     setMonth(m)
     setYear(y)
@@ -67,6 +82,8 @@ export default function CalendarPage() {
 
   const handleDateSelect = (d: Date) => {
     if (d > maxDate) return
+    const dayOfWeek = (d.getDay() + 6) % 7
+    if (closedDayOfWeeks.includes(dayOfWeek)) return
     setSelectedDate(d)
     setSelectedSlot(null)
     if (selectedBarber) {
@@ -132,6 +149,8 @@ export default function CalendarPage() {
               year={year}
               onMonthChange={handleMonthChange}
               maxDate={maxDate}
+              closedDayOfWeeks={closedDayOfWeeks}
+              partialDates={partialDates}
             />
           </div>
 
