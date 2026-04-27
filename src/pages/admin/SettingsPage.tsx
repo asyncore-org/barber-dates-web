@@ -158,9 +158,7 @@ export default function SettingsPage() {
     description: shopEdits.description ?? shopInfo?.description ?? '',
   }
   const [pendingMaxDays, setPendingMaxDays] = useState<string | null>(null)
-  const [pendingAllowBarber, setPendingAllowBarber] = useState<boolean | null>(null)
-  const localMaxDays    = pendingMaxDays    ?? String(bookingConfig?.maxAdvanceDays ?? 14)
-  const localAllowBarber = pendingAllowBarber ?? allowBarberChoice
+  const localMaxDays = pendingMaxDays ?? String(bookingConfig?.maxAdvanceDays ?? 14)
 
   // ── Rewards local state ─────────────────────────────────────────────────────
   const [rewardEdits, setRewardEdits] = useState<Record<string, string>>({})
@@ -236,6 +234,11 @@ export default function SettingsPage() {
     mutateSchedule.mutate(localSchedule, { onSuccess: () => setPendingSchedule(null) })
   }
 
+  const handleSaveHorarios = () => {
+    if (pendingSchedule !== null) handleSaveSchedule()
+    if (pendingMaxDays !== null) handleSaveBookingConfig()
+  }
+
   // ── Handlers: closures ──────────────────────────────────────────────────────
   const handleAddClosure = () => {
     if (!closureDate || !closureReason.trim()) return
@@ -268,9 +271,13 @@ export default function SettingsPage() {
 
   const handleSaveBookingConfig = () => {
     const n = Number(localMaxDays)
-    if (n > 0) mutateBooking.mutate({ maxAdvanceDays: n, allowBarberChoice: localAllowBarber }, {
-      onSuccess: () => { setPendingMaxDays(null); setPendingAllowBarber(null) },
+    if (n > 0) mutateBooking.mutate({ maxAdvanceDays: n, allowBarberChoice }, {
+      onSuccess: () => { setPendingMaxDays(null) },
     })
+  }
+
+  const handleToggleAllowBarber = () => {
+    mutateBooking.mutate({ maxAdvanceDays: Number(localMaxDays), allowBarberChoice: !allowBarberChoice })
   }
 
   // ── Handlers: rewards ────────────────────────────────────────────────────────
@@ -289,7 +296,7 @@ export default function SettingsPage() {
   const sectionDirty: Record<Section, boolean> = {
     servicios:    Object.keys(serviceEdits).length > 0,
     horarios:     pendingSchedule !== null || pendingMaxDays !== null,
-    barberos:     Object.keys(barberEdits).length > 0 || pendingAllowBarber !== null,
+    barberos:     Object.keys(barberEdits).length > 0,
     fidelizacion: Object.keys(rewardEdits).length > 0,
     barberia:     Object.keys(shopEdits).length > 0,
     apariencia:   false,
@@ -299,7 +306,7 @@ export default function SettingsPage() {
   const discardSection = (sec: Section) => {
     if (sec === 'servicios')    setServiceEdits({})
     if (sec === 'horarios')     { setPendingSchedule(null); setPendingMaxDays(null) }
-    if (sec === 'barberos')     { setBarberEdits({}); setPendingAllowBarber(null) }
+    if (sec === 'barberos')     setBarberEdits({})
     if (sec === 'fidelizacion') setRewardEdits({})
     if (sec === 'barberia')     setShopEdits({})
   }
@@ -312,7 +319,6 @@ export default function SettingsPage() {
       barbersData
         .filter(b => barberEdits[b.id] && Object.keys(barberEdits[b.id]).length > 0)
         .forEach(b => handleSaveBarber(b))
-      if (pendingAllowBarber !== null) handleSaveBookingConfig()
     } else if (sec === 'barberia') {
       handleSaveShopInfo()
     }
@@ -536,18 +542,18 @@ export default function SettingsPage() {
                   )
                 })}
               </div>
-              <SaveBtn onClick={handleSaveSchedule} loading={mutateSchedule.isPending} isDirty={pendingSchedule !== null} />
-
               <div style={{ height: 1, background: 'var(--line)', margin: '1.5rem 0' }} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem', padding: '0.875rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.875rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
                 <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>Reservas anticipadas</div>
                 <div className="flex items-center gap-3">
                   <input type="number" min="1" max="365" value={localMaxDays}
                     onChange={e => setPendingMaxDays(e.target.value)}
                     style={{ width: 72, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, textAlign: 'center' }} />
                   <span style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>días máx. de antelación</span>
-                  <SaveBtn onClick={handleSaveBookingConfig} loading={mutateBooking.isPending} isDirty={pendingMaxDays !== null} />
                 </div>
+              </div>
+              <div style={{ marginTop: '1rem', marginBottom: '1.5rem' }}>
+                <SaveBtn onClick={handleSaveHorarios} loading={mutateSchedule.isPending || mutateBooking.isPending} isDirty={sectionDirty.horarios} />
               </div>
 
               <SectionTitle>CIERRES ESPECIALES</SectionTitle>
@@ -741,22 +747,22 @@ export default function SettingsPage() {
 
               <div style={{ height: 1, background: 'var(--line)', margin: '1.5rem 0' }} />
               <SectionTitle>OPCIONES DE RESERVA</SectionTitle>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)', marginBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
                 <div>
                   <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>Permitir elegir barbero</div>
                   <div style={{ fontSize: 11, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', marginTop: 2 }}>
-                    {localAllowBarber ? 'Los clientes pueden seleccionar barbero al reservar' : 'El sistema asignará barbero automáticamente'}
+                    {allowBarberChoice ? 'Los clientes pueden seleccionar barbero al reservar' : 'El sistema asignará barbero automáticamente'}
                   </div>
                 </div>
                 <button
-                  onClick={() => setPendingAllowBarber(!localAllowBarber)}
-                  style={{ width: 44, height: 26, borderRadius: 13, border: 'none', cursor: 'pointer', flexShrink: 0, background: localAllowBarber ? 'var(--led)' : 'var(--bg-4)', position: 'relative', transition: 'background 0.2s', boxShadow: localAllowBarber ? 'var(--glow-led)' : 'none' }}
+                  onClick={handleToggleAllowBarber}
+                  disabled={mutateBooking.isPending}
+                  style={{ width: 44, height: 26, borderRadius: 13, border: 'none', cursor: mutateBooking.isPending ? 'default' : 'pointer', flexShrink: 0, background: allowBarberChoice ? 'var(--led)' : 'var(--bg-4)', position: 'relative', transition: 'background 0.2s', boxShadow: allowBarberChoice ? 'var(--glow-led)' : 'none', opacity: mutateBooking.isPending ? 0.6 : 1 }}
                   aria-label="Toggle allow barber choice"
                 >
-                  <span style={{ position: 'absolute', top: 3, left: localAllowBarber ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', display: 'block', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+                  <span style={{ position: 'absolute', top: 3, left: allowBarberChoice ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', display: 'block', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
                 </button>
               </div>
-              <SaveBtn onClick={handleSaveBookingConfig} loading={mutateBooking.isPending} isDirty={pendingAllowBarber !== null} />
             </div>
           )}
 
