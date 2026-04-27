@@ -369,7 +369,7 @@ export default function SettingsPage() {
             >
               {s.label}
               {sectionDirty[s.id] && (
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: section === s.id ? '#000' : 'var(--led)', flexShrink: 0 }} />
+                <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: section === s.id ? '#000' : 'var(--led)', flexShrink: 0 }} />
               )}
             </button>
           ))}
@@ -387,7 +387,7 @@ export default function SettingsPage() {
             <button key={s.id} onClick={() => handleSectionChange(s.id)} style={sidebarBtn(s.id)}>
               <span style={{ flex: 1 }}>{s.label}</span>
               {sectionDirty[s.id] && (
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--led)', flexShrink: 0 }} />
+                <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--led)', flexShrink: 0 }} />
               )}
             </button>
           ))}
