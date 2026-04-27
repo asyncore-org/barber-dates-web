@@ -85,7 +85,7 @@ export class InsForgeBarberRepository implements IBarberRepository {
   async delete(id: string): Promise<void> {
     const { error } = await insforgeClient.database
       .from('barbers')
-      .delete()
+      .update({ is_active: false })
       .eq('id', id)
     if (error) throw error
   }

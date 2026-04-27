@@ -121,7 +121,7 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
   async deleteReward(id: string): Promise<void> {
     const { error } = await insforgeClient.database
       .from('rewards')
-      .delete()
+      .update({ is_active: false })
       .eq('id', id)
     if (error) throw error
   }

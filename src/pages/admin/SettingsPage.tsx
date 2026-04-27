@@ -846,9 +846,9 @@ export default function SettingsPage() {
 
       {deleteBarberTarget && (
         <ConfirmDialog
-          title="Eliminar barbero"
-          message={`¿Eliminar a ${deleteBarberTarget.fullName}? Sus citas no se verán afectadas.`}
-          confirmLabel="Eliminar"
+          title="Dar de baja a barbero"
+          message={`¿Dar de baja a ${deleteBarberTarget.fullName}? Quedará inactivo y no aparecerá en el sistema de reservas. Sus citas existentes no se verán afectadas.`}
+          confirmLabel="Dar de baja"
           danger
           onConfirm={handleConfirmDeleteBarber}
           onCancel={() => setDeleteBarberTarget(null)}
