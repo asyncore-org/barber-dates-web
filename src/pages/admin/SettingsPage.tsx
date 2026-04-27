@@ -76,12 +76,13 @@ function DirtyGuardDialog({ onSave, onDiscard, onCancel }: { onSave: () => void;
   )
 }
 
-function SaveBtn({ onClick, loading }: { onClick: () => void; loading?: boolean }) {
+function SaveBtn({ onClick, loading, isDirty }: { onClick: () => void; loading?: boolean; isDirty?: boolean }) {
+  const disabled = loading || isDirty === false
   return (
     <button
       onClick={onClick}
-      disabled={loading}
-      style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1 }}
+      disabled={disabled}
+      style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: disabled ? 'default' : 'pointer', opacity: loading ? 0.7 : isDirty === false ? 0.4 : 1 }}
     >
       {loading ? 'Guardando…' : 'Guardar'}
     </button>
@@ -535,7 +536,7 @@ export default function SettingsPage() {
                   )
                 })}
               </div>
-              <SaveBtn onClick={handleSaveSchedule} loading={mutateSchedule.isPending} />
+              <SaveBtn onClick={handleSaveSchedule} loading={mutateSchedule.isPending} isDirty={pendingSchedule !== null} />
 
               <div style={{ height: 1, background: 'var(--line)', margin: '1.5rem 0' }} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem', padding: '0.875rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
@@ -545,7 +546,7 @@ export default function SettingsPage() {
                     onChange={e => setPendingMaxDays(e.target.value)}
                     style={{ width: 72, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, textAlign: 'center' }} />
                   <span style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>días máx. de antelación</span>
-                  <SaveBtn onClick={handleSaveBookingConfig} loading={mutateBooking.isPending} />
+                  <SaveBtn onClick={handleSaveBookingConfig} loading={mutateBooking.isPending} isDirty={pendingMaxDays !== null} />
                 </div>
               </div>
 
@@ -687,7 +688,7 @@ export default function SettingsPage() {
                             ))}
                           </div>
                           <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <SaveBtn onClick={() => handleSaveBarber(b)} loading={updateBarber.isPending} />
+                            <SaveBtn onClick={() => handleSaveBarber(b)} loading={updateBarber.isPending} isDirty={!!barberEdits[b.id]} />
                             <button onClick={() => { setEditingBarberId(null); setBarberEdits(e => { const copy = { ...e }; delete copy[b.id]; return copy }) }} style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
                           </div>
                         </div>
@@ -755,7 +756,7 @@ export default function SettingsPage() {
                   <span style={{ position: 'absolute', top: 3, left: localAllowBarber ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', display: 'block', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
                 </button>
               </div>
-              <SaveBtn onClick={handleSaveBookingConfig} loading={mutateBooking.isPending} />
+              <SaveBtn onClick={handleSaveBookingConfig} loading={mutateBooking.isPending} isDirty={pendingAllowBarber !== null} />
             </div>
           )}
 
@@ -807,7 +808,7 @@ export default function SettingsPage() {
                     style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.5rem 0.6rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, resize: 'vertical', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
                 </div>
               </div>
-              <SaveBtn onClick={handleSaveShopInfo} loading={mutateShopInfo.isPending} />
+              <SaveBtn onClick={handleSaveShopInfo} loading={mutateShopInfo.isPending} isDirty={Object.keys(shopEdits).length > 0} />
             </div>
           )}
 
