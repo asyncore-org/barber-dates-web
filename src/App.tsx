@@ -3,7 +3,6 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import { useAuth } from '@/hooks'
 import { AppLoader, AppLayout } from '@/components/layout'
 import { AuthGuard } from '@/components/auth'
-import { MOCK_APPOINTMENTS } from '@/lib/mock-data'
 
 const AuthPage = lazy(() => import('@/pages/auth/AuthPage'))
 const CalendarPage = lazy(() => import('@/pages/client/CalendarPage'))
@@ -26,8 +25,7 @@ export default function App() {
       navigate('/admin/dashboard', { replace: true })
     } else {
       if (clientDest.includes(location.pathname)) return
-      const hasUpcoming = MOCK_APPOINTMENTS.some(a => a.status === 'upcoming')
-      navigate(hasUpcoming ? '/appointments' : '/calendar', { replace: true })
+      navigate('/calendar', { replace: true })
     }
   }, [authChecked, user]) // eslint-disable-line react-hooks/exhaustive-deps
 

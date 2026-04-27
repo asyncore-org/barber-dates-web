@@ -143,30 +143,10 @@ ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
 
 
 -- ─── RECOMPENSAS ──────────────────────────────────────────────────────────────
-INSERT INTO public.rewards (id, name, description, points_cost, is_active)
+INSERT INTO public.rewards (id, label, cost, is_active, sort_order)
 VALUES
-  (
-    'c0000000-0000-4000-8000-000000000001',
-    'Corte gratis',
-    'Un corte clásico completamente gratuito.',
-    100, true
-  ),
-  (
-    'c0000000-0000-4000-8000-000000000002',
-    '20% descuento en tinte',
-    'Descuento del 20% en el servicio de Tinte + Corte.',
-    50, true
-  ),
-  (
-    'c0000000-0000-4000-8000-000000000003',
-    'Barba gratis con corte',
-    'Arreglo de barba incluido en tu próximo corte.',
-    75, true
-  ),
-  (
-    'c0000000-0000-4000-8000-000000000004',
-    'Cerveza de la casa',
-    'Una cerveza fría mientras esperas o tras tu servicio.',
-    25, true
-  )
+  ('c0000000-0000-4000-8000-000000000001', 'Corte gratis',          100, true, 1),
+  ('c0000000-0000-4000-8000-000000000002', '20% descuento en tinte', 50, true, 2),
+  ('c0000000-0000-4000-8000-000000000003', 'Barba gratis con corte', 75, true, 3),
+  ('c0000000-0000-4000-8000-000000000004', 'Cerveza de la casa',     25, true, 4)
 ON CONFLICT (id) DO NOTHING;

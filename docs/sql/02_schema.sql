@@ -159,12 +159,12 @@ CREATE INDEX IF NOT EXISTS idx_loyalty_tx_card ON public.loyalty_transactions (c
 
 -- ─── RECOMPENSAS ──────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.rewards (
-  id          UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
-  name        TEXT           NOT NULL,
-  description TEXT,
-  points_cost INTEGER        NOT NULL CHECK (points_cost > 0),
-  is_active   BOOLEAN        NOT NULL DEFAULT true,
-  created_at  TIMESTAMPTZ    NOT NULL DEFAULT now()
+  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  label      TEXT        NOT NULL,
+  cost       INTEGER     NOT NULL CHECK (cost > 0),
+  is_active  BOOLEAN     NOT NULL DEFAULT true,
+  sort_order INTEGER     NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 
