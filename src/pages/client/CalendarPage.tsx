@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
 import { getMaxBookingDate, getAvailableBarbersForDate } from '@/domain/booking'
@@ -7,9 +8,11 @@ import { MonthCalendar } from '@/components/calendar'
 import { TimeSlots } from '@/components/calendar'
 import { ServiceCard } from '@/components/appointments'
 import { Modal } from '@/components/ui'
+import { useAuth } from '@/hooks'
 import { useServices } from '@/hooks/useServices'
 import { useBarbers } from '@/hooks/useBarbers'
 import { useWeeklySchedule, useScheduleBlocks } from '@/hooks/useSchedule'
+import { useCreateAppointment } from '@/hooks/useAppointments'
 import type { Service } from '@/domain/service'
 import type { Barber } from '@/domain/barber'
 
@@ -30,14 +33,17 @@ const CARD = 'bg-[var(--bg-2)] border border-[var(--line)] rounded-xl p-4 md:p-5
 const SECTION_LABEL = 'font-[var(--font-display)] text-[13px] tracking-widest text-[var(--fg-3)] mb-3.5'
 
 export default function CalendarPage() {
+  const navigate = useNavigate()
+  const { user } = useAuth()
   const { name: shopName, maxAdvanceDays, allowBarberChoice } = useShopContext()
   const maxDate = getMaxBookingDate(maxAdvanceDays)
   const today = new Date()
 
   const { data: services = [], isLoading: loadingServices } = useServices()
   const { data: allBarbers = [] } = useBarbers()
-  const { data: schedule = DEFAULT_WEEKLY_SCHEDULE } = useWeeklySchedule()
+  const { data: schedule = DEFAULT_WEEKLY_SCHEDULE, isLoading: loadingSchedule } = useWeeklySchedule()
   const { data: blocks = [] } = useScheduleBlocks()
+  const createAppointment = useCreateAppointment()
 
   const [month, setMonth] = useState(today.getMonth())
   const [year, setYear] = useState(today.getFullYear())
@@ -46,12 +52,13 @@ export default function CalendarPage() {
   const [selectedService, setSelectedService] = useState<Service | null>(null)
   const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const [confirmed, setConfirmed] = useState(false)
+  const [bookingError, setBookingError] = useState<string | null>(null)
 
+  // While schedule is loading, show all active barbers unfiltered to avoid empty flicker
   const availableBarbers = useMemo<Barber[]>(() => {
-    if (!selectedDate) return allBarbers.filter(b => b.isActive)
+    if (loadingSchedule || !selectedDate) return allBarbers.filter(b => b.isActive)
     return getAvailableBarbersForDate(selectedDate, schedule, blocks, allBarbers)
-  }, [selectedDate, allBarbers, schedule, blocks])
+  }, [selectedDate, allBarbers, schedule, blocks, loadingSchedule])
 
   const handleMonthChange = (m: number, y: number) => {
     setMonth(m)
@@ -69,15 +76,41 @@ export default function CalendarPage() {
     }
   }
 
-  const canConfirm = selectedDate && selectedSlot && selectedService
+  const canConfirm = selectedDate && selectedSlot && selectedService && !createAppointment.isPending
 
   const handleConfirm = () => {
-    setConfirmOpen(false)
-    setConfirmed(true)
-    setTimeout(() => setConfirmed(false), 3000)
-    setSelectedDate(null)
-    setSelectedSlot(null)
-    setSelectedService(null)
+    if (!selectedDate || !selectedSlot || !selectedService || !user) return
+    setBookingError(null)
+
+    const [slotH, slotM] = selectedSlot.split(':').map(Number)
+    const start = new Date(selectedDate)
+    start.setHours(slotH, slotM, 0, 0)
+    const end = new Date(start.getTime() + selectedService.durationMinutes * 60_000)
+
+    const barberId = selectedBarber?.id ?? availableBarbers[0]?.id ?? ''
+
+    createAppointment.mutate(
+      {
+        clientId: user.id,
+        barberId,
+        serviceId: selectedService.id,
+        startTime: start.toISOString(),
+        endTime: end.toISOString(),
+      },
+      {
+        onSuccess: () => {
+          setConfirmOpen(false)
+          setSelectedDate(null)
+          setSelectedSlot(null)
+          setSelectedService(null)
+          setSelectedBarber(null)
+          navigate('/appointments', { replace: true })
+        },
+        onError: () => {
+          setBookingError('No se pudo guardar la cita. Inténtalo de nuevo.')
+        },
+      },
+    )
   }
 
   return (
@@ -85,20 +118,6 @@ export default function CalendarPage() {
       <Helmet>
         <title>Pedir cita — {shopName}</title>
       </Helmet>
-
-      {confirmed && (
-        <div
-          className="fixed top-[72px] right-3 z-[200] md:top-6 md:right-6"
-          style={{
-            background: 'var(--ok)', color: '#fff',
-            padding: '0.75rem 1.25rem', borderRadius: 8,
-            fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 600,
-            boxShadow: 'var(--shadow-md)',
-          }}
-        >
-          ✓ Cita confirmada correctamente
-        </div>
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-[1.4fr_0.9fr] gap-4 md:gap-6 items-start">
         {/* Left column */}
@@ -275,28 +294,38 @@ export default function CalendarPage() {
             </div>
           ))}
         </div>
+        {bookingError && (
+          <div style={{ color: 'var(--err)', fontSize: 13, fontFamily: 'var(--font-ui)', marginBottom: '0.75rem', textAlign: 'center' }}>
+            {bookingError}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <button
             onClick={() => setConfirmOpen(false)}
+            disabled={createAppointment.isPending}
             style={{
               flex: 1, padding: '0.75rem', borderRadius: 8,
               border: '1px solid var(--line)', background: 'transparent',
               color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', cursor: 'pointer',
-              minHeight: 44,
+              minHeight: 44, opacity: createAppointment.isPending ? 0.5 : 1,
             }}
           >
             Cancelar
           </button>
           <button
             onClick={handleConfirm}
+            disabled={createAppointment.isPending}
             style={{
               flex: 1, padding: '0.75rem', borderRadius: 8,
               border: 'none', background: 'var(--led)', color: '#fff',
-              fontFamily: 'var(--font-ui)', fontWeight: 600, cursor: 'pointer',
-              boxShadow: 'var(--glow-led)', minHeight: 44,
+              fontFamily: 'var(--font-ui)', fontWeight: 600,
+              cursor: createAppointment.isPending ? 'default' : 'pointer',
+              boxShadow: createAppointment.isPending ? 'none' : 'var(--glow-led)',
+              opacity: createAppointment.isPending ? 0.7 : 1,
+              minHeight: 44,
             }}
           >
-            Confirmar
+            {createAppointment.isPending ? 'Guardando…' : 'Confirmar'}
           </button>
         </div>
       </Modal>}
