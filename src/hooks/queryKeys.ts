@@ -18,14 +18,16 @@ export const queryKeys = {
   },
 
   services: {
-    all:  () => ['services'] as const,
-    list: () => ['services', 'list'] as const,
+    all:   () => ['services'] as const,
+    list:  () => ['services', 'list'] as const,   // active only (client view)
+    admin: () => ['services', 'admin'] as const,  // all incl. inactive (admin view)
   },
 
   barbers: {
-    all:  () => ['barbers'] as const,
-    list: () => ['barbers', 'list'] as const,
-    byId: (id: string) => ['barbers', id] as const,
+    all:   () => ['barbers'] as const,
+    list:  () => ['barbers', 'list'] as const,    // active only (client view)
+    admin: () => ['barbers', 'admin'] as const,   // all incl. inactive (admin view)
+    byId:  (id: string) => ['barbers', id] as const,
   },
 
   schedule: {

@@ -18,8 +18,11 @@
 CREATE TABLE IF NOT EXISTS public.barbers (
   id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   full_name     TEXT        NOT NULL,
+  role          TEXT,
   bio           TEXT,
   avatar_url    TEXT,
+  phone         TEXT,
+  email         TEXT,
   -- Array de IDs de servicios que el barbero ofrece (JSONB para compatibilidad con SDK)
   specialty_ids JSONB       NOT NULL DEFAULT '[]'::jsonb,
   is_active     BOOLEAN     NOT NULL DEFAULT true,

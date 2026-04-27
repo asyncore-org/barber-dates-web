@@ -1,4 +1,4 @@
-import type { ILoyaltyRepository, LoyaltyCard, Reward } from '@/domain/loyalty'
+import type { ILoyaltyRepository, LoyaltyCard, Reward, CreateRewardData, UpdateRewardData } from '@/domain/loyalty'
 import { insforgeClient } from './client'
 
 interface LoyaltyCardRow {
@@ -21,6 +21,8 @@ interface RewardRow {
 interface RedeemedRewardRow {
   reward_id: string
 }
+
+const REWARD_SELECT = 'id, label, cost, is_active, sort_order'
 
 function mapToLoyaltyCard(row: LoyaltyCardRow): LoyaltyCard {
   return {
@@ -57,8 +59,17 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
   async getActiveRewards(): Promise<Reward[]> {
     const { data, error } = await insforgeClient.database
       .from('rewards')
-      .select('id, label, cost, is_active, sort_order')
+      .select(REWARD_SELECT)
       .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+    if (error) throw error
+    return ((data ?? []) as RewardRow[]).map(mapToReward)
+  }
+
+  async getAllRewards(): Promise<Reward[]> {
+    const { data, error } = await insforgeClient.database
+      .from('rewards')
+      .select(REWARD_SELECT)
       .order('sort_order', { ascending: true })
     if (error) throw error
     return ((data ?? []) as RewardRow[]).map(mapToReward)
@@ -77,6 +88,41 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
     const { error } = await insforgeClient.database
       .from('redeemed_rewards')
       .insert({ client_id: clientId, reward_id: rewardId, redeemed_at: new Date().toISOString() })
+    if (error) throw error
+  }
+
+  async createReward(data: CreateRewardData): Promise<Reward> {
+    const { data: row, error } = await insforgeClient.database
+      .from('rewards')
+      .insert({ label: data.label, cost: data.cost, sort_order: data.sortOrder ?? 99, is_active: true })
+      .select(REWARD_SELECT)
+      .single()
+    if (error) throw error
+    return mapToReward(row as RewardRow)
+  }
+
+  async updateReward(id: string, data: UpdateRewardData): Promise<Reward> {
+    const patch: Record<string, unknown> = {}
+    if (data.label !== undefined) patch.label = data.label
+    if (data.cost !== undefined) patch.cost = data.cost
+    if (data.isActive !== undefined) patch.is_active = data.isActive
+    if (data.sortOrder !== undefined) patch.sort_order = data.sortOrder
+
+    const { data: row, error } = await insforgeClient.database
+      .from('rewards')
+      .update(patch)
+      .eq('id', id)
+      .select(REWARD_SELECT)
+      .single()
+    if (error) throw error
+    return mapToReward(row as RewardRow)
+  }
+
+  async deleteReward(id: string): Promise<void> {
+    const { error } = await insforgeClient.database
+      .from('rewards')
+      .delete()
+      .eq('id', id)
     if (error) throw error
   }
 }

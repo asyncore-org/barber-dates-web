@@ -30,9 +30,9 @@ describe('getMaxBookingDate', () => {
 // ─── getAvailableBarbersForDate ─────────────────────────────────────────────
 
 const ALL_BARBERS: Barber[] = [
-  { id: 'b1', fullName: 'Gio Valentino',   bio: null, avatarUrl: null, specialtyIds: [], isActive: true },
-  { id: 'b2', fullName: 'Marcos Castaño',  bio: null, avatarUrl: null, specialtyIds: [], isActive: true },
-  { id: 'b3', fullName: 'Lucía Pérez',     bio: null, avatarUrl: null, specialtyIds: [], isActive: false },
+  { id: 'b1', fullName: 'Gio Valentino',  role: null, phone: null, email: null, bio: null, avatarUrl: null, specialtyIds: [], isActive: true },
+  { id: 'b2', fullName: 'Marcos Castaño', role: null, phone: null, email: null, bio: null, avatarUrl: null, specialtyIds: [], isActive: true },
+  { id: 'b3', fullName: 'Lucía Pérez',    role: null, phone: null, email: null, bio: null, avatarUrl: null, specialtyIds: [], isActive: false },
 ]
 
 const SCHEDULE: WeeklySchedule = {

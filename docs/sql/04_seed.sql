@@ -52,18 +52,24 @@ ON CONFLICT (id) DO NOTHING;
 -- ─── BARBEROS ─────────────────────────────────────────────────────────────────
 -- specialty_ids: array JSON de UUIDs de services que este barbero ofrece.
 -- Gio ofrece todos los servicios; Marcos ofrece un subconjunto.
-INSERT INTO public.barbers (id, full_name, bio, specialty_ids, is_active)
+INSERT INTO public.barbers (id, full_name, role, phone, email, bio, specialty_ids, is_active)
 VALUES
   (
     'b0000000-0000-4000-8000-000000000001',
-    'Gio',
+    'Gio Valentino',
+    'Maestro barbero',
+    '641 36 13 52',
+    'gio@giobarber.es',
     'Fundador y maestro barbero. Más de 15 años de experiencia en cortes clásicos y modernos.',
     '["a0000000-0000-4000-8000-000000000001","a0000000-0000-4000-8000-000000000002","a0000000-0000-4000-8000-000000000003","a0000000-0000-4000-8000-000000000004","a0000000-0000-4000-8000-000000000005","a0000000-0000-4000-8000-000000000006"]'::jsonb,
     true
   ),
   (
     'b0000000-0000-4000-8000-000000000002',
-    'Marcos',
+    'Marcos Castaño',
+    'Barbero',
+    '612 44 78 91',
+    'marcos@giobarber.es',
     'Especialista en cortes modernos y degradados. 8 años de experiencia.',
     '["a0000000-0000-4000-8000-000000000001","a0000000-0000-4000-8000-000000000002","a0000000-0000-4000-8000-000000000003","a0000000-0000-4000-8000-000000000006"]'::jsonb,
     true
