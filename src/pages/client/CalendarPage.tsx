@@ -2,15 +2,28 @@ import { useState, useMemo } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
 import { getMaxBookingDate, getAvailableBarbersForDate } from '@/domain/booking'
+import { DEFAULT_WEEKLY_SCHEDULE } from '@/domain/schedule'
 import { MonthCalendar } from '@/components/calendar'
 import { TimeSlots } from '@/components/calendar'
 import { ServiceCard } from '@/components/appointments'
 import { Modal } from '@/components/ui'
-import { MOCK_SERVICES, MOCK_BARBERS, MOCK_HOURS, MOCK_CLOSURES, MOCK_TAKEN_SLOTS } from '@/lib/mock-data'
-import type { MockService, MockBarber } from '@/lib/mock-data'
+import { useServices } from '@/hooks/useServices'
+import { useBarbers } from '@/hooks/useBarbers'
+import { useWeeklySchedule, useScheduleBlocks } from '@/hooks/useSchedule'
+import type { Service } from '@/domain/service'
+import type { Barber } from '@/domain/barber'
 
 function fmt(date: Date) {
   return date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
+}
+
+function getInitials(fullName: string): string {
+  return fullName
+    .split(' ')
+    .map(w => w[0] ?? '')
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
 }
 
 const CARD = 'bg-[var(--bg-2)] border border-[var(--line)] rounded-xl p-4 md:p-5'
@@ -20,19 +33,25 @@ export default function CalendarPage() {
   const { name: shopName, maxAdvanceDays, allowBarberChoice } = useShopContext()
   const maxDate = getMaxBookingDate(maxAdvanceDays)
   const today = new Date()
+
+  const { data: services = [], isLoading: loadingServices } = useServices()
+  const { data: allBarbers = [] } = useBarbers()
+  const { data: schedule = DEFAULT_WEEKLY_SCHEDULE } = useWeeklySchedule()
+  const { data: blocks = [] } = useScheduleBlocks()
+
   const [month, setMonth] = useState(today.getMonth())
   const [year, setYear] = useState(today.getFullYear())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
-  const [selectedService, setSelectedService] = useState<MockService | null>(null)
-  const [selectedBarber, setSelectedBarber] = useState<MockBarber | null>(null)
+  const [selectedService, setSelectedService] = useState<Service | null>(null)
+  const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmed, setConfirmed] = useState(false)
 
-  const availableBarbers = useMemo<MockBarber[]>(() => {
-    if (!selectedDate) return MOCK_BARBERS.filter(b => b.active)
-    return getAvailableBarbersForDate(selectedDate, MOCK_HOURS, MOCK_CLOSURES, MOCK_BARBERS) as MockBarber[]
-  }, [selectedDate])
+  const availableBarbers = useMemo<Barber[]>(() => {
+    if (!selectedDate) return allBarbers.filter(b => b.isActive)
+    return getAvailableBarbersForDate(selectedDate, schedule, blocks, allBarbers)
+  }, [selectedDate, allBarbers, schedule, blocks])
 
   const handleMonthChange = (m: number, y: number) => {
     setMonth(m)
@@ -43,9 +62,8 @@ export default function CalendarPage() {
     if (d > maxDate) return
     setSelectedDate(d)
     setSelectedSlot(null)
-    // Reset barber if no longer available on the new date
     if (selectedBarber) {
-      const stillAvailable = getAvailableBarbersForDate(d, MOCK_HOURS, MOCK_CLOSURES, MOCK_BARBERS)
+      const stillAvailable = getAvailableBarbersForDate(d, schedule, blocks, allBarbers)
         .some(b => b.id === selectedBarber.id)
       if (!stillAvailable) setSelectedBarber(null)
     }
@@ -107,7 +125,7 @@ export default function CalendarPage() {
               <TimeSlots
                 selected={selectedSlot}
                 onSelect={setSelectedSlot}
-                taken={MOCK_TAKEN_SLOTS}
+                taken={[]}
               />
             </div>
           )}
@@ -117,7 +135,6 @@ export default function CalendarPage() {
             <div className={CARD}>
               <div className={SECTION_LABEL}>BARBERO</div>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                {/* Any-barber option */}
                 <button
                   onClick={() => setSelectedBarber(null)}
                   style={{
@@ -160,9 +177,9 @@ export default function CalendarPage() {
                       background: 'var(--bg-4)', display: 'flex', alignItems: 'center',
                       justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--fg-1)',
                     }}>
-                      {b.initials}
+                      {getInitials(b.fullName)}
                     </div>
-                    {b.name}
+                    {b.fullName}
                   </button>
                 ))}
               </div>
@@ -175,16 +192,22 @@ export default function CalendarPage() {
           {/* Services */}
           <div className={CARD}>
             <div className={SECTION_LABEL}>SERVICIO</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {MOCK_SERVICES.map(s => (
-                <ServiceCard
-                  key={s.id}
-                  service={s}
-                  selected={selectedService?.id === s.id}
-                  onClick={() => setSelectedService(s)}
-                />
-              ))}
-            </div>
+            {loadingServices ? (
+              <div style={{ color: 'var(--fg-3)', fontSize: 13, fontFamily: 'var(--font-ui)', padding: '0.5rem 0' }}>
+                Cargando servicios…
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {services.map(s => (
+                  <ServiceCard
+                    key={s.id}
+                    service={s}
+                    selected={selectedService?.id === s.id}
+                    onClick={() => setSelectedService(s)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Summary */}
@@ -192,11 +215,11 @@ export default function CalendarPage() {
             <div className={SECTION_LABEL}>RESUMEN</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
               {[
-                { label: 'Fecha', value: selectedDate ? fmt(selectedDate) : '—' },
-                { label: 'Hora', value: selectedSlot ?? '—' },
+                { label: 'Fecha',   value: selectedDate ? fmt(selectedDate) : '—' },
+                { label: 'Hora',    value: selectedSlot ?? '—' },
                 { label: 'Servicio', value: selectedService?.name ?? '—' },
-                { label: 'Barbero', value: selectedBarber?.name ?? 'Cualquier barbero' },
-                { label: 'Precio', value: selectedService ? `${selectedService.price}€` : '—' },
+                { label: 'Barbero', value: selectedBarber?.fullName ?? 'Cualquier barbero' },
+                { label: 'Precio',  value: selectedService ? `${selectedService.price}€` : '—' },
               ].map(({ label, value }) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: 12, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>{label}</span>
@@ -208,7 +231,7 @@ export default function CalendarPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.375rem', borderTop: '1px solid var(--line)' }}>
                   <span style={{ fontSize: 12, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>Ganarás</span>
                   <span style={{ fontSize: 13, color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontWeight: 600 }}>
-                    ★ {selectedService.points} pts
+                    ★ {selectedService.loyaltyPoints} pts
                   </span>
                 </div>
               )}
@@ -233,19 +256,18 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Confirm modal */}
       {confirmOpen && <Modal
         onClose={() => setConfirmOpen(false)}
         title="Confirmar cita"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
           {[
-            { label: 'Fecha', value: selectedDate ? fmt(selectedDate) : '' },
-            { label: 'Hora', value: selectedSlot ?? '' },
+            { label: 'Fecha',    value: selectedDate ? fmt(selectedDate) : '' },
+            { label: 'Hora',     value: selectedSlot ?? '' },
             { label: 'Servicio', value: selectedService?.name ?? '' },
-            { label: 'Barbero', value: selectedBarber?.name ?? 'Cualquier barbero' },
-            { label: 'Duración', value: selectedService ? `${selectedService.duration} min` : '' },
-            { label: 'Precio', value: selectedService ? `${selectedService.price}€` : '' },
+            { label: 'Barbero',  value: selectedBarber?.fullName ?? 'Cualquier barbero' },
+            { label: 'Duración', value: selectedService ? `${selectedService.durationMinutes} min` : '' },
+            { label: 'Precio',   value: selectedService ? `${selectedService.price}€` : '' },
           ].map(({ label, value }) => (
             <div key={label} style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>{label}</span>
