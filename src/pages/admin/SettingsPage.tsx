@@ -124,7 +124,7 @@ export default function SettingsPage() {
 
   // ── Services local state ────────────────────────────────────────────────────
   const [serviceEdits, setServiceEdits] = useState<Record<string, Partial<Service>>>({})
-  const services = servicesData.map(svc => ({ ...svc, ...serviceEdits[svc.id] }))
+  const services = servicesData.filter(svc => svc.isActive).map(svc => ({ ...svc, ...serviceEdits[svc.id] }))
   const [deleteServiceTarget, setDeleteServiceTarget] = useState<Service | null>(null)
 
   // ── Barbers local state ─────────────────────────────────────────────────────
@@ -185,6 +185,10 @@ export default function SettingsPage() {
       onSuccess: () => { setServiceEdits(e => { const copy = { ...e }; delete copy[svc.id]; return copy }); clearSecError('servicios') },
       onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('servicios', 'No se pudo guardar el servicio. Revisa tu conexión.') },
     })
+  }
+
+  const handleSaveAllServices = () => {
+    services.forEach(svc => { if (serviceEdits[svc.id]) handleSaveService(svc) })
   }
 
   const handleConfirmDeleteService = () => {
@@ -453,19 +457,19 @@ export default function SettingsPage() {
                     {services.map(svc => (
                       <tr key={svc.id} style={{ borderBottom: '1px solid var(--line)' }}>
                         <td style={{ padding: '0.4rem 0.5rem' }}>
-                          <input value={svc.name} onChange={e => handleServiceFieldChange(svc.id, 'name', e.target.value)} onBlur={() => handleSaveService(svc)}
+                          <input value={svc.name} onChange={e => handleServiceFieldChange(svc.id, 'name', e.target.value)}
                             style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.3rem 0.5rem', color: 'var(--fg-0)', width: 160, fontFamily: 'var(--font-ui)', fontSize: 13 }} />
                         </td>
                         <td style={{ padding: '0.4rem 0.5rem' }}>
-                          <input type="number" value={svc.durationMinutes} onChange={e => handleServiceFieldChange(svc.id, 'durationMinutes', Number(e.target.value))} onBlur={() => handleSaveService(svc)}
+                          <input type="number" value={svc.durationMinutes} onChange={e => handleServiceFieldChange(svc.id, 'durationMinutes', Number(e.target.value))}
                             style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.3rem 0.5rem', color: 'var(--fg-0)', width: 70, fontFamily: 'var(--font-ui)', fontSize: 13 }} />
                         </td>
                         <td style={{ padding: '0.4rem 0.5rem' }}>
-                          <input type="number" value={svc.price} onChange={e => handleServiceFieldChange(svc.id, 'price', Number(e.target.value))} onBlur={() => handleSaveService(svc)}
+                          <input type="number" value={svc.price} onChange={e => handleServiceFieldChange(svc.id, 'price', Number(e.target.value))}
                             style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.3rem 0.5rem', color: 'var(--fg-0)', width: 70, fontFamily: 'var(--font-ui)', fontSize: 13 }} />
                         </td>
                         <td style={{ padding: '0.4rem 0.5rem' }}>
-                          <input type="number" value={svc.loyaltyPoints} onChange={e => handleServiceFieldChange(svc.id, 'loyaltyPoints', Number(e.target.value))} onBlur={() => handleSaveService(svc)}
+                          <input type="number" value={svc.loyaltyPoints} onChange={e => handleServiceFieldChange(svc.id, 'loyaltyPoints', Number(e.target.value))}
                             style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.3rem 0.5rem', color: 'var(--fg-0)', width: 70, fontFamily: 'var(--font-ui)', fontSize: 13 }} />
                         </td>
                         <td style={{ padding: '0.4rem 0.5rem' }}>
@@ -482,7 +486,7 @@ export default function SettingsPage() {
                 {services.map(svc => (
                   <div key={svc.id} style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 8, padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
-                      <input value={svc.name} onChange={e => handleServiceFieldChange(svc.id, 'name', e.target.value)} onBlur={() => handleSaveService(svc)}
+                      <input value={svc.name} onChange={e => handleServiceFieldChange(svc.id, 'name', e.target.value)}
                         style={{ flex: 1, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.35rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 500 }} />
                       <button onClick={() => setDeleteServiceTarget(svc)} style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 14, flexShrink: 0, padding: '0.25rem' }}>✕</button>
                     </div>
@@ -494,7 +498,7 @@ export default function SettingsPage() {
                       ]).map(({ field, label }) => (
                         <div key={field}>
                           <div style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{label}</div>
-                          <input type="number" value={svc[field]} onChange={e => handleServiceFieldChange(svc.id, field, Number(e.target.value))} onBlur={() => handleSaveService(svc)}
+                          <input type="number" value={svc[field]} onChange={e => handleServiceFieldChange(svc.id, field, Number(e.target.value))}
                             style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.3rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, textAlign: 'center' }} />
                         </div>
                       ))}
@@ -509,6 +513,11 @@ export default function SettingsPage() {
               >
                 + Añadir servicio
               </button>
+
+              {sectionError.servicios && (
+                <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', marginTop: 6, marginBottom: 0 }}>{sectionError.servicios}</p>
+              )}
+              <SaveBtn onClick={handleSaveAllServices} loading={updateService.isPending} isDirty={sectionDirty.servicios} />
             </div>
           )}
 
