@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { repositories } from '@/infrastructure'
 import type { CreateAppointmentData, AppointmentStatus } from '@/domain/appointment'
@@ -46,4 +47,11 @@ export function useUpdateAppointmentStatus() {
       repositories.appointments().updateStatus(id, status),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.appointments.all() }),
   })
+}
+
+export function useFindProfileByEmail() {
+  return useCallback(
+    (email: string) => repositories.profiles().findByEmail(email),
+    [],
+  )
 }

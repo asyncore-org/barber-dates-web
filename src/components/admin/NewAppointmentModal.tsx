@@ -8,23 +8,22 @@ function calcInitials(name: string): string {
   return name.trim().split(/\s+/).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '?'
 }
 
-const DEMO_EMAILS = [
-  'carlos.martinez@gmail.com',
-  'ruben.garcia@hotmail.com',
-  'javier.perez@outlook.com',
-  'miguel.angel@gmail.com',
-  'toni.rodriguez@gmail.com',
-  'alex.fernandez@icloud.com',
-  'marc.vila@gmail.com',
-  'sergio.lopez@yahoo.es',
-]
+export interface NewAppointmentData {
+  email: string
+  serviceId: string
+  barberId: string
+  date: Date
+  slot: string
+}
 
 interface Props {
   onClose: () => void
-  onConfirm: () => void
+  onConfirm: (data: NewAppointmentData) => void
+  errorMessage?: string
+  isPending?: boolean
 }
 
-export function NewAppointmentModal({ onClose, onConfirm }: Props) {
+export function NewAppointmentModal({ onClose, onConfirm, errorMessage, isPending }: Props) {
   const today = new Date()
   const { data: services = [] } = useServices()
   const { data: barbers = [] } = useBarbers()
@@ -33,19 +32,15 @@ export function NewAppointmentModal({ onClose, onConfirm }: Props) {
 
   const [email, setEmail] = useState('')
   const [serviceId, setServiceId] = useState<string | null>(null)
-  const [barberId, setBarberId] = useState<string>(() => activeBarbers[0]?.id ?? '')
+  const [barberId, setBarberId] = useState<string>('__any__')
   const [date, setDate] = useState<Date | null>(null)
   const [slot, setSlot] = useState<string | null>(null)
   const [month, setMonth] = useState(today.getMonth())
   const [year, setYear] = useState(today.getFullYear())
 
   const selectedService = activeServices.find(s => s.id === serviceId) ?? null
-  const selectedBarber = activeBarbers.find(b => b.id === barberId)
-  const canConfirm = email.trim().length > 3 && serviceId && barberId && date && slot
-
-  const emailSuggestions = email.length > 1
-    ? DEMO_EMAILS.filter(e => e.toLowerCase().includes(email.toLowerCase()))
-    : []
+  const selectedBarber = barberId !== '__any__' ? activeBarbers.find(b => b.id === barberId) : null
+  const canConfirm = email.trim().length > 3 && serviceId != null && barberId !== '' && date != null && slot != null && !isPending
 
   const LABEL = {
     fontFamily: 'var(--font-display)',
@@ -55,6 +50,22 @@ export function NewAppointmentModal({ onClose, onConfirm }: Props) {
     marginBottom: '0.5rem',
   } as React.CSSProperties
 
+  const barberBtnStyle = (id: string): React.CSSProperties => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.5rem 0.875rem',
+    minHeight: 40,
+    borderRadius: 8,
+    border: barberId === id ? '1px solid var(--led-soft)' : '1px solid var(--line)',
+    background: barberId === id ? 'rgba(123,79,255,0.1)' : 'var(--bg-3)',
+    color: barberId === id ? 'var(--fg-0)' : 'var(--fg-1)',
+    cursor: 'pointer',
+    fontSize: 13,
+    fontFamily: 'var(--font-ui)',
+    transition: 'all 0.12s',
+  })
+
   return (
     <Modal title="Nueva cita" onClose={onClose}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -63,7 +74,6 @@ export function NewAppointmentModal({ onClose, onConfirm }: Props) {
         <div>
           <div style={LABEL}>CLIENTE (EMAIL)</div>
           <input
-            list="client-suggestions"
             value={email}
             onChange={e => setEmail(e.target.value)}
             placeholder="email@ejemplo.com"
@@ -81,11 +91,6 @@ export function NewAppointmentModal({ onClose, onConfirm }: Props) {
               boxSizing: 'border-box',
             }}
           />
-          {emailSuggestions.length > 0 && (
-            <datalist id="client-suggestions">
-              {emailSuggestions.map(e => <option key={e} value={e} />)}
-            </datalist>
-          )}
         </div>
 
         {/* Service */}
@@ -124,26 +129,11 @@ export function NewAppointmentModal({ onClose, onConfirm }: Props) {
         <div>
           <div style={LABEL}>BARBERO</div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button onClick={() => setBarberId('__any__')} style={barberBtnStyle('__any__')}>
+              Cualquier barbero
+            </button>
             {activeBarbers.map(b => (
-              <button
-                key={b.id}
-                onClick={() => setBarberId(b.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '0.5rem 0.875rem',
-                  minHeight: 40,
-                  borderRadius: 8,
-                  border: barberId === b.id ? '1px solid var(--led-soft)' : '1px solid var(--line)',
-                  background: barberId === b.id ? 'rgba(123,79,255,0.1)' : 'var(--bg-3)',
-                  color: barberId === b.id ? 'var(--fg-0)' : 'var(--fg-1)',
-                  cursor: 'pointer',
-                  fontSize: 13,
-                  fontFamily: 'var(--font-ui)',
-                  transition: 'all 0.12s',
-                }}
-              >
+              <button key={b.id} onClick={() => setBarberId(b.id)} style={barberBtnStyle(b.id)}>
                 <div style={{
                   width: 26, height: 26, borderRadius: '50%',
                   background: 'var(--bg-4)',
@@ -183,7 +173,7 @@ export function NewAppointmentModal({ onClose, onConfirm }: Props) {
         )}
 
         {/* Summary pill */}
-        {canConfirm && selectedService && selectedBarber && date && slot && (
+        {canConfirm && selectedService && date && slot && (
           <div style={{
             padding: '0.75rem 1rem',
             borderRadius: 8,
@@ -197,14 +187,28 @@ export function NewAppointmentModal({ onClose, onConfirm }: Props) {
             gap: '0.25rem',
           }}>
             <span><strong style={{ color: 'var(--fg-0)' }}>{email}</strong></span>
-            <span>{selectedService.name} · {selectedBarber.fullName} · {date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })} {slot}</span>
+            <span>
+              {selectedService.name} ·{' '}
+              {selectedBarber ? selectedBarber.fullName : 'Barbero disponible aleatorio'} ·{' '}
+              {date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })} {slot}
+            </span>
           </div>
+        )}
+
+        {/* Error */}
+        {errorMessage && (
+          <p style={{ color: 'var(--danger)', fontSize: 13, fontFamily: 'var(--font-ui)', margin: 0 }}>
+            {errorMessage}
+          </p>
         )}
 
         {/* Confirm button */}
         <button
           disabled={!canConfirm}
-          onClick={onConfirm}
+          onClick={() => {
+            if (!canConfirm || !serviceId || !date || !slot) return
+            onConfirm({ email: email.trim(), serviceId, barberId, date, slot })
+          }}
           style={{
             width: '100%',
             padding: '0.875rem',
@@ -221,7 +225,7 @@ export function NewAppointmentModal({ onClose, onConfirm }: Props) {
             transition: 'all 0.15s',
           }}
         >
-          CONFIRMAR CITA
+          {isPending ? 'Creando…' : 'CONFIRMAR CITA'}
         </button>
       </div>
     </Modal>

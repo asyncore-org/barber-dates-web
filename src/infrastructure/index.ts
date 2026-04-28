@@ -11,6 +11,7 @@ import { InsForgeScheduleRepository }    from './insforge/scheduleRepository'
 import { InsForgeShopRepository }        from './insforge/shopRepository'
 import { InsForgeAppointmentRepository } from './insforge/appointmentRepository'
 import { InsForgeLoyaltyRepository }     from './insforge/loyaltyRepository'
+import { InsForgeProfileRepository }     from './insforge/profileRepository'
 
 export const repositories = {
   services:     () => new InsForgeServiceRepository(),
@@ -19,4 +20,5 @@ export const repositories = {
   shop:         () => new InsForgeShopRepository(),
   appointments: () => new InsForgeAppointmentRepository(),
   loyalty:      () => new InsForgeLoyaltyRepository(),
+  profiles:     () => new InsForgeProfileRepository(),
 }

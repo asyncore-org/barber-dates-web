@@ -3,9 +3,10 @@ import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
 import { Icon } from '@/components/ui'
 import { AgendaListView, NewAppointmentModal, RescheduleModal } from '@/components/admin'
-import type { WeekAppt, RescheduleUpdate } from '@/components/admin'
+import type { WeekAppt, RescheduleUpdate, NewAppointmentData } from '@/components/admin'
 import { useBarbers } from '@/hooks/useBarbers'
 import { useAllServices } from '@/hooks/useServices'
+import { useAllAppointments, useCreateAppointment, useFindProfileByEmail } from '@/hooks/useAppointments'
 
 const DAYS_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 const HOURS = Array.from({ length: 11 }, (_, i) => i + 9) // 9 → 19
@@ -56,10 +57,24 @@ function getWeekStart(ref: Date) {
   return d
 }
 
+function combineDateSlot(date: Date, slot: string): Date {
+  const [h, m] = slot.split(':').map(Number)
+  const result = new Date(date)
+  result.setHours(h, m, 0, 0)
+  return result
+}
+
+function addMinutes(date: Date, minutes: number): Date {
+  return new Date(date.getTime() + minutes * 60_000)
+}
+
 export default function DashboardPage() {
   const { name: shopName } = useShopContext()
   const { data: barbers = [] } = useBarbers()
   const { data: services = [] } = useAllServices()
+  const { data: dbAppointments = [] } = useAllAppointments()
+  const createApptMut = useCreateAppointment()
+  const findProfileByEmail = useFindProfileByEmail()
   const activeBarbers = barbers.filter(b => b.isActive)
   const [weekOffset, setWeekOffset] = useState(0)
   const [dayOffset, setDayOffset] = useState(0)
@@ -69,12 +84,60 @@ export default function DashboardPage() {
   const [newApptOpen, setNewApptOpen] = useState(false)
   const [newApptToast, setNewApptToast] = useState(false)
   const [rescheduleToast, setRescheduleToast] = useState(false)
+  const [apptError, setApptError] = useState<string | null>(null)
   const nowLineRef = useRef<HTMLDivElement>(null)
 
-  const handleNewApptConfirm = () => {
-    setNewApptOpen(false)
-    setNewApptToast(true)
-    setTimeout(() => setNewApptToast(false), 3000)
+  const handleNewApptConfirm = async (data: NewAppointmentData) => {
+    setApptError(null)
+    const svc = services.find(s => s.id === data.serviceId)
+    if (!svc) return
+
+    const startDt = combineDateSlot(data.date, data.slot)
+    const endDt = addMinutes(startDt, svc.durationMinutes)
+
+    let resolvedBarberId = data.barberId
+    if (data.barberId === '__any__') {
+      const available = activeBarbers.filter(b =>
+        !dbAppointments.some(a =>
+          a.barberId === b.id &&
+          new Date(a.startTime) < endDt &&
+          new Date(a.endTime) > startDt,
+        ),
+      )
+      if (available.length === 0) {
+        setApptError('No hay barberos disponibles para ese horario.')
+        return
+      }
+      resolvedBarberId = available[Math.floor(Math.random() * available.length)].id
+    }
+
+    const profile = await findProfileByEmail(data.email).catch(() => null)
+    if (!profile) {
+      setApptError('No se encontró ningún cliente con ese email.')
+      return
+    }
+
+    createApptMut.mutate(
+      {
+        clientId: profile.id,
+        barberId: resolvedBarberId,
+        serviceId: data.serviceId,
+        startTime: startDt.toISOString(),
+        endTime: endDt.toISOString(),
+      },
+      {
+        onSuccess: () => {
+          setNewApptOpen(false)
+          setApptError(null)
+          setNewApptToast(true)
+          setTimeout(() => setNewApptToast(false), 3000)
+        },
+        onError: (e) => {
+          if (import.meta.env.DEV) console.error(e)
+          setApptError('No se pudo crear la cita. Inténtalo de nuevo.')
+        },
+      },
+    )
   }
 
   const handleRescheduleConfirm = async (update: RescheduleUpdate) => {
@@ -411,8 +474,10 @@ export default function DashboardPage() {
       {/* New appointment modal */}
       {newApptOpen && (
         <NewAppointmentModal
-          onClose={() => setNewApptOpen(false)}
+          onClose={() => { setNewApptOpen(false); setApptError(null) }}
           onConfirm={handleNewApptConfirm}
+          errorMessage={apptError ?? undefined}
+          isPending={createApptMut.isPending}
         />
       )}
 
