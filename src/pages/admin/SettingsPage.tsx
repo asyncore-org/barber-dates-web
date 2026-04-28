@@ -164,6 +164,11 @@ export default function SettingsPage() {
   const [editingRewardId, setEditingRewardId] = useState<string | null>(null)
   const [rewardEdits, setRewardEdits] = useState<Record<string, { label: string; cost: number }>>({})
 
+  // ── Section errors ───────────────────────────────────────────────────────────
+  const [sectionError, setSectionError] = useState<Partial<Record<Section, string>>>({})
+  const setSecError = (sec: Section, msg: string) => setSectionError(e => ({ ...e, [sec]: msg }))
+  const clearSecError = (sec: Section) => setSectionError(e => { const c = { ...e }; delete c[sec]; return c })
+
   // ── Handlers: services ──────────────────────────────────────────────────────
   const handleAddService = () => {
     createService.mutate({ name: 'Nuevo servicio', durationMinutes: 30, price: 15, loyaltyPoints: 10 })
@@ -175,7 +180,8 @@ export default function SettingsPage() {
 
   const handleSaveService = (svc: Service) => {
     updateService.mutate({ id: svc.id, data: { name: svc.name, durationMinutes: svc.durationMinutes, price: svc.price, loyaltyPoints: svc.loyaltyPoints } }, {
-      onSuccess: () => setServiceEdits(e => { const copy = { ...e }; delete copy[svc.id]; return copy }),
+      onSuccess: () => { setServiceEdits(e => { const copy = { ...e }; delete copy[svc.id]; return copy }); clearSecError('servicios') },
+      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('servicios', 'No se pudo guardar el servicio. Revisa tu conexión.') },
     })
   }
 
@@ -194,17 +200,23 @@ export default function SettingsPage() {
   const handleSaveBarber = (b: Barber) => {
     const edits = barberEdits[b.id] ?? {}
     updateBarber.mutate({ id: b.id, data: { fullName: edits.fullName ?? b.fullName, role: edits.role ?? b.role ?? undefined, phone: edits.phone ?? b.phone ?? undefined, email: edits.email ?? b.email ?? undefined, bio: edits.bio ?? b.bio ?? undefined } }, {
-      onSuccess: () => { setBarberEdits(e => { const copy = { ...e }; delete copy[b.id]; return copy }); setEditingBarberId(null) },
+      onSuccess: () => { setBarberEdits(e => { const copy = { ...e }; delete copy[b.id]; return copy }); setEditingBarberId(null); clearSecError('barberos') },
+      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('barberos', 'No se pudo guardar el barbero. Revisa tu conexión.') },
     })
   }
 
   const handleToggleBarberActive = (b: Barber) => {
-    updateBarber.mutate({ id: b.id, data: { isActive: !b.isActive } })
+    updateBarber.mutate({ id: b.id, data: { isActive: !b.isActive } }, {
+      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('barberos', 'No se pudo actualizar el estado del barbero. Revisa tu conexión.') },
+    })
   }
 
   const handleConfirmDeleteBarber = () => {
     if (!deleteBarberTarget) return
-    deleteBarber.mutate(deleteBarberTarget.id, { onSuccess: () => setDeleteBarberTarget(null) })
+    deleteBarber.mutate(deleteBarberTarget.id, {
+      onSuccess: () => { setDeleteBarberTarget(null); clearSecError('barberos') },
+      onError: (e) => { if (import.meta.env.DEV) console.error(e); setDeleteBarberTarget(null); setSecError('barberos', 'No se pudo dar de baja al barbero. Revisa tu conexión.') },
+    })
   }
 
   const handleAddBarber = () => {
@@ -232,7 +244,10 @@ export default function SettingsPage() {
   }
 
   const handleSaveSchedule = () => {
-    mutateSchedule.mutate(localSchedule, { onSuccess: () => setPendingSchedule(null) })
+    mutateSchedule.mutate(localSchedule, {
+      onSuccess: () => { setPendingSchedule(null); clearSecError('horarios') },
+      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('horarios', 'No se pudo guardar el horario. Revisa tu conexión.') },
+    })
   }
 
   const handleSaveHorarios = () => {
@@ -267,18 +282,24 @@ export default function SettingsPage() {
 
   // ── Handlers: shop info ─────────────────────────────────────────────────────
   const handleSaveShopInfo = () => {
-    mutateShopInfo.mutate(localShop, { onSuccess: () => setShopEdits({}) })
+    mutateShopInfo.mutate(localShop, {
+      onSuccess: () => { setShopEdits({}); clearSecError('barberia') },
+      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('barberia', 'No se pudo guardar la información. Revisa tu conexión.') },
+    })
   }
 
   const handleSaveBookingConfig = () => {
     const n = Number(localMaxDays)
     if (n > 0) mutateBooking.mutate({ maxAdvanceDays: n, allowBarberChoice }, {
-      onSuccess: () => { setPendingMaxDays(null) },
+      onSuccess: () => { setPendingMaxDays(null); clearSecError('horarios') },
+      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('horarios', 'No se pudo guardar la configuración. Revisa tu conexión.') },
     })
   }
 
   const handleToggleAllowBarber = () => {
-    mutateBooking.mutate({ maxAdvanceDays: Number(localMaxDays), allowBarberChoice: !allowBarberChoice })
+    mutateBooking.mutate({ maxAdvanceDays: Number(localMaxDays), allowBarberChoice: !allowBarberChoice }, {
+      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('barberos', 'No se pudo guardar la configuración. Revisa tu conexión.') },
+    })
   }
 
   // ── Handlers: rewards ────────────────────────────────────────────────────────
@@ -288,7 +309,9 @@ export default function SettingsPage() {
       onSuccess: () => {
         setRewardEdits(e => { const copy = { ...e }; delete copy[r.id]; return copy })
         setEditingRewardId(null)
+        clearSecError('fidelizacion')
       },
+      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('fidelizacion', 'No se pudo guardar la recompensa. Revisa tu conexión.') },
     })
   }
 
@@ -558,6 +581,9 @@ export default function SettingsPage() {
               </div>
               <div style={{ marginTop: '1rem', marginBottom: '1.5rem' }}>
                 <SaveBtn onClick={handleSaveHorarios} loading={mutateSchedule.isPending || mutateBooking.isPending} isDirty={sectionDirty.horarios} />
+                {sectionError.horarios && (
+                  <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', marginTop: 6, marginBottom: 0 }}>{sectionError.horarios}</p>
+                )}
               </div>
 
               <SectionTitle>CIERRES ESPECIALES</SectionTitle>
@@ -767,6 +793,9 @@ export default function SettingsPage() {
                   <span style={{ position: 'absolute', top: 3, left: allowBarberChoice ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', display: 'block', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
                 </button>
               </div>
+              {sectionError.barberos && (
+                <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', marginTop: 8, marginBottom: 0 }}>{sectionError.barberos}</p>
+              )}
             </div>
           )}
 
@@ -817,7 +846,7 @@ export default function SettingsPage() {
                       >
                         Editar
                       </button>
-                      <button onClick={() => deleteReward.mutate(r.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 16, minWidth: 32, minHeight: 32, flexShrink: 0 }}>✕</button>
+                      <button onClick={() => deleteReward.mutate(r.id, { onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('fidelizacion', 'No se pudo eliminar la recompensa. Revisa tu conexión.') } })} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 16, minWidth: 32, minHeight: 32, flexShrink: 0 }}>✕</button>
                     </div>
                   )
                 ))}
@@ -825,6 +854,9 @@ export default function SettingsPage() {
               <button onClick={handleAddReward} style={{ marginTop: '0.75rem', padding: '0.5rem 0.875rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>
                 + Añadir recompensa
               </button>
+              {sectionError.fidelizacion && (
+                <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', marginTop: 8, marginBottom: 0 }}>{sectionError.fidelizacion}</p>
+              )}
             </div>
           )}
 
@@ -853,6 +885,9 @@ export default function SettingsPage() {
                 </div>
               </div>
               <SaveBtn onClick={handleSaveShopInfo} loading={mutateShopInfo.isPending} isDirty={Object.keys(shopEdits).length > 0} />
+              {sectionError.barberia && (
+                <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', marginTop: 6, marginBottom: 0 }}>{sectionError.barberia}</p>
+              )}
             </div>
           )}
 
