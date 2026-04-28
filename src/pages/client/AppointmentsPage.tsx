@@ -71,7 +71,7 @@ export default function AppointmentsPage() {
   const nextBarber = next ? (barbers.find(b => b.id === next.barberId) ?? null) : null
 
   const loyaltyPoints = loyaltyCard?.points ?? 0
-  const loyaltyStamps = loyaltyCard?.stamps ?? 0
+  const loyaltyStamps = loyaltyCard?.totalVisits ?? 0
   const loyaltyMemberCode = loyaltyCard?.memberCode ?? '—'
   const loyaltyTarget = rewards.length > 0 ? Math.max(...rewards.map(r => r.cost)) : 100
 

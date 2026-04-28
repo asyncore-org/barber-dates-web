@@ -2,8 +2,8 @@ export interface LoyaltyCard {
   id: string
   clientId: string
   points: number
-  stamps: number
-  memberCode: string
+  totalVisits: number
+  memberCode?: string
   createdAt: string
 }
 
