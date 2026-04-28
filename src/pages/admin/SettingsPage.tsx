@@ -17,6 +17,8 @@ import type { Reward } from '@/domain/loyalty'
 
 type Section = 'servicios' | 'horarios' | 'barberos' | 'fidelizacion' | 'barberia' | 'apariencia'
 
+const BARBER_ROLES = ['Barbero', 'Barbera', 'Propietario', 'Estilista'] as const
+
 const SECTIONS: { id: Section; label: string }[] = [
   { id: 'servicios',    label: 'Servicios' },
   { id: 'horarios',     label: 'Horarios' },
@@ -711,7 +713,6 @@ export default function SettingsPage() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {([
                               { field: 'fullName' as const, label: 'Nombre', type: 'text' },
-                              { field: 'role' as const, label: 'Rol', type: 'text' },
                               { field: 'email' as const, label: 'Email', type: 'email' },
                               { field: 'phone' as const, label: 'Teléfono', type: 'tel' },
                             ]).map(({ field, label, type }) => (
@@ -722,6 +723,24 @@ export default function SettingsPage() {
                                   style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }} />
                               </div>
                             ))}
+                            <div>
+                              <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Rol</label>
+                              {(() => {
+                                const currentRole = String(edits.role ?? b.role ?? 'Barbero')
+                                const options = BARBER_ROLES.includes(currentRole as typeof BARBER_ROLES[number])
+                                  ? BARBER_ROLES
+                                  : ([...BARBER_ROLES, currentRole] as readonly string[])
+                                return (
+                                  <select
+                                    value={currentRole}
+                                    onChange={e => handleBarberEditChange(b.id, 'role', e.target.value)}
+                                    style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }}
+                                  >
+                                    {options.map(r => <option key={r} value={r}>{r}</option>)}
+                                  </select>
+                                )
+                              })()}
+                            </div>
                           </div>
                           <div style={{ display: 'flex', gap: '0.5rem' }}>
                             <SaveBtn onClick={() => handleSaveBarber(b)} loading={updateBarber.isPending} isDirty={!!barberEdits[b.id]} />
@@ -744,7 +763,6 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {([
                         { key: 'fullName' as const, label: 'Nombre *', type: 'text', ph: 'Ej: Ana García' },
-                        { key: 'role' as const, label: 'Rol', type: 'text', ph: 'Barbero / Barbera' },
                         { key: 'email' as const, label: 'Email', type: 'email', ph: 'ana@giobarber.es' },
                         { key: 'phone' as const, label: 'Teléfono', type: 'tel', ph: '6XX XX XX XX' },
                       ]).map(({ key, label, type, ph }) => (
@@ -754,6 +772,16 @@ export default function SettingsPage() {
                             style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }} />
                         </div>
                       ))}
+                      <div>
+                        <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Rol</label>
+                        <select
+                          value={newBarber.role}
+                          onChange={e => setNewBarber(nb => ({ ...nb, role: e.target.value }))}
+                          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }}
+                        >
+                          {BARBER_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                      </div>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button onClick={handleAddBarber} disabled={!newBarber.fullName.trim()}
