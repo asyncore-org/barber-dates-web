@@ -1,15 +1,10 @@
 -- =============================================================================
--- 02_schema.sql — Gio Barber Shop — Schema completo
+-- 02_schema.sql — Gio Barber Shop — Schema completo (tablas + funciones public)
 -- =============================================================================
--- Ejecutar en orden tras vaciar la base de datos (o en una nueva cuenta).
+-- Ejecutar PRIMERO este archivo, luego 02b_auth_trigger.sql en ejecución separada.
+-- InsForge bloquea DDL sobre auth.* en el SQL Editor; el trigger de auth va aparte.
 -- Prerrequisito: la extensión pgcrypto debe estar disponible (InsForge la incluye).
 -- =============================================================================
-
--- -----------------------------------------------------------------------------
--- NOTA sobre el trigger de perfiles (supersede 01_handle_new_user_trigger.sql)
--- InsForge usa columnas 'profile' y 'metadata' en auth.users, NO 'raw_user_meta_data'
--- (que es la convención de Supabase). El trigger corregido está al final de este archivo.
--- -----------------------------------------------------------------------------
 
 
 -- ─── BARBEROS ─────────────────────────────────────────────────────────────────
@@ -38,6 +33,7 @@ COMMENT ON COLUMN public.barbers.specialty_ids IS 'Array JSON de UUIDs de servic
 CREATE TABLE IF NOT EXISTS public.profiles (
   id         UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name  TEXT        NOT NULL DEFAULT '',
+  email      TEXT,
   phone      TEXT,
   avatar_url TEXT,
   role       TEXT        NOT NULL DEFAULT 'client' CHECK (role IN ('client', 'admin')),
@@ -47,6 +43,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 
 COMMENT ON TABLE public.profiles IS 'Perfil público de clientes y admins. Se crea via trigger on_auth_user_created.';
 COMMENT ON COLUMN public.profiles.role IS 'client | admin. Admin se asigna con 05_admin.sql.';
+COMMENT ON COLUMN public.profiles.email IS 'Espejo del email de auth.users. Poblado por el trigger on_auth_user_created. Permite buscar perfiles por email sin acceder a auth.users.';
 
 
 -- ─── SERVICIOS ────────────────────────────────────────────────────────────────
@@ -215,32 +212,5 @@ CREATE OR REPLACE TRIGGER trg_shop_config_updated_at
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 
--- =============================================================================
--- TRIGGER: crear perfil al registrar usuario
--- NOTA: usa columnas de InsForge (profile, metadata), NO las de Supabase
--- (raw_user_meta_data). Supersede 01_handle_new_user_trigger.sql.
--- =============================================================================
-
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER
-LANGUAGE plpgsql SECURITY DEFINER
-AS $$
-BEGIN
-  INSERT INTO public.profiles (id, full_name, role)
-  VALUES (
-    NEW.id,
-    -- InsForge: perfil en columna 'profile' JSONB (campo 'name')
-    COALESCE(NEW.profile->>'name', split_part(NEW.email, '@', 1)),
-    -- Rol en 'metadata' JSONB (campo 'role'); por defecto 'client'
-    COALESCE(NEW.metadata->>'role', 'client')
-  )
-  ON CONFLICT (id) DO NOTHING;
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+-- La función handle_new_user() y el trigger sobre auth.users
+-- están en 02b_auth_trigger.sql (ejecutar por separado).
