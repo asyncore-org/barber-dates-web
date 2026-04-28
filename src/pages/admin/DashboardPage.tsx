@@ -365,7 +365,23 @@ export default function DashboardPage() {
                         zIndex: 5,
                         pointerEvents: 'none',
                       }}
-                    />
+                    >
+                      <span style={{
+                        position: 'absolute',
+                        left: 2,
+                        top: -18,
+                        fontSize: 9,
+                        fontFamily: 'var(--font-ui)',
+                        color: 'var(--led)',
+                        fontWeight: 600,
+                        letterSpacing: '0.04em',
+                        lineHeight: 1,
+                        pointerEvents: 'none',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {now.getHours().toString().padStart(2, '0')}:{now.getMinutes().toString().padStart(2, '0')}
+                      </span>
+                    </div>
                   )}
 
                   {appointments.filter(a => a.day === colIdx).map(appt => {

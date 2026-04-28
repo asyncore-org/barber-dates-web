@@ -14,12 +14,13 @@ export function useClientAppointments(clientId: string | undefined) {
   })
 }
 
-/** Admin view: returns all appointments */
+/** Admin view: returns all appointments, polls every 30 s */
 export function useAllAppointments() {
   return useQuery({
     queryKey: queryKeys.appointments.all(),
     queryFn: () => repositories.appointments().getAll(),
     staleTime: STALE.MEDIUM,
+    refetchInterval: 30_000,
   })
 }
 
