@@ -173,8 +173,15 @@ export default function CalendarPage() {
             />
           </div>
 
-          {/* Time slots */}
-          {selectedDate && (
+          {/* Time slots — only shown when there are available barbers */}
+          {selectedDate && availableBarbers.length === 0 && (
+            <div className={CARD}>
+              <div style={{ color: 'var(--fg-2)', fontSize: 13, fontFamily: 'var(--font-ui)', padding: '0.5rem 0' }}>
+                No hay barberos disponibles para este día.
+              </div>
+            </div>
+          )}
+          {selectedDate && availableBarbers.length > 0 && (
             <div className={CARD}>
               <div className={SECTION_LABEL}>
                 HORA — {fmt(selectedDate).toUpperCase()}
