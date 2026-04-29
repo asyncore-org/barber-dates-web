@@ -38,6 +38,8 @@ export function TopBar() {
     { to: '/admin/settings', label: 'Configuración', icon: 'settings' as const },
   ]
   const adminLinks = [
+    { to: '/calendar', label: 'Pedir cita', icon: 'calendar' as const },
+    { to: '/appointments', label: 'Mis citas', icon: 'clipboard' as const },
     ...ownerLinks,
     { to: '/super-admin', label: 'Admin', icon: 'settings' as const },
   ]
