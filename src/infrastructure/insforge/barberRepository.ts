@@ -52,20 +52,29 @@ export class InsForgeBarberRepository implements IBarberRepository {
   }
 
   async create(data: CreateBarberData): Promise<Barber> {
-    const { data: row, error } = await insforgeClient.database
-      .from('barbers')
-      .insert({
-        full_name: data.fullName,
-        role: data.role ?? null,
-        bio: data.bio ?? null,
-        phone: data.phone ?? null,
-        email: data.email ?? null,
-        is_active: true,
-      })
-      .select(SELECT)
-      .single()
+    // InsForge does not support ?select on POST — insert without returning clause.
+    // The caller (useAddBarberByEmail) ignores the return value and invalidates
+    // the query cache on success, so a synthetic object is sufficient here.
+    const body: Record<string, unknown> = { full_name: data.fullName, is_active: true }
+    if (data.role != null) body.role = data.role
+    if (data.bio != null) body.bio = data.bio
+    if (data.phone != null) body.phone = data.phone
+    if (data.email != null) body.email = data.email
+    const { error } = await insforgeClient.database.from('barbers').insert(body)
     if (error) throw error
-    return mapToBarber(row as BarberRow)
+    return {
+      id: '',
+      fullName: data.fullName,
+      role: data.role ?? null,
+      bio: data.bio ?? null,
+      avatarUrl: null,
+      phone: data.phone ?? null,
+      email: data.email ?? null,
+      specialtyIds: [],
+      isActive: true,
+      breakStart: null,
+      breakEnd: null,
+    }
   }
 
   async update(id: string, data: UpdateBarberData): Promise<Barber> {
