@@ -8,16 +8,24 @@ interface AuthGuardProps {
   children: ReactNode
 }
 
+function homeFor(role: UserRole | undefined): string {
+  if (role === 'admin') return '/super-admin'
+  if (role === 'owner') return '/admin/dashboard'
+  if (role === 'barber') return '/barber'
+  return '/calendar'
+}
+
 export function AuthGuard({ role, children }: AuthGuardProps) {
   const { user, authChecked } = useAuth()
 
-  // While session bootstrap is still running, App.tsx shows AppLoader — this is a safety net
   if (!authChecked) return null
-
   if (!user) return <Navigate to="/auth" replace />
 
+  // admin bypasses all guards — can access any route
+  if (user.role === 'admin') return <>{children}</>
+
   if (user.role !== role) {
-    return <Navigate to={user.role === 'admin' ? '/admin/dashboard' : '/calendar'} replace />
+    return <Navigate to={homeFor(user.role)} replace />
   }
 
   return <>{children}</>

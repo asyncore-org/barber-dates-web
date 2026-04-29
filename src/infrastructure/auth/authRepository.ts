@@ -6,6 +6,20 @@ import {
   OAUTH_CALLBACK_SEEN_KEY,
 } from '@/infrastructure/insforge'
 
+async function fetchProfileRole(userId: string): Promise<UserRole | null> {
+  try {
+    const { data } = await insforgeClient.database
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle()
+    return (data as { role: UserRole } | null)?.role ?? null
+  } catch (err) {
+    if (import.meta.env.DEV) console.warn('[auth] fetchProfileRole fallback to metadata role:', err)
+    return null
+  }
+}
+
 const IS_MOCK_MODE = import.meta.env.VITE_USE_MOCKS === 'true'
 const GOOGLE_OAUTH_ENV_FALLBACK = import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === 'true'
 const OAUTH_PENDING_KEY = 'gio_oauth_pending_google'
@@ -192,16 +206,17 @@ function normalizeAuthError(
   return new Error('No hemos podido cerrar sesión. Inténtalo de nuevo.')
 }
 
-function mapToUser(user: InsForgeUser): User {
+function mapToUser(user: InsForgeUser, profileRole?: UserRole | null): User {
   const metadataRole = user.metadata?.role
   const isMetadataRole = metadataRole === 'admin' || metadataRole === 'client'
   const isProjectAdmin = user.isProjectAdmin === true || user.is_project_admin === true
+  const fallbackRole = (isMetadataRole ? metadataRole : isProjectAdmin ? 'admin' : 'client') as UserRole
 
   return {
     id: user.id,
     email: user.email,
     fullName: user.profile?.name ?? user.email.split('@')[0],
-    role: (isMetadataRole ? metadataRole : isProjectAdmin ? 'admin' : 'client') as UserRole,
+    role: profileRole ?? fallbackRole,
     avatarUrl: user.profile?.avatar_url ?? undefined,
   }
 }
@@ -212,7 +227,8 @@ export const authRepository = {
       const { data, error } = await insforgeClient.auth.signInWithPassword({ email, password })
       if (error) throw error
       if (!data?.user) throw new Error('No se recibió usuario del servidor.')
-      return mapToUser(data.user as InsForgeUser)
+      const profileRole = await fetchProfileRole(data.user.id)
+      return mapToUser(data.user as InsForgeUser, profileRole)
     } catch (error) {
       throw normalizeAuthError(error, 'login')
     }
@@ -228,7 +244,8 @@ export const authRepository = {
       if (error) throw error
       if (!data?.user) throw new Error('No se pudo crear la cuenta.')
       if (data.requireEmailVerification) throw new Error('Revisa tu email para confirmar tu cuenta.')
-      return mapToUser(data.user as InsForgeUser)
+      const profileRole = await fetchProfileRole(data.user.id)
+      return mapToUser(data.user as InsForgeUser, profileRole)
     } catch (error) {
       throw normalizeAuthError(error, 'signup')
     }
@@ -252,7 +269,8 @@ export const authRepository = {
       })
       if (error) throw error
       if (!data?.user) throw new Error('No se pudo iniciar sesión con Google (mock).')
-      return mapToUser(data.user as InsForgeUser)
+      const profileRole = await fetchProfileRole(data.user.id)
+      return mapToUser(data.user as InsForgeUser, profileRole)
     }
 
     try {
@@ -321,6 +339,7 @@ export const authRepository = {
 
     removeSessionStorage(AUTH_NOTICE_KEY)
     clearOAuthTransientState()
-    return mapToUser(data.user as InsForgeUser)
+    const profileRole = await fetchProfileRole(data.user.id)
+    return mapToUser(data.user as InsForgeUser, profileRole)
   },
 }

@@ -1,12 +1,26 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useSyncExternalStore } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
 import { Icon } from '@/components/ui'
 import { AgendaListView, NewAppointmentModal, RescheduleModal } from '@/components/admin'
-import type { WeekAppt, RescheduleUpdate } from '@/components/admin'
-import { MOCK_BARBERS, MOCK_SERVICES } from '@/lib/mock-data'
+import type { WeekAppt, RescheduleUpdate, NewAppointmentData } from '@/components/admin'
+import { useBarbers } from '@/hooks/useBarbers'
+import { useAllServices } from '@/hooks/useServices'
+import { useAllAppointments, useCreateAppointment, useFindProfileByEmail } from '@/hooks/useAppointments'
 
-const DAYS_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+const landscapeMq = typeof window !== 'undefined'
+  ? window.matchMedia('(orientation: landscape) and (max-height: 600px)')
+  : null
+
+function useLandscape() {
+  return useSyncExternalStore(
+    cb => { landscapeMq?.addEventListener('change', cb); return () => landscapeMq?.removeEventListener('change', cb) },
+    () => landscapeMq?.matches ?? false,
+    () => false,
+  )
+}
+
+const DAYS_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 const HOURS = Array.from({ length: 11 }, (_, i) => i + 9) // 9 → 19
 
 const INITIAL_APPOINTMENTS: WeekAppt[] = [
@@ -38,6 +52,7 @@ const COLOR_MAP = {
 
 const CELL_HEIGHT_PX = 56
 const DAY_START_H = 9
+const MAX_TOP_PX = CELL_HEIGHT_PX * (HOURS.length - 1) // clamp now-line to last visible row
 
 function topPx(h: number, m: number) {
   return ((h - DAY_START_H) * 60 + m) / 60 * CELL_HEIGHT_PX
@@ -54,8 +69,26 @@ function getWeekStart(ref: Date) {
   return d
 }
 
+function combineDateSlot(date: Date, slot: string): Date {
+  const [h, m] = slot.split(':').map(Number)
+  const result = new Date(date)
+  result.setHours(h, m, 0, 0)
+  return result
+}
+
+function addMinutes(date: Date, minutes: number): Date {
+  return new Date(date.getTime() + minutes * 60_000)
+}
+
 export default function DashboardPage() {
+  const isLandscape = useLandscape()
   const { name: shopName } = useShopContext()
+  const { data: barbers = [] } = useBarbers()
+  const { data: services = [] } = useAllServices()
+  const { data: dbAppointments = [] } = useAllAppointments()
+  const createApptMut = useCreateAppointment()
+  const findProfileByEmail = useFindProfileByEmail()
+  const activeBarbers = barbers.filter(b => b.isActive)
   const [weekOffset, setWeekOffset] = useState(0)
   const [dayOffset, setDayOffset] = useState(0)
   const [appointments, setAppointments] = useState<WeekAppt[]>(INITIAL_APPOINTMENTS)
@@ -64,19 +97,67 @@ export default function DashboardPage() {
   const [newApptOpen, setNewApptOpen] = useState(false)
   const [newApptToast, setNewApptToast] = useState(false)
   const [rescheduleToast, setRescheduleToast] = useState(false)
+  const [apptError, setApptError] = useState<string | null>(null)
   const nowLineRef = useRef<HTMLDivElement>(null)
 
-  const handleNewApptConfirm = () => {
-    setNewApptOpen(false)
-    setNewApptToast(true)
-    setTimeout(() => setNewApptToast(false), 3000)
+  const handleNewApptConfirm = async (data: NewAppointmentData) => {
+    setApptError(null)
+    const svc = services.find(s => s.id === data.serviceId)
+    if (!svc) return
+
+    const startDt = combineDateSlot(data.date, data.slot)
+    const endDt = addMinutes(startDt, svc.durationMinutes)
+
+    let resolvedBarberId = data.barberId
+    if (data.barberId === '__any__') {
+      const available = activeBarbers.filter(b =>
+        !dbAppointments.some(a =>
+          a.barberId === b.id &&
+          new Date(a.startTime) < endDt &&
+          new Date(a.endTime) > startDt,
+        ),
+      )
+      if (available.length === 0) {
+        setApptError('No hay barberos disponibles para ese horario.')
+        return
+      }
+      resolvedBarberId = available[Math.floor(Math.random() * available.length)].id
+    }
+
+    const profile = await findProfileByEmail(data.email).catch(() => null)
+    if (!profile) {
+      setApptError('No se encontró ningún cliente con ese email.')
+      return
+    }
+
+    createApptMut.mutate(
+      {
+        clientId: profile.id,
+        barberId: resolvedBarberId,
+        serviceId: data.serviceId,
+        startTime: startDt.toISOString(),
+        endTime: endDt.toISOString(),
+      },
+      {
+        onSuccess: () => {
+          setNewApptOpen(false)
+          setApptError(null)
+          setNewApptToast(true)
+          setTimeout(() => setNewApptToast(false), 3000)
+        },
+        onError: (e) => {
+          if (import.meta.env.DEV) console.error(e)
+          setApptError('No se pudo crear la cita. Inténtalo de nuevo.')
+        },
+      },
+    )
   }
 
   const handleRescheduleConfirm = async (update: RescheduleUpdate) => {
     if (!rescheduleAppt) return
     const [newH, newM] = update.slot.split(':').map(Number)
     const newDayIdx = Math.round((update.date.getTime() - weekStart.getTime()) / 86_400_000)
-    const newService = MOCK_SERVICES.find(s => s.id === update.serviceId)?.name ?? rescheduleAppt.service
+    const newService = services.find(s => s.id === update.serviceId)?.name ?? rescheduleAppt.service
 
     setAppointments(prev => prev.map(a =>
       a.id === rescheduleAppt.id
@@ -90,7 +171,7 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scheduled_at: update.date.toISOString() }),
       })
-    } catch { /* mock data — ignorar */ }
+    } catch { /* ignorar */ }
 
     setRescheduleAppt(null)
     setSelectedAppt(null)
@@ -102,7 +183,7 @@ export default function DashboardPage() {
   weekStart.setDate(weekStart.getDate() + weekOffset * 7)
 
   const now = new Date()
-  const nowTop = topPx(now.getHours(), now.getMinutes())
+  const nowTop = Math.min(topPx(now.getHours(), now.getMinutes()), MAX_TOP_PX)
 
   useEffect(() => {
     nowLineRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
@@ -110,15 +191,15 @@ export default function DashboardPage() {
 
   const todayCols = (now.getDay() + 6) % 7
 
-  // Mobile: current day column (0=Mon, capped at 0-5)
-  const mobileDayCol = Math.max(0, Math.min(5, todayCols + dayOffset))
+  // Mobile: current day column (0=Mon, capped at 0-6 for full week)
+  const mobileDayCol = Math.max(0, Math.min(6, todayCols + dayOffset))
   const mobileDayDate = new Date(getWeekStart(new Date()))
   mobileDayDate.setDate(mobileDayDate.getDate() + mobileDayCol)
 
   const metrics = [
     { label: 'Citas hoy', value: appointments.filter(a => a.day === todayCols).length, icon: 'calendar' as const, color: 'var(--led)' },
     { label: 'Ingresos est.', value: '214€', icon: 'euro' as const, color: 'var(--gold)' },
-    { label: 'Barberos activos', value: MOCK_BARBERS.filter(b => b.active).length, icon: 'users' as const, color: 'var(--brick-warm)' },
+    { label: 'Barberos activos', value: activeBarbers.length, icon: 'users' as const, color: 'var(--brick-warm)' },
     { label: 'Lista de espera', value: 3, icon: 'clock' as const, color: 'var(--fg-2)' },
   ]
 
@@ -147,15 +228,15 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Mobile-only: day agenda first, then metrics */}
-      <div className="md:hidden flex flex-col gap-4 mb-4">
+      {/* Mobile-only: day agenda first, then metrics (hidden in landscape — desktop calendar shows instead) */}
+      <div className={`md:hidden flex flex-col gap-4 mb-4${isLandscape ? ' hidden' : ''}`}>
         {/* Day agenda — first */}
         <AgendaListView
           items={appointments.filter(a => a.day === mobileDayCol)}
-          barbers={MOCK_BARBERS}
+          barbers={barbers.map(b => ({ id: b.id, name: b.fullName }))}
           date={mobileDayDate}
           onPrevDay={() => setDayOffset(o => Math.max(o - 1, -(todayCols)))}
-          onNextDay={() => setDayOffset(o => Math.min(o + 1, 5 - todayCols))}
+          onNextDay={() => setDayOffset(o => Math.min(o + 1, 6 - todayCols))}
           onSelect={(item) => setSelectedAppt(appointments.find(a => a.id === item.id) ?? null)}
         />
 
@@ -193,19 +274,19 @@ export default function DashboardPage() {
             BARBEROS
           </div>
           <div className="flex flex-col gap-2">
-            {MOCK_BARBERS.map(b => (
+            {barbers.map(b => (
               <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: 8, background: 'var(--bg-3)', border: '1px solid var(--line)' }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: b.active ? 'var(--led)' : 'var(--bg-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: b.active ? '#fff' : 'var(--fg-3)' }}>
-                  {b.initials}
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: b.isActive ? 'var(--led)' : 'var(--bg-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: b.isActive ? '#fff' : 'var(--fg-3)' }}>
+                  {calcInitials(b.fullName)}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{b.name}</div>
-                  <div style={{ fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>{b.role}</div>
+                  <div style={{ fontSize: 14, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{b.fullName}</div>
+                  <div style={{ fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>{b.role ?? 'Barbero'}</div>
                 </div>
                 <div style={{
                   width: 8, height: 8, borderRadius: '50%',
-                  background: b.active ? 'var(--ok)' : 'var(--fg-3)',
-                  boxShadow: b.active ? '0 0 6px var(--ok)' : 'none',
+                  background: b.isActive ? 'var(--ok)' : 'var(--fg-3)',
+                  boxShadow: b.isActive ? '0 0 6px var(--ok)' : 'none',
                 }} />
               </div>
             ))}
@@ -213,8 +294,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Desktop: two-column layout */}
-      <div className="hidden md:grid md:grid-cols-[1fr_360px] gap-6 items-start">
+      {/* Desktop + landscape mobile: two-column layout */}
+      <div className={`${isLandscape ? 'flex flex-col gap-4' : 'hidden md:grid md:grid-cols-[1fr_360px]'} gap-6 items-start`}>
 
         {/* Left: agenda semanal */}
         <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden' }}>
@@ -241,10 +322,11 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Grid body — day headers are sticky inside this container to prevent scrollbar misalignment */}
-          <div style={{ maxHeight: 520, overflowY: 'auto' }}>
+          {/* Grid body — horizontal scroll only needed in portrait narrow screens */}
+          <div style={{ overflowX: isLandscape ? 'hidden' : 'auto' }}>
+          <div style={{ maxHeight: isLandscape ? 'calc(100dvh - 140px)' : 520, overflowY: 'auto', minWidth: isLandscape ? undefined : 600 }}>
             {/* Day headers — sticky so scrollbar width is shared with the content grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(6, 1fr)', borderBottom: '1px solid var(--line)', position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-2)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', borderBottom: '1px solid var(--line)', position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-2)' }}>
               <div />
               {DAYS_ES.map((d, i) => {
                 const dayDate = new Date(weekStart)
@@ -266,7 +348,7 @@ export default function DashboardPage() {
               })}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(6, 1fr)', position: 'relative' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', position: 'relative' }}>
               {/* Hour labels */}
               <div>
                 {HOURS.map(h => (
@@ -292,11 +374,27 @@ export default function DashboardPage() {
                         top: nowTop,
                         height: 2,
                         background: 'var(--led)',
-                        boxShadow: '0 0 8px rgba(123,79,255,0.8)',
+                        boxShadow: '0 0 0 1px rgba(255,255,255,0.55), 0 0 8px rgba(123,79,255,0.8)',
                         zIndex: 5,
                         pointerEvents: 'none',
                       }}
-                    />
+                    >
+                      <span style={{
+                        position: 'absolute',
+                        left: 2,
+                        top: -18,
+                        fontSize: 9,
+                        fontFamily: 'var(--font-ui)',
+                        color: 'var(--led)',
+                        fontWeight: 600,
+                        letterSpacing: '0.04em',
+                        lineHeight: 1,
+                        pointerEvents: 'none',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {now.getHours().toString().padStart(2, '0')}:{now.getMinutes().toString().padStart(2, '0')}
+                      </span>
+                    </div>
                   )}
 
                   {appointments.filter(a => a.day === colIdx).map(appt => {
@@ -334,6 +432,7 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
+          </div>{/* end overflow-x */}
         </div>
 
         {/* Right column */}
@@ -380,19 +479,19 @@ export default function DashboardPage() {
               BARBEROS
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {MOCK_BARBERS.map(b => (
+              {barbers.map(b => (
                 <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem', borderRadius: 8, background: 'var(--bg-3)', border: '1px solid var(--line)' }}>
-                  <div style={{ width: 34, height: 34, borderRadius: '50%', background: b.active ? 'var(--led)' : 'var(--bg-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, color: b.active ? '#fff' : 'var(--fg-3)' }}>
-                    {b.initials}
+                  <div style={{ width: 34, height: 34, borderRadius: '50%', background: b.isActive ? 'var(--led)' : 'var(--bg-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, color: b.isActive ? '#fff' : 'var(--fg-3)' }}>
+                    {calcInitials(b.fullName)}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{b.name}</div>
-                    <div style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>{b.role}</div>
+                    <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{b.fullName}</div>
+                    <div style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>{b.role ?? 'Barbero'}</div>
                   </div>
                   <div style={{
                     width: 8, height: 8, borderRadius: '50%',
-                    background: b.active ? 'var(--ok)' : 'var(--fg-3)',
-                    boxShadow: b.active ? '0 0 6px var(--ok)' : 'none',
+                    background: b.isActive ? 'var(--ok)' : 'var(--fg-3)',
+                    boxShadow: b.isActive ? '0 0 6px var(--ok)' : 'none',
                   }} />
                 </div>
               ))}
@@ -404,8 +503,10 @@ export default function DashboardPage() {
       {/* New appointment modal */}
       {newApptOpen && (
         <NewAppointmentModal
-          onClose={() => setNewApptOpen(false)}
+          onClose={() => { setNewApptOpen(false); setApptError(null) }}
           onConfirm={handleNewApptConfirm}
+          errorMessage={apptError ?? undefined}
+          isPending={createApptMut.isPending}
         />
       )}
 
@@ -427,7 +528,7 @@ export default function DashboardPage() {
               { label: 'Servicio', value: selectedAppt.service },
               { label: 'Hora', value: `${selectedAppt.startH.toString().padStart(2,'0')}:${selectedAppt.startM.toString().padStart(2,'0')}` },
               { label: 'Duración', value: `${selectedAppt.durationMin} min` },
-              { label: 'Barbero', value: MOCK_BARBERS.find(b => b.id === selectedAppt.barberId)?.name ?? '—' },
+              { label: 'Barbero', value: barbers.find(b => b.id === selectedAppt.barberId)?.fullName ?? '—' },
             ].map(({ label, value }) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
                 <span style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>{label}</span>
@@ -462,6 +563,10 @@ export default function DashboardPage() {
       )}
     </>
   )
+}
+
+function calcInitials(name: string): string {
+  return name.trim().split(/\s+/).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '?'
 }
 
 const navBtn: React.CSSProperties = {

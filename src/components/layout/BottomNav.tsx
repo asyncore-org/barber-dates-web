@@ -18,6 +18,14 @@ const adminItems: NavItemDef[] = [
   { to: '/admin/settings', label: 'Config', icon: 'settings' },
 ]
 
+const superAdminItems: NavItemDef[] = [
+  { to: '/calendar', label: 'Reservar', icon: 'calendar' },
+  { to: '/appointments', label: 'Citas', icon: 'clipboard' },
+  { to: '/admin/dashboard', label: 'Agenda', icon: 'clock' },
+  { to: '/admin/settings', label: 'Config', icon: 'settings' },
+  { to: '/super-admin', label: 'Admin', icon: 'users' },
+]
+
 function NavItem({ to, label, icon }: NavItemDef) {
   const { pathname } = useLocation()
   const isActive = pathname === to || pathname.startsWith(to + '/')
@@ -44,7 +52,10 @@ export function BottomNav() {
 
   if (!user) return null
 
-  const items = user.role === 'admin' ? adminItems : clientItems
+  const items =
+    user.role === 'admin' ? superAdminItems :
+    user.role === 'owner' || user.role === 'barber' ? adminItems :
+    clientItems
 
   return (
     <nav

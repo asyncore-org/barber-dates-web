@@ -1,7 +1,18 @@
-import { createContext, useContext, useState } from 'react'
-import { MOCK_SHOP } from '@/lib/mock-data'
+import { createContext, useContext } from 'react'
+import { useShopInfo, useBookingConfig } from '@/hooks/useShopConfig'
+import type { ShopInfo } from '@/domain/shop'
+import { DEFAULT_BOOKING_CONFIG } from '@/domain/shop'
 
-interface ShopInfo {
+const DEFAULT_SHOP_INFO: ShopInfo = {
+  name: 'Gio Barber Shop',
+  phone: '',
+  email: '',
+  instagram: '',
+  address: '',
+  description: '',
+}
+
+interface ShopContextValue {
   name: string
   phone: string
   email: string
@@ -10,34 +21,39 @@ interface ShopInfo {
   description: string
   maxAdvanceDays: number
   allowBarberChoice: boolean
-}
-
-interface ShopContextValue extends ShopInfo {
-  updateShop: (partial: Partial<ShopInfo>) => void
+  slotIntervalMinutes: number
+  bufferMinutes: number
+  isLoading: boolean
+  /** @deprecated Will be removed in Paso 8 — use useMutateShopInfo / useMutateBookingConfig directly */
+  updateShop: (partial: Partial<Omit<ShopContextValue, 'isLoading' | 'updateShop'>>) => void
 }
 
 const ShopContext = createContext<ShopContextValue | null>(null)
 
 export function ShopProvider({ children }: { children: React.ReactNode }) {
-  const [shop, setShop] = useState<ShopInfo>({
-    name: MOCK_SHOP.name,
-    phone: MOCK_SHOP.phone,
-    email: MOCK_SHOP.email,
-    instagram: MOCK_SHOP.instagram,
-    address: MOCK_SHOP.address,
-    description: MOCK_SHOP.description,
-    maxAdvanceDays: 14,
-    allowBarberChoice: MOCK_SHOP.allowBarberChoice,
-  })
+  const { data: shopInfo, isLoading: loadingInfo } = useShopInfo()
+  const { data: bookingConfig, isLoading: loadingBooking } = useBookingConfig()
 
-  const updateShop = (partial: Partial<ShopInfo>) =>
-    setShop(s => ({ ...s, ...partial }))
+  const info = shopInfo ?? DEFAULT_SHOP_INFO
+  const booking = bookingConfig ?? DEFAULT_BOOKING_CONFIG
 
-  return (
-    <ShopContext.Provider value={{ ...shop, updateShop }}>
-      {children}
-    </ShopContext.Provider>
-  )
+  const value: ShopContextValue = {
+    name: info.name,
+    phone: info.phone,
+    email: info.email,
+    instagram: info.instagram,
+    address: info.address,
+    description: info.description,
+    maxAdvanceDays: booking.maxAdvanceDays,
+    allowBarberChoice: booking.allowBarberChoice,
+    slotIntervalMinutes: booking.slotIntervalMinutes,
+    bufferMinutes: booking.bufferMinutes,
+    isLoading: loadingInfo || loadingBooking,
+    // Stub until SettingsPage is rewired in Paso 8
+    updateShop: () => undefined,
+  }
+
+  return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>
 }
 
 export function useShopContext() {

@@ -3,32 +3,37 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import { useAuth } from '@/hooks'
 import { AppLoader, AppLayout } from '@/components/layout'
 import { AuthGuard } from '@/components/auth'
-import { MOCK_APPOINTMENTS } from '@/lib/mock-data'
 
 const AuthPage = lazy(() => import('@/pages/auth/AuthPage'))
 const CalendarPage = lazy(() => import('@/pages/client/CalendarPage'))
 const AppointmentsPage = lazy(() => import('@/pages/client/AppointmentsPage'))
 const DashboardPage = lazy(() => import('@/pages/admin/DashboardPage'))
 const SettingsPage = lazy(() => import('@/pages/admin/SettingsPage'))
+const AdminPanelPage = lazy(() => import('@/pages/super-admin/AdminPanelPage'))
+const BarberPage = lazy(() => import('@/pages/barber/BarberPage'))
+
+const HOME: Record<string, string> = {
+  admin: '/super-admin',
+  owner: '/admin/dashboard',
+  barber: '/barber',
+  client: '/calendar',
+}
+
+const KNOWN_PATHS = [
+  '/calendar', '/appointments',
+  '/admin/dashboard', '/admin/settings',
+  '/super-admin', '/barber',
+]
 
 export default function App() {
   const { user, authChecked } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
-  // On bootstrap completion: redirect authenticated users to their home route
   useEffect(() => {
     if (!authChecked || !user) return
-    const clientDest = ['/calendar', '/appointments']
-    const adminDest = ['/admin/dashboard', '/admin/settings']
-    if (user.role === 'admin') {
-      if (adminDest.includes(location.pathname)) return
-      navigate('/admin/dashboard', { replace: true })
-    } else {
-      if (clientDest.includes(location.pathname)) return
-      const hasUpcoming = MOCK_APPOINTMENTS.some(a => a.status === 'upcoming')
-      navigate(hasUpcoming ? '/appointments' : '/calendar', { replace: true })
-    }
+    if (KNOWN_PATHS.includes(location.pathname)) return
+    navigate(HOME[user.role] ?? '/calendar', { replace: true })
   }, [authChecked, user]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!authChecked) return <AppLoader />
@@ -38,6 +43,8 @@ export default function App() {
       <Routes>
         <Route path="/" element={<AuthPage />} />
         <Route path="/auth" element={<AuthPage />} />
+
+        {/* Client */}
         <Route
           path="/calendar"
           element={
@@ -54,10 +61,12 @@ export default function App() {
             </AuthGuard>
           }
         />
+
+        {/* Owner (admin bypasses AuthGuard) */}
         <Route
           path="/admin/dashboard"
           element={
-            <AuthGuard role="admin">
+            <AuthGuard role="owner">
               <AppLayout><DashboardPage /></AppLayout>
             </AuthGuard>
           }
@@ -65,11 +74,32 @@ export default function App() {
         <Route
           path="/admin/settings"
           element={
-            <AuthGuard role="admin">
+            <AuthGuard role="owner">
               <AppLayout><SettingsPage /></AppLayout>
             </AuthGuard>
           }
         />
+
+        {/* Barber */}
+        <Route
+          path="/barber"
+          element={
+            <AuthGuard role="barber">
+              <AppLayout><BarberPage /></AppLayout>
+            </AuthGuard>
+          }
+        />
+
+        {/* Admin panel */}
+        <Route
+          path="/super-admin"
+          element={
+            <AuthGuard role="admin">
+              <AppLayout><AdminPanelPage /></AppLayout>
+            </AuthGuard>
+          }
+        />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

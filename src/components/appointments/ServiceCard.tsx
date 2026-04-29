@@ -1,7 +1,7 @@
-import type { MockService } from '@/lib/mock-data'
+import type { Service } from '@/domain/service'
 
 interface ServiceCardProps {
-  service: MockService
+  service: Service
   selected: boolean
   onClick: () => void
 }
@@ -38,10 +38,10 @@ export function ServiceCard({ service, selected, onClick }: ServiceCardProps) {
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', marginTop: 2 }}>
           <span style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>
-            {service.duration} min
+            {service.durationMinutes} min
           </span>
           <span style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--gold)' }}>
-            +{service.points} pts
+            +{service.loyaltyPoints} pts
           </span>
         </div>
       </div>

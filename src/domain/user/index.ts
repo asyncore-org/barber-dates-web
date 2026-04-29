@@ -1,4 +1,9 @@
-export type UserRole = 'client' | 'admin'
+export type UserRole = 'client' | 'admin' | 'owner' | 'barber'
+
+export interface Profile {
+  id: string
+  email: string
+}
 
 export interface User {
   id: string
@@ -7,6 +12,11 @@ export interface User {
   role: UserRole
   phone?: string
   avatarUrl?: string
+}
+
+export interface UpdateProfileData {
+  fullName?: string
+  phone?: string
 }
 
 export const ADMIN_SESSION_MAX_DAYS = 15

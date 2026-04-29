@@ -1,11 +1,12 @@
 export interface MockService {
   id: string
   name: string
-  description: string
+  description: string | null
   duration_minutes: number
   price: number
+  loyalty_points: number
   is_active: boolean
-  created_at: string
+  sort_order: number
 }
 
 export const mockServices: MockService[] = [
@@ -15,8 +16,9 @@ export const mockServices: MockService[] = [
     description: 'Corte de cabello tradicional con tijera y máquina, acabado con navaja.',
     duration_minutes: 20,
     price: 15,
+    loyalty_points: 10,
     is_active: true,
-    created_at: '2025-06-01T09:00:00.000Z',
+    sort_order: 1,
   },
   {
     id: 'svc-0002',
@@ -24,8 +26,9 @@ export const mockServices: MockService[] = [
     description: 'Degradado suave o a piel, con volumen en la parte superior.',
     duration_minutes: 30,
     price: 20,
+    loyalty_points: 15,
     is_active: true,
-    created_at: '2025-06-01T09:00:00.000Z',
+    sort_order: 2,
   },
   {
     id: 'svc-0003',
@@ -33,8 +36,9 @@ export const mockServices: MockService[] = [
     description: 'Corte completo más arreglo y definición de barba con navaja.',
     duration_minutes: 45,
     price: 25,
+    loyalty_points: 20,
     is_active: true,
-    created_at: '2025-06-01T09:00:00.000Z',
+    sort_order: 3,
   },
   {
     id: 'svc-0004',
@@ -42,8 +46,9 @@ export const mockServices: MockService[] = [
     description: 'Perfilado, afeitado y definición de barba con toalla caliente.',
     duration_minutes: 20,
     price: 12,
+    loyalty_points: 8,
     is_active: true,
-    created_at: '2025-06-01T09:00:00.000Z',
+    sort_order: 4,
   },
   {
     id: 'svc-0005',
@@ -51,7 +56,8 @@ export const mockServices: MockService[] = [
     description: 'Depilación y perfilado de cejas con hilo o cera.',
     duration_minutes: 10,
     price: 8,
+    loyalty_points: 5,
     is_active: true,
-    created_at: '2025-06-01T09:00:00.000Z',
+    sort_order: 5,
   },
 ]

@@ -1,24 +1,27 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
 import { getMaxBookingDate } from '@/domain/booking'
 import { LoyaltyCard } from '@/components/loyalty'
 import { Modal, ConfirmDialog } from '@/components/ui'
 import { MonthCalendar, TimeSlots } from '@/components/calendar'
-import {
-  MOCK_APPOINTMENTS, MOCK_HISTORY, MOCK_LOYALTY, MOCK_REWARDS,
-  MOCK_SERVICES, MOCK_BARBERS, MOCK_TAKEN_SLOTS,
-} from '@/lib/mock-data'
-import type { MockReward } from '@/lib/mock-data'
+import { useAuthStore } from '@/stores/authStore'
+import { useClientAppointments, useCancelAppointment } from '@/hooks/useAppointments'
+import { useServices } from '@/hooks/useServices'
+import { useBarbers } from '@/hooks/useBarbers'
+import { useLoyaltyCard, useRewards, useRedeemedRewardIds, useRedeemReward } from '@/hooks/useLoyalty'
+import type { Reward } from '@/domain/loyalty'
 
-function serviceById(id: string) {
-  return MOCK_SERVICES.find(s => s.id === id)
-}
-function barberById(id: string) {
-  return MOCK_BARBERS.find(b => b.id === id)
-}
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+}
+
+function fmtHistoryDate(iso: string) {
+  return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 const CARD = 'bg-[var(--bg-2)] border border-[var(--line)] rounded-xl p-4 md:p-5'
@@ -27,14 +30,53 @@ const SECTION_LABEL = 'font-[var(--font-display)] text-[13px] tracking-widest te
 export default function AppointmentsPage() {
   const { name: shopName, maxAdvanceDays } = useShopContext()
   const maxDate = getMaxBookingDate(maxAdvanceDays)
-  const next = MOCK_APPOINTMENTS.find(a => a.status === 'upcoming')
-  const nextService = next ? serviceById(next.serviceId) : null
-  const nextBarber = next ? barberById(next.barberId) : null
+  const user = useAuthStore(s => s.user)
+
+  const { data: appointments = [] } = useClientAppointments(user?.id)
+  const { data: services = [] } = useServices()
+  const { data: barbers = [] } = useBarbers()
+  const { data: loyaltyCard } = useLoyaltyCard(user?.id)
+  const { data: rewards = [] } = useRewards()
+  const { data: redeemedIds = [] } = useRedeemedRewardIds(user?.id)
+  const cancelAppointment = useCancelAppointment()
+  const redeemRewardMutation = useRedeemReward()
+
+  const upcoming = useMemo(() => {
+    const nowMs = new Date().getTime()
+    return appointments
+      .filter(a => a.status === 'confirmed' && new Date(a.startTime).getTime() >= nowMs)
+      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+  }, [appointments])
+
+  const history = useMemo(
+    () => appointments
+      .filter(a => a.status === 'completed')
+      .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()),
+    [appointments],
+  )
+
+  const stats = useMemo(() => {
+    const completed = appointments.filter(a => a.status === 'completed')
+    const thisYear = new Date().getFullYear()
+    return {
+      totalVisits: completed.length,
+      yearVisits: completed.filter(a => new Date(a.startTime).getFullYear() === thisYear).length,
+      totalSpent: completed.reduce((sum, a) => sum + (services.find(s => s.id === a.serviceId)?.price ?? 0), 0),
+      redeemedCount: redeemedIds.length,
+    }
+  }, [appointments, services, redeemedIds])
+
+  const next = upcoming[0] ?? null
+  const nextService = next ? (services.find(s => s.id === next.serviceId) ?? null) : null
+  const nextBarber = next ? (barbers.find(b => b.id === next.barberId) ?? null) : null
+
+  const loyaltyPoints = loyaltyCard?.points ?? 0
+  const loyaltyStamps = loyaltyCard?.totalVisits ?? 0
+  const loyaltyMemberCode = loyaltyCard?.memberCode ?? '—'
+  const loyaltyTarget = rewards.length > 0 ? Math.max(...rewards.map(r => r.cost)) : 100
 
   const [cancelOpen, setCancelOpen] = useState(false)
-  const [redeemTarget, setRedeemTarget] = useState<MockReward | null>(null)
-  const [redeemed, setRedeemed] = useState<string[]>([])
-
+  const [redeemTarget, setRedeemTarget] = useState<Reward | null>(null)
   const [rescheduleOpen, setRescheduleOpen] = useState(false)
   const [rescheduleDate, setRescheduleDate] = useState<Date | null>(null)
   const [rescheduleSlot, setRescheduleSlot] = useState<string | null>(null)
@@ -42,10 +84,18 @@ export default function AppointmentsPage() {
   const [rescheduleYear, setRescheduleYear] = useState(() => new Date().getFullYear())
   const [rescheduleToast, setRescheduleToast] = useState(false)
 
+  const handleCancel = () => {
+    if (!next) return
+    cancelAppointment.mutate(next.id, {
+      onSuccess: () => setCancelOpen(false),
+    })
+  }
+
   const handleRedeem = () => {
-    if (!redeemTarget) return
-    setRedeemed(r => [...r, redeemTarget.id])
-    setRedeemTarget(null)
+    if (!redeemTarget || !user) return
+    redeemRewardMutation.mutate({ clientId: user.id, rewardId: redeemTarget.id }, {
+      onSuccess: () => setRedeemTarget(null),
+    })
   }
 
   const handleRescheduleConfirm = () => {
@@ -88,16 +138,16 @@ export default function AppointmentsPage() {
                 PRÓXIMA CITA
               </div>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 36, color: 'var(--fg-0)', lineHeight: 1, marginBottom: 4 }}>
-                {next.time}
+                {fmtTime(next.startTime)}
               </div>
               <div style={{ fontFamily: 'var(--font-ui)', fontSize: 14, color: 'var(--fg-1)', marginBottom: '1rem' }}>
-                {fmtDate(next.dateISO)}
+                {fmtDate(next.startTime)}
               </div>
               <div className="flex flex-wrap gap-4 md:gap-6 mb-5">
                 {[
                   { label: 'Servicio', value: nextService.name },
-                  { label: 'Barbero', value: nextBarber.name },
-                  { label: 'Duración', value: `${nextService.duration} min` },
+                  { label: 'Barbero', value: nextBarber.fullName },
+                  { label: 'Duración', value: `${nextService.durationMinutes} min` },
                 ].map(({ label, value }) => (
                   <div key={label}>
                     <div style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
@@ -137,97 +187,113 @@ export default function AppointmentsPage() {
           {/* Historial */}
           <div className={CARD}>
             <div className={SECTION_LABEL}>HISTORIAL</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {MOCK_HISTORY.map(h => {
-                const svc = serviceById(h.serviceId)
-                const brb = barberById(h.barberId)
-                return (
-                  <div key={h.id} style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '0.75rem', borderRadius: 8, background: 'var(--bg-3)',
-                    border: '1px solid var(--line)',
-                  }}>
-                    <div style={{ minWidth: 0, flex: 1, marginRight: '0.75rem' }}>
-                      <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {svc?.name}
+            {history.length === 0 ? (
+              <div style={{ color: 'var(--fg-3)', fontSize: 13, fontFamily: 'var(--font-ui)', padding: '0.5rem 0' }}>
+                Aún no tienes citas anteriores
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {history.map(h => {
+                  const svc = services.find(s => s.id === h.serviceId)
+                  const brb = barbers.find(b => b.id === h.barberId)
+                  return (
+                    <div key={h.id} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '0.75rem', borderRadius: 8, background: 'var(--bg-3)',
+                      border: '1px solid var(--line)',
+                    }}>
+                      <div style={{ minWidth: 0, flex: 1, marginRight: '0.75rem' }}>
+                        <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {svc?.name ?? '—'}
+                        </div>
+                        <div style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)', marginTop: 2 }}>
+                          {fmtHistoryDate(h.startTime)} · {brb?.fullName ?? '—'}
+                        </div>
                       </div>
-                      <div style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)', marginTop: 2 }}>
-                        {h.date} · {brb?.name}
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--fg-0)' }}>
+                          {svc ? `${svc.price}€` : '—'}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--gold)', fontFamily: 'var(--font-ui)' }}>
+                          {svc ? `+${svc.loyaltyPoints} pts` : ''}
+                        </div>
                       </div>
                     </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--fg-0)' }}>{h.price}€</div>
-                      <div style={{ fontSize: 11, color: 'var(--gold)', fontFamily: 'var(--font-ui)' }}>+{h.points} pts</div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
 
         {/* Right column */}
         <div className="flex flex-col gap-4">
           <LoyaltyCard
-            points={MOCK_LOYALTY.points}
-            target={MOCK_LOYALTY.target}
-            stamps={MOCK_LOYALTY.stamps}
-            memberCode={MOCK_LOYALTY.memberCode}
-            rewards={MOCK_REWARDS.filter(r => r.active)}
+            points={loyaltyPoints}
+            target={loyaltyTarget}
+            stamps={loyaltyStamps}
+            memberCode={loyaltyMemberCode}
+            rewards={rewards.filter(r => r.isActive).map(r => ({ label: r.label, cost: r.cost }))}
           />
 
-          {/* Rewards — arriba */}
+          {/* Recompensas */}
           <div className={CARD}>
             <div className={SECTION_LABEL}>RECOMPENSAS</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {MOCK_REWARDS.map(r => {
-                const canRedeem = MOCK_LOYALTY.points >= r.cost && !redeemed.includes(r.id)
-                const isRedeemed = redeemed.includes(r.id)
-                return (
-                  <div key={r.id} style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '0.75rem', borderRadius: 8,
-                    background: 'var(--bg-3)',
-                    border: isRedeemed ? '1px solid rgba(109,187,109,0.2)' : '1px solid var(--line)',
-                    opacity: !canRedeem && !isRedeemed ? 0.5 : 1,
-                    gap: '0.75rem',
-                  }}>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{r.label}</div>
-                      <div style={{ fontSize: 11, color: 'var(--gold)', fontFamily: 'var(--font-ui)' }}>{r.cost} pts</div>
+            {rewards.filter(r => r.isActive).length === 0 ? (
+              <div style={{ color: 'var(--fg-3)', fontSize: 13, fontFamily: 'var(--font-ui)', padding: '0.5rem 0' }}>
+                No hay recompensas disponibles
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {rewards.filter(r => r.isActive).map(r => {
+                  const canRedeem = loyaltyPoints >= r.cost && !redeemedIds.includes(r.id)
+                  const isRedeemed = redeemedIds.includes(r.id)
+                  return (
+                    <div key={r.id} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '0.75rem', borderRadius: 8,
+                      background: 'var(--bg-3)',
+                      border: isRedeemed ? '1px solid rgba(109,187,109,0.2)' : '1px solid var(--line)',
+                      opacity: !canRedeem && !isRedeemed ? 0.5 : 1,
+                      gap: '0.75rem',
+                    }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{r.label}</div>
+                        <div style={{ fontSize: 11, color: 'var(--gold)', fontFamily: 'var(--font-ui)' }}>{r.cost} pts</div>
+                      </div>
+                      {isRedeemed ? (
+                        <span style={{ fontSize: 11, color: 'var(--ok)', fontFamily: 'var(--font-ui)', flexShrink: 0 }}>✓ Canjeado</span>
+                      ) : (
+                        <button
+                          disabled={!canRedeem}
+                          onClick={() => setRedeemTarget(r)}
+                          style={{
+                            padding: '0.5rem 0.875rem', minHeight: 36, borderRadius: 6, flexShrink: 0,
+                            border: canRedeem ? '1px solid var(--gold)' : '1px solid var(--line)',
+                            background: 'transparent',
+                            color: canRedeem ? 'var(--gold)' : 'var(--fg-3)',
+                            fontFamily: 'var(--font-ui)', fontSize: 12, cursor: canRedeem ? 'pointer' : 'default',
+                          }}
+                        >
+                          Canjear
+                        </button>
+                      )}
                     </div>
-                    {isRedeemed ? (
-                      <span style={{ fontSize: 11, color: 'var(--ok)', fontFamily: 'var(--font-ui)', flexShrink: 0 }}>✓ Canjeado</span>
-                    ) : (
-                      <button
-                        disabled={!canRedeem}
-                        onClick={() => setRedeemTarget(r)}
-                        style={{
-                          padding: '0.5rem 0.875rem', minHeight: 36, borderRadius: 6, flexShrink: 0,
-                          border: canRedeem ? '1px solid var(--gold)' : '1px solid var(--line)',
-                          background: 'transparent',
-                          color: canRedeem ? 'var(--gold)' : 'var(--fg-3)',
-                          fontFamily: 'var(--font-ui)', fontSize: 12, cursor: canRedeem ? 'pointer' : 'default',
-                        }}
-                      >
-                        Canjear
-                      </button>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
-          {/* Stats — abajo */}
+          {/* Estadísticas */}
           <div className={CARD}>
             <div className={SECTION_LABEL}>ESTADÍSTICAS</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               {[
-                { label: 'Visitas totales', value: MOCK_LOYALTY.totalVisits },
-                { label: 'Este año', value: MOCK_LOYALTY.yearVisits },
-                { label: 'Gasto total', value: `${MOCK_LOYALTY.totalSpent}€` },
-                { label: 'Canjeados', value: MOCK_LOYALTY.redeemedCount },
+                { label: 'Visitas totales', value: stats.totalVisits },
+                { label: 'Este año', value: stats.yearVisits },
+                { label: 'Gasto total', value: `${stats.totalSpent}€` },
+                { label: 'Canjeados', value: stats.redeemedCount },
               ].map(({ label, value }) => (
                 <div key={label} style={{ padding: '0.75rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
                   <div style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
@@ -245,7 +311,7 @@ export default function AppointmentsPage() {
           message="¿Seguro que quieres cancelar tu próxima cita? Esta acción no se puede deshacer."
           confirmLabel="Sí, cancelar"
           danger
-          onConfirm={() => setCancelOpen(false)}
+          onConfirm={handleCancel}
           onCancel={() => setCancelOpen(false)}
         />
       )}
@@ -279,7 +345,7 @@ export default function AppointmentsPage() {
                 <TimeSlots
                   selected={rescheduleSlot}
                   onSelect={setRescheduleSlot}
-                  taken={MOCK_TAKEN_SLOTS}
+                  taken={[]}
                 />
               </div>
             )}

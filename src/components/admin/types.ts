@@ -5,7 +5,7 @@ export interface WeekAppt {
   startM: number
   durationMin: number
   client: string
-  service: string   // display name matching MOCK_SERVICES
+  service: string   // display name (matches Service.name)
   barberId: string
   color: 'led' | 'brick' | 'gold'
 }

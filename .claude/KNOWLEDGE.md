@@ -207,11 +207,76 @@ _(vacío)_
 
 ## Workarounds
 
-_(vacío)_
+### 2026-04-27 · react-hooks/set-state-in-effect (v7) · setState en useEffect bloqueado
+
+**Qué**: `eslint-plugin-react-hooks` v7 añade la regla `react-hooks/set-state-in-effect` que bloquea el patrón `useEffect(() => setState(serverData), [serverData])` — el sync pattern clásico para inicializar local state desde server data.
+
+**Solución adoptada**: "pending edits overlay" — la state local solo guarda los cambios del usuario (`null` o partial), y el valor efectivo se calcula como `pendingValue ?? serverValue`. Esto elimina el useEffect por completo y no provoca renders extra.
+
+```typescript
+// En lugar de:
+const [localSchedule, setLocalSchedule] = useState<WeeklySchedule>(schedule)
+useEffect(() => setLocalSchedule(schedule), [schedule])  // ← bloqueado por lint v7
+
+// Usar:
+const [pendingSchedule, setPendingSchedule] = useState<WeeklySchedule | null>(null)
+const localSchedule = pendingSchedule ?? schedule  // null = "usar datos del servidor"
+// Para edits: setPendingSchedule(s => { const b = s ?? schedule; return {...b, [key]: val} })
+// Tras guardar: setPendingSchedule(null)
+```
+
+Para Record edits (servicios, barberos): `serviceEdits: Record<id, Partial<Service>>` + `services = serverData.map(s => ({...s, ...serviceEdits[s.id]}))`.
 
 ## Tips útiles
 
-_(vacío)_
+### 2026-04-26 · domain/booking · V8 no parsea meses en español con `new Date()`
+
+**Qué**: `new Date('24 Dic 2026')` y variantes como `new Date('Dic 24, 2026')` devuelven `NaN` en V8 (Node y Chromium). Solo reconoce abreviaciones en inglés (Jan, Feb, …).
+
+**Contexto**: Las fechas de cierres especiales (`MockClosure.date`) se almacenan como strings "DD Mes YYYY" con mes en español ("01 May 2026", "24 Dic 2026"). `getAvailableBarbersForDate` necesita comparar esas fechas con un `Date` objeto.
+
+**Solución implementada** (`src/domain/booking/index.ts`):
+```typescript
+const ES_MONTH: Record<string, number> = {
+  ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5,
+  jul: 6, ago: 7, sep: 8, oct: 9, nov: 10, dic: 11,
+}
+function parseClosureDate(str: string): Date | null {
+  const native = new Date(str)  // May/Jun/etc. ya funcionan
+  if (!isNaN(native.getTime())) return native
+  // Fallback para meses en español
+  const parts = str.trim().split(/\s+/)
+  if (parts.length >= 3) {
+    const monthIdx = ES_MONTH[parts[1].toLowerCase()]
+    if (monthIdx !== undefined) {
+      return new Date(Number(parts[2]), monthIdx, Number(parts[0]))
+    }
+  }
+  return null
+}
+```
+
+**Regla**: Nunca usar `new Date(closureString)` directamente — siempre pasar por `parseClosureDate`. Si en el futuro las fechas se migran a ISO 8601, esta función puede simplificarse.
+
+### 2026-04-27 · domain/booking · toISOString() da fecha UTC incorrecta en España
+
+**Qué**: `new Date().toISOString().slice(0,10)` en España (UTC+2) devuelve la fecha del día anterior a medianoche local. El campo `block_date` del dominio y el filtro de citas fallan comparando fechas UTC vs locales.
+
+**Fix**: siempre construir fechas ISO locales con:
+```typescript
+const iso = [
+  date.getFullYear(),
+  String(date.getMonth() + 1).padStart(2, '0'),
+  String(date.getDate()).padStart(2, '0'),
+].join('-')
+```
+**Regla**: NUNCA usar `date.toISOString().slice(0,10)` en ninguna comparación de fechas de agenda. Solo es correcto para campos de audit (created_at, etc.) donde UTC es intencionado.
+
+### 2026-04-27 · InsForge · eslint react-hooks/purity bloquea Date.now() en useMemo
+
+**Qué**: La regla `react-hooks/purity` (en el plugin v7) bloquea `Date.now()` dentro de callbacks de hooks (`useMemo`, `useCallback`). La solución `new Date().getTime()` pasa la regla porque solo nombra `Date.now` específicamente, no `new Date().getTime()`.
+
+**Workaround**: sustituir `Date.now()` → `new Date().getTime()` cuando se use dentro de hooks.
 
 ## Convenciones del proyecto
 
