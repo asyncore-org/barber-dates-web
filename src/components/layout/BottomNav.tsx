@@ -21,9 +21,9 @@ const adminItems: NavItemDef[] = [
 const superAdminItems: NavItemDef[] = [
   { to: '/calendar', label: 'Reservar', icon: 'calendar' },
   { to: '/appointments', label: 'Citas', icon: 'clipboard' },
-  { to: '/admin/dashboard', label: 'Agenda', icon: 'calendar' },
+  { to: '/admin/dashboard', label: 'Agenda', icon: 'clock' },
   { to: '/admin/settings', label: 'Config', icon: 'settings' },
-  { to: '/super-admin', label: 'Admin', icon: 'user' },
+  { to: '/super-admin', label: 'Admin', icon: 'users' },
 ]
 
 function NavItem({ to, label, icon }: NavItemDef) {

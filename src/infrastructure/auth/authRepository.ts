@@ -14,7 +14,8 @@ async function fetchProfileRole(userId: string): Promise<UserRole | null> {
       .eq('id', userId)
       .maybeSingle()
     return (data as { role: UserRole } | null)?.role ?? null
-  } catch {
+  } catch (err) {
+    if (import.meta.env.DEV) console.warn('[auth] fetchProfileRole fallback to metadata role:', err)
     return null
   }
 }
