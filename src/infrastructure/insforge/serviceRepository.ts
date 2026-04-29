@@ -86,8 +86,11 @@ export class InsForgeServiceRepository implements IServiceRepository {
   }
 
   async delete(id: string): Promise<void> {
-    // Soft-delete: appointments.service_id has ON DELETE RESTRICT, hard delete would
-    // fail for any service referenced by historical appointments.
-    await this.update(id, { isActive: false })
+    // Soft-delete — bypass update() to avoid chaining .select() on the PATCH request.
+    const { error } = await insforgeClient.database
+      .from('services')
+      .update({ is_active: false })
+      .eq('id', id)
+    if (error) throw error
   }
 }
