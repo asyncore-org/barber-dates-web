@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { ConfirmDialog, Modal } from '@/components/ui'
 import { MonthCalendar } from '@/components/calendar'
+import { useAuth } from '@/hooks'
 import { useShopContext } from '@/context/ShopContext'
 import { useAllServices, useCreateService, useUpdateService, useDeleteService } from '@/hooks/useServices'
 import { useAllBarbers, useCreateBarber, useUpdateBarber, useDeleteBarber } from '@/hooks/useBarbers'
@@ -90,6 +91,7 @@ function SaveBtn({ onClick, loading, isDirty }: { onClick: () => void; loading?:
 }
 
 export default function SettingsPage() {
+  const { user } = useAuth()
   const { name: shopName, allowBarberChoice } = useShopContext()
   const [section, setSection] = useState<Section>('servicios')
   const [pendingNavSection, setPendingNavSection] = useState<Section | null>(null)
@@ -130,6 +132,7 @@ export default function SettingsPage() {
   const [deleteBarberTarget, setDeleteBarberTarget] = useState<Barber | null>(null)
   const [showBarberForm, setShowBarberForm] = useState(false)
   const [newBarber, setNewBarber] = useState({ fullName: '', role: 'Barbero', email: '', phone: '' })
+  const [barberCreateError, setBarberCreateError] = useState<string | null>(null)
 
   // ── Schedule local state ────────────────────────────────────────────────────
   const [pendingSchedule, setPendingSchedule] = useState<WeeklySchedule | null>(null)
@@ -224,9 +227,22 @@ export default function SettingsPage() {
 
   const handleAddBarber = () => {
     if (!newBarber.fullName.trim()) return
+    setBarberCreateError(null)
     createBarber.mutate({ fullName: newBarber.fullName.trim(), role: newBarber.role.trim() || 'Barbero', phone: newBarber.phone || undefined, email: newBarber.email || undefined }, {
-      onSuccess: () => { setNewBarber({ fullName: '', role: 'Barbero', email: '', phone: '' }); setShowBarberForm(false) },
+      onSuccess: () => { setNewBarber({ fullName: '', role: 'Barbero', email: '', phone: '' }); setShowBarberForm(false); setBarberCreateError(null) },
+      onError: () => { setBarberCreateError('No se pudo dar de alta al barbero. Comprueba que el email sea correcto y esté registrado, o inténtalo de nuevo.') },
     })
+  }
+
+  const handleAddSelfAsBarber = () => {
+    if (!user) return
+    setNewBarber({
+      fullName: user.fullName || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      role: 'Propietario',
+    })
+    setShowBarberForm(true)
   }
 
   // ── Handlers: schedule ──────────────────────────────────────────────────────
@@ -802,22 +818,34 @@ export default function SettingsPage() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button onClick={handleAddBarber} disabled={!newBarber.fullName.trim()}
+                      <button onClick={handleAddBarber} disabled={!newBarber.fullName.trim() || createBarber.isPending}
                         style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: 'none', background: newBarber.fullName.trim() ? 'var(--led)' : 'var(--bg-4)', color: newBarber.fullName.trim() ? '#fff' : 'var(--fg-3)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: newBarber.fullName.trim() ? 'pointer' : 'default' }}>
-                        Dar de alta
+                        {createBarber.isPending ? 'Guardando…' : 'Dar de alta'}
                       </button>
-                      <button onClick={() => { setShowBarberForm(false); setNewBarber({ fullName: '', role: 'Barbero', email: '', phone: '' }) }}
+                      <button onClick={() => { setShowBarberForm(false); setNewBarber({ fullName: '', role: 'Barbero', email: '', phone: '' }); setBarberCreateError(null) }}
                         style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>
                         Cancelar
                       </button>
                     </div>
+                    {barberCreateError && (
+                      <p style={{ margin: 0, color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', lineHeight: 1.5 }}>
+                        {barberCreateError}
+                      </p>
+                    )}
                   </div>
                 )}
 
                 {!showBarberForm && (
-                  <button onClick={() => setShowBarberForm(true)} style={{ alignSelf: 'flex-start', padding: '0.5rem 0.875rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>
-                    + Añadir barbero
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <button onClick={() => { setShowBarberForm(true); setBarberCreateError(null) }} style={{ padding: '0.5rem 0.875rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>
+                      + Añadir barbero
+                    </button>
+                    {user?.email && !barbersData.some(b => b.email === user.email) && (
+                      <button onClick={handleAddSelfAsBarber} style={{ padding: '0.5rem 0.875rem', minHeight: 40, borderRadius: 8, border: '1px dashed var(--led-soft)', background: 'rgba(123,79,255,0.07)', color: 'var(--led-soft)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>
+                        + Añadirme como barbero
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 
