@@ -13,6 +13,12 @@ interface AdminProfileRow {
   role: UserRole
 }
 
+export interface ProfileFull {
+  id: string
+  fullName: string | null
+  role: UserRole
+}
+
 export interface AdminProfile {
   id: string
   email: string
@@ -63,5 +69,17 @@ export class InsForgeProfileRepository {
       .update({ role })
       .eq('id', id)
     if (error) throw error
+  }
+
+  async findByEmailFull(email: string): Promise<ProfileFull | null> {
+    const { data, error } = await insforgeClient.database
+      .from('profiles')
+      .select('id, full_name, role')
+      .eq('email', email)
+      .maybeSingle()
+    if (error) throw error
+    if (!data) return null
+    const row = data as { id: string; full_name: string | null; role: UserRole }
+    return { id: row.id, fullName: row.full_name, role: row.role }
   }
 }

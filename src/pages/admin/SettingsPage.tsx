@@ -5,7 +5,7 @@ import { MonthCalendar } from '@/components/calendar'
 import { useAuth } from '@/hooks'
 import { useShopContext } from '@/context/ShopContext'
 import { useAllServices, useCreateService, useUpdateService, useDeleteService } from '@/hooks/useServices'
-import { useAllBarbers, useCreateBarber, useUpdateBarber, useDeleteBarber } from '@/hooks/useBarbers'
+import { useAllBarbers, useUpdateBarber, useDeleteBarber, useAddBarberByEmail } from '@/hooks/useBarbers'
 import { useWeeklySchedule, useScheduleBlocks, useMutateWeeklySchedule, useAddScheduleBlock, useDeleteScheduleBlock } from '@/hooks/useSchedule'
 import { useShopInfo, useBookingConfig, useMutateShopInfo, useMutateBookingConfig } from '@/hooks/useShopConfig'
 import { useAllRewards, useCreateReward, useUpdateReward, useDeleteReward } from '@/hooks/useLoyalty'
@@ -109,7 +109,7 @@ export default function SettingsPage() {
   const createService    = useCreateService()
   const updateService    = useUpdateService()
   const deleteService    = useDeleteService()
-  const createBarber     = useCreateBarber()
+  const addBarberByEmail = useAddBarberByEmail()
   const updateBarber     = useUpdateBarber()
   const deleteBarber     = useDeleteBarber()
   const mutateSchedule   = useMutateWeeklySchedule()
@@ -131,7 +131,7 @@ export default function SettingsPage() {
   const [barberEdits, setBarberEdits] = useState<Record<string, Partial<Barber>>>({})
   const [deleteBarberTarget, setDeleteBarberTarget] = useState<Barber | null>(null)
   const [showBarberForm, setShowBarberForm] = useState(false)
-  const [newBarber, setNewBarber] = useState({ fullName: '', role: 'Barbero', email: '', phone: '' })
+  const [newBarber, setNewBarber] = useState({ email: '' })
   const [barberCreateError, setBarberCreateError] = useState<string | null>(null)
 
   // ── Schedule local state ────────────────────────────────────────────────────
@@ -226,22 +226,23 @@ export default function SettingsPage() {
   }
 
   const handleAddBarber = () => {
-    if (!newBarber.fullName.trim()) return
+    const email = newBarber.email.trim()
+    if (!email) return
     setBarberCreateError(null)
-    createBarber.mutate({ fullName: newBarber.fullName.trim(), role: newBarber.role.trim() || 'Barbero', phone: newBarber.phone || undefined, email: newBarber.email || undefined }, {
-      onSuccess: () => { setNewBarber({ fullName: '', role: 'Barbero', email: '', phone: '' }); setShowBarberForm(false); setBarberCreateError(null) },
-      onError: () => { setBarberCreateError('No se pudo dar de alta al barbero. Comprueba que el email sea correcto y esté registrado, o inténtalo de nuevo.') },
+    addBarberByEmail.mutate(email, {
+      onSuccess: () => { setNewBarber({ email: '' }); setShowBarberForm(false); setBarberCreateError(null) },
+      onError: (e) => {
+        const msg = e instanceof Error ? e.message : null
+        setBarberCreateError(msg === 'Email no registrado'
+          ? 'No se encontró ninguna cuenta con ese email. El usuario debe registrarse primero.'
+          : 'No se pudo dar de alta al barbero. Comprueba tu conexión e inténtalo de nuevo.')
+      },
     })
   }
 
   const handleAddSelfAsBarber = () => {
     if (!user) return
-    setNewBarber({
-      fullName: user.fullName || '',
-      email: user.email || '',
-      phone: user.phone || '',
-      role: 'Propietario',
-    })
+    setNewBarber({ email: user.email || '' })
     setShowBarberForm(true)
   }
 
@@ -788,42 +789,33 @@ export default function SettingsPage() {
 
                 {showBarberForm && (
                   <div style={{ background: 'var(--bg-3)', borderRadius: 10, border: '1px dashed var(--line)', padding: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--led)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: '#fff', flexShrink: 0 }}>
-                        {calcInitials(newBarber.fullName) || '+'}
-                      </div>
-                      <div style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>Nuevo barbero</div>
+                    <div style={{ fontSize: 13, color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontWeight: 500 }}>Dar de alta barbero</div>
+                    <div style={{ fontSize: 12, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', lineHeight: 1.5 }}>
+                      El usuario debe tener cuenta registrada. Si su rol es Cliente, se elevará automáticamente a Barbero.
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {([
-                        { key: 'fullName' as const, label: 'Nombre *', type: 'text', ph: 'Ej: Ana García' },
-                        { key: 'email' as const, label: 'Email', type: 'email', ph: 'ana@giobarber.es' },
-                        { key: 'phone' as const, label: 'Teléfono', type: 'tel', ph: '6XX XX XX XX' },
-                      ]).map(({ key, label, type, ph }) => (
-                        <div key={key}>
-                          <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>{label}</label>
-                          <input type={type} value={newBarber[key]} onChange={e => setNewBarber(nb => ({ ...nb, [key]: e.target.value }))} placeholder={ph}
-                            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }} />
-                        </div>
-                      ))}
-                      <div>
-                        <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Rol</label>
-                        <select
-                          value={newBarber.role}
-                          onChange={e => setNewBarber(nb => ({ ...nb, role: e.target.value }))}
-                          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }}
-                        >
-                          {BARBER_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                        </select>
-                      </div>
+                    <div>
+                      <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Email del usuario *</label>
+                      <input
+                        type="email"
+                        value={newBarber.email}
+                        onChange={e => setNewBarber({ email: e.target.value })}
+                        placeholder="ana@giobarber.es"
+                        autoFocus
+                        style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }}
+                      />
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button onClick={handleAddBarber} disabled={!newBarber.fullName.trim() || createBarber.isPending}
-                        style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: 'none', background: newBarber.fullName.trim() ? 'var(--led)' : 'var(--bg-4)', color: newBarber.fullName.trim() ? '#fff' : 'var(--fg-3)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: newBarber.fullName.trim() ? 'pointer' : 'default' }}>
-                        {createBarber.isPending ? 'Guardando…' : 'Dar de alta'}
+                      <button
+                        onClick={handleAddBarber}
+                        disabled={!newBarber.email.trim() || addBarberByEmail.isPending}
+                        style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: 'none', background: newBarber.email.trim() ? 'var(--led)' : 'var(--bg-4)', color: newBarber.email.trim() ? '#fff' : 'var(--fg-3)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: newBarber.email.trim() ? 'pointer' : 'default' }}
+                      >
+                        {addBarberByEmail.isPending ? 'Procesando…' : 'Dar de alta'}
                       </button>
-                      <button onClick={() => { setShowBarberForm(false); setNewBarber({ fullName: '', role: 'Barbero', email: '', phone: '' }); setBarberCreateError(null) }}
-                        style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>
+                      <button
+                        onClick={() => { setShowBarberForm(false); setNewBarber({ email: '' }); setBarberCreateError(null) }}
+                        style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}
+                      >
                         Cancelar
                       </button>
                     </div>

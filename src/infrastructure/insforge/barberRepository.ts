@@ -60,6 +60,7 @@ export class InsForgeBarberRepository implements IBarberRepository {
         bio: data.bio ?? null,
         phone: data.phone ?? null,
         email: data.email ?? null,
+        is_active: true,
       })
       .select(SELECT)
       .single()

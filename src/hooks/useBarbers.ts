@@ -43,3 +43,21 @@ export function useDeleteBarber() {
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.barbers.all() }),
   })
 }
+
+export function useAddBarberByEmail() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (email: string) => {
+      const profile = await repositories.profiles().findByEmailFull(email)
+      if (!profile) throw new Error('Email no registrado')
+      await repositories.barbers().create({ fullName: profile.fullName ?? email.split('@')[0], email })
+      if (profile.role === 'client') {
+        await repositories.profiles().updateRole(profile.id, 'barber')
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.barbers.all() })
+      qc.invalidateQueries({ queryKey: ['admin', 'profiles'] })
+    },
+  })
+}
