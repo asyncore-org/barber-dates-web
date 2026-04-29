@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getMaxBookingDate, getAvailableBarbersForDate } from './index'
+import { getMaxBookingDate, getAvailableBarbersForDate, getBarbersAvailableForSlot } from './index'
 import type { Barber } from '@/domain/barber'
 import type { WeeklySchedule, ScheduleBlock } from '@/domain/schedule'
 
@@ -30,9 +30,9 @@ describe('getMaxBookingDate', () => {
 // ─── getAvailableBarbersForDate ─────────────────────────────────────────────
 
 const ALL_BARBERS: Barber[] = [
-  { id: 'b1', fullName: 'Gio Valentino',  role: null, phone: null, email: null, bio: null, avatarUrl: null, specialtyIds: [], isActive: true },
-  { id: 'b2', fullName: 'Marcos Castaño', role: null, phone: null, email: null, bio: null, avatarUrl: null, specialtyIds: [], isActive: true },
-  { id: 'b3', fullName: 'Lucía Pérez',    role: null, phone: null, email: null, bio: null, avatarUrl: null, specialtyIds: [], isActive: false },
+  { id: 'b1', fullName: 'Gio Valentino',  role: null, phone: null, email: null, bio: null, avatarUrl: null, specialtyIds: [], isActive: true,  breakStart: null, breakEnd: null },
+  { id: 'b2', fullName: 'Marcos Castaño', role: null, phone: null, email: null, bio: null, avatarUrl: null, specialtyIds: [], isActive: true,  breakStart: null, breakEnd: null },
+  { id: 'b3', fullName: 'Lucía Pérez',    role: null, phone: null, email: null, bio: null, avatarUrl: null, specialtyIds: [], isActive: false, breakStart: null, breakEnd: null },
 ]
 
 const SCHEDULE: WeeklySchedule = {
@@ -103,5 +103,60 @@ describe('getAvailableBarbersForDate', () => {
     // 2026-05-03 is a Sunday
     const result = getAvailableBarbersForDate(date(2026, 5, 3), SCHEDULE, NO_BLOCKS, ALL_BARBERS)
     expect(result).toHaveLength(0)
+  })
+})
+
+// ─── getBarbersAvailableForSlot ─────────────────────────────────────────────
+
+const BARBER_WITH_BREAK: Barber = {
+  id: 'b1', fullName: 'Gio', role: null, phone: null, email: null, bio: null,
+  avatarUrl: null, specialtyIds: [], isActive: true, breakStart: '14:00', breakEnd: '15:00',
+}
+const BARBER_NO_BREAK: Barber = {
+  id: 'b2', fullName: 'Marcos', role: null, phone: null, email: null, bio: null,
+  avatarUrl: null, specialtyIds: [], isActive: true, breakStart: null, breakEnd: null,
+}
+
+describe('getBarbersAvailableForSlot', () => {
+  it('includes barber without break for any slot', () => {
+    const result = getBarbersAvailableForSlot('14:00', 30, [BARBER_NO_BREAK])
+    expect(result).toHaveLength(1)
+  })
+
+  it('excludes barber whose break fully covers the slot', () => {
+    const result = getBarbersAvailableForSlot('14:00', 30, [BARBER_WITH_BREAK])
+    expect(result).toHaveLength(0)
+  })
+
+  it('excludes barber when slot starts inside break window', () => {
+    const result = getBarbersAvailableForSlot('14:30', 30, [BARBER_WITH_BREAK])
+    expect(result).toHaveLength(0)
+  })
+
+  it('excludes barber when slot overlaps start of break', () => {
+    // Slot 13:31-14:01 overlaps break 14:00-15:00
+    const result = getBarbersAvailableForSlot('13:31', 30, [BARBER_WITH_BREAK])
+    expect(result).toHaveLength(0)
+  })
+
+  it('includes barber when slot ends exactly at break start', () => {
+    // Slot 13:30-14:00 ends exactly when break starts — no overlap (boundary is exclusive)
+    const result = getBarbersAvailableForSlot('13:30', 30, [BARBER_WITH_BREAK])
+    expect(result).toHaveLength(1)
+  })
+
+  it('includes barber for slot before break', () => {
+    const result = getBarbersAvailableForSlot('13:00', 30, [BARBER_WITH_BREAK])
+    expect(result).toHaveLength(1)
+  })
+
+  it('includes barber for slot after break', () => {
+    const result = getBarbersAvailableForSlot('15:00', 30, [BARBER_WITH_BREAK])
+    expect(result).toHaveLength(1)
+  })
+
+  it('returns mixed result: one available, one blocked', () => {
+    const result = getBarbersAvailableForSlot('14:00', 30, [BARBER_WITH_BREAK, BARBER_NO_BREAK])
+    expect(result.map(b => b.id)).toEqual(['b2'])
   })
 })

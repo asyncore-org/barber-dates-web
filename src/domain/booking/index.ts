@@ -55,3 +55,24 @@ export function getAvailableBarbersForDate(
     b => b.isActive && daySchedule.barberIds.includes(b.id) && !blockedIds.has(b.id),
   )
 }
+
+/** Returns barbers from the given list who are NOT on break during [slotTime, slotTime+durationMin). */
+export function getBarbersAvailableForSlot(
+  slotTime: string,
+  durationMin: number,
+  barbers: Barber[],
+): Barber[] {
+  const [slotH, slotM] = slotTime.split(':').map(Number)
+  const slotStart = slotH * 60 + slotM
+  const slotEnd = slotStart + durationMin
+
+  return barbers.filter(b => {
+    if (!b.breakStart || !b.breakEnd) return true
+    const [bsH, bsM] = b.breakStart.split(':').map(Number)
+    const [beH, beM] = b.breakEnd.split(':').map(Number)
+    const breakStart = bsH * 60 + bsM
+    const breakEnd = beH * 60 + beM
+    // Slot overlaps break if slot starts before break ends AND slot ends after break starts
+    return slotStart >= breakEnd || slotEnd <= breakStart
+  })
+}

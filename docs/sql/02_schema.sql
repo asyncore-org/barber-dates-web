@@ -21,11 +21,16 @@ CREATE TABLE IF NOT EXISTS public.barbers (
   -- Array de IDs de servicios que el barbero ofrece (JSONB para compatibilidad con SDK)
   specialty_ids JSONB       NOT NULL DEFAULT '[]'::jsonb,
   is_active     BOOLEAN     NOT NULL DEFAULT true,
+  -- Descanso diario del barbero (mismo horario todos los días; NULL = sin descanso)
+  break_start   TIME,
+  break_end     TIME,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 COMMENT ON TABLE public.barbers IS 'Barberos de la barbería. Independiente de auth.users.';
 COMMENT ON COLUMN public.barbers.specialty_ids IS 'Array JSON de UUIDs de services que este barbero realiza.';
+COMMENT ON COLUMN public.barbers.break_start IS 'Inicio del descanso diario (HH:MM). NULL = sin descanso.';
+COMMENT ON COLUMN public.barbers.break_end IS 'Fin del descanso diario (HH:MM). NULL = sin descanso.';
 
 
 -- ─── PERFILES DE USUARIO ──────────────────────────────────────────────────────

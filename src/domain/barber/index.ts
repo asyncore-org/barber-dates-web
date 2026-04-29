@@ -9,6 +9,9 @@ export interface Barber {
   /** IDs of services this barber offers */
   specialtyIds: string[]
   isActive: boolean
+  /** Daily break window — HH:MM format, nullable when no break configured */
+  breakStart: string | null
+  breakEnd: string | null
 }
 
 export interface CreateBarberData {
@@ -26,6 +29,8 @@ export interface UpdateBarberData {
   phone?: string
   email?: string
   isActive?: boolean
+  breakStart?: string | null
+  breakEnd?: string | null
 }
 
 export interface IBarberRepository {

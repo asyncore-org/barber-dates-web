@@ -11,9 +11,11 @@ interface BarberRow {
   email: string | null
   specialty_ids: string[] | null
   is_active: boolean
+  break_start: string | null
+  break_end: string | null
 }
 
-const SELECT = 'id, full_name, role, bio, avatar_url, phone, email, specialty_ids, is_active'
+const SELECT = 'id, full_name, role, bio, avatar_url, phone, email, specialty_ids, is_active, break_start, break_end'
 
 function mapToBarber(row: BarberRow): Barber {
   return {
@@ -26,6 +28,8 @@ function mapToBarber(row: BarberRow): Barber {
     email: row.email,
     specialtyIds: Array.isArray(row.specialty_ids) ? row.specialty_ids : [],
     isActive: row.is_active,
+    breakStart: row.break_start,
+    breakEnd: row.break_end,
   }
 }
 
@@ -71,6 +75,8 @@ export class InsForgeBarberRepository implements IBarberRepository {
     if (data.phone !== undefined) patch.phone = data.phone
     if (data.email !== undefined) patch.email = data.email
     if (data.isActive !== undefined) patch.is_active = data.isActive
+    if (data.breakStart !== undefined) patch.break_start = data.breakStart
+    if (data.breakEnd !== undefined) patch.break_end = data.breakEnd
 
     const { data: row, error } = await insforgeClient.database
       .from('barbers')
