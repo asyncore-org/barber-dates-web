@@ -21,10 +21,13 @@ const SECTION_TITLE = {
   marginBottom: '1rem',
 } as const
 
+type PendingRole = { from: UserRole; to: UserRole }
+
 export default function AdminPanelPage() {
   const { user } = useAuth()
   const [search, setSearch] = useState('')
-  const [rowError, setRowError] = useState<Record<string, string>>({})
+  const [pendingRoles, setPendingRoles] = useState<Record<string, PendingRole>>({})
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const { data: profiles = [], isLoading, error: loadError } = useAdminProfiles()
   const updateRole = useUpdateProfileRole()
@@ -35,12 +38,35 @@ export default function AdminPanelPage() {
   )
 
   function handleRoleChange(id: string, currentRole: UserRole, newRole: UserRole) {
-    if (currentRole === 'admin') return // cannot remove admin from frontend
-    setRowError(prev => { const c = { ...prev }; delete c[id]; return c })
-    updateRole.mutate({ id, role: newRole }, {
-      onError: () => setRowError(prev => ({ ...prev, [id]: 'No se pudo actualizar. Revisa tu conexión.' })),
+    if (currentRole === 'admin') return
+    setPendingRoles(prev => {
+      const original = prev[id]?.from ?? currentRole
+      if (original === newRole) {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      }
+      return { ...prev, [id]: { from: original, to: newRole } }
     })
   }
+
+  async function handleSavePending() {
+    setSaveError(null)
+    const entries = Object.entries(pendingRoles)
+    try {
+      await Promise.all(entries.map(([id, { to }]) => updateRole.mutateAsync({ id, role: to })))
+      setPendingRoles({})
+    } catch {
+      setSaveError('No se pudieron guardar todos los cambios. Revisa tu conexión e inténtalo de nuevo.')
+    }
+  }
+
+  function handleCancelPending() {
+    setPendingRoles({})
+    setSaveError(null)
+  }
+
+  const hasPending = Object.keys(pendingRoles).length > 0
 
   return (
     <>
@@ -96,14 +122,15 @@ export default function AdminPanelPage() {
           {filtered.map(profile => {
             const isAdminRole = profile.role === 'admin'
             const isSelf = profile.id === user?.id
+            const displayRole = pendingRoles[profile.id]?.to ?? profile.role
+            const isPending = !!pendingRoles[profile.id]
             return (
               <div
                 key={profile.id}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '0.75rem',
-                  background: 'var(--bg-2)', border: '1px solid var(--line)',
+                  background: 'var(--bg-2)', border: `1px solid ${isPending ? 'var(--led-soft)' : 'var(--line)'}`,
                   borderRadius: 10, padding: '0.75rem 1rem',
-                  opacity: updateRole.isPending ? 0.7 : 1,
                 }}
               >
                 <div style={{
@@ -123,9 +150,9 @@ export default function AdminPanelPage() {
                   <div style={{ fontSize: 11, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {profile.email}
                   </div>
-                  {rowError[profile.id] && (
-                    <div style={{ fontSize: 11, color: 'var(--danger)', fontFamily: 'var(--font-ui)', marginTop: 2 }}>
-                      {rowError[profile.id]}
+                  {isPending && (
+                    <div style={{ fontSize: 10, color: 'var(--led-soft)', fontFamily: 'var(--font-ui)', marginTop: 2 }}>
+                      {ROLE_LABELS[pendingRoles[profile.id].from]} → {ROLE_LABELS[pendingRoles[profile.id].to]}
                     </div>
                   )}
                 </div>
@@ -141,11 +168,12 @@ export default function AdminPanelPage() {
                     </div>
                   ) : (
                     <select
-                      value={profile.role}
+                      value={displayRole}
                       onChange={e => handleRoleChange(profile.id, profile.role, e.target.value as UserRole)}
                       disabled={updateRole.isPending}
                       style={{
-                        background: 'var(--bg-3)', border: '1px solid var(--line)',
+                        background: isPending ? 'rgba(123,79,255,0.08)' : 'var(--bg-3)',
+                        border: `1px solid ${isPending ? 'var(--led-soft)' : 'var(--line)'}`,
                         borderRadius: 6, padding: '0.35rem 0.5rem',
                         color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 12,
                         cursor: 'pointer', outline: 'none',
@@ -161,6 +189,65 @@ export default function AdminPanelPage() {
             )
           })}
         </div>
+
+        {/* Confirmation panel */}
+        {hasPending && (
+          <div style={{
+            position: 'sticky', bottom: 16, marginTop: '1.5rem',
+            background: 'var(--bg-2)', border: '1px solid var(--led-soft)',
+            borderRadius: 12, padding: '1rem',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.25)',
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', marginBottom: '0.625rem' }}>
+              Cambios pendientes
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginBottom: '0.875rem' }}>
+              {Object.entries(pendingRoles).map(([id, { from, to }]) => {
+                const profile = profiles.find(p => p.id === id)
+                return (
+                  <div key={id} style={{ fontSize: 12, color: 'var(--fg-1)', fontFamily: 'var(--font-ui)' }}>
+                    <span style={{ fontWeight: 500 }}>{profile?.fullName ?? profile?.email ?? id}</span>
+                    {' · '}
+                    <span style={{ color: 'var(--fg-3)' }}>{ROLE_LABELS[from]}</span>
+                    {' → '}
+                    <span style={{ color: 'var(--led-soft)', fontWeight: 600 }}>{ROLE_LABELS[to]}</span>
+                  </div>
+                )
+              })}
+            </div>
+            {saveError && (
+              <p style={{ margin: '0 0 0.5rem', color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)' }}>
+                {saveError}
+              </p>
+            )}
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                onClick={handleSavePending}
+                disabled={updateRole.isPending}
+                style={{
+                  padding: '0.5rem 1.25rem', minHeight: 40, borderRadius: 8, border: 'none',
+                  background: 'var(--led)', color: '#fff',
+                  fontFamily: 'var(--font-ui)', fontSize: 13, cursor: updateRole.isPending ? 'default' : 'pointer',
+                  opacity: updateRole.isPending ? 0.7 : 1,
+                }}
+              >
+                {updateRole.isPending ? 'Guardando…' : 'Guardar cambios'}
+              </button>
+              <button
+                onClick={handleCancelPending}
+                disabled={updateRole.isPending}
+                style={{
+                  padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8,
+                  border: '1px solid var(--line)', background: 'transparent',
+                  color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 13,
+                  cursor: updateRole.isPending ? 'default' : 'pointer',
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
 
         <div style={{ marginTop: '2rem', padding: '0.75rem 1rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
           <div style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', lineHeight: 1.6 }}>
