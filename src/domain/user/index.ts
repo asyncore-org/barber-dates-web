@@ -14,6 +14,11 @@ export interface User {
   avatarUrl?: string
 }
 
+export interface UpdateProfileData {
+  fullName?: string
+  phone?: string
+}
+
 export const ADMIN_SESSION_MAX_DAYS = 15
 export const ADMIN_LOGIN_TIME_KEY = 'admin_login_time'
 
