@@ -205,7 +205,7 @@ export default function SettingsPage() {
 
   const handleSaveBarber = (b: Barber) => {
     const edits = barberEdits[b.id] ?? {}
-    updateBarber.mutate({ id: b.id, data: { fullName: edits.fullName ?? b.fullName, role: edits.role ?? b.role ?? undefined, phone: edits.phone ?? b.phone ?? undefined, email: edits.email ?? b.email ?? undefined, bio: edits.bio ?? b.bio ?? undefined } }, {
+    updateBarber.mutate({ id: b.id, data: { fullName: edits.fullName ?? b.fullName, role: edits.role ?? b.role ?? undefined, phone: edits.phone ?? b.phone ?? undefined, email: edits.email ?? b.email ?? undefined, bio: edits.bio ?? b.bio ?? undefined, breakStart: edits.breakStart !== undefined ? edits.breakStart : b.breakStart, breakEnd: edits.breakEnd !== undefined ? edits.breakEnd : b.breakEnd } }, {
       onSuccess: () => { setBarberEdits(e => { const copy = { ...e }; delete copy[b.id]; return copy }); setEditingBarberId(null); clearSecError('barberos') },
       onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('barberos', 'No se pudo guardar el barbero. Revisa tu conexión.') },
     })
@@ -732,6 +732,19 @@ export default function SettingsPage() {
                                   style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }} />
                               </div>
                             ))}
+                            {/* Break time */}
+                            <div style={{ gridColumn: '1 / -1' }}>
+                              <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Descanso (sin reservas)</label>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <input type="time" value={String(edits.breakStart ?? b.breakStart ?? '')}
+                                  onChange={e => handleBarberEditChange(b.id, 'breakStart', e.target.value || null as unknown as string)}
+                                  style={{ flex: 1, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }} />
+                                <span style={{ color: 'var(--fg-3)', fontSize: 12 }}>–</span>
+                                <input type="time" value={String(edits.breakEnd ?? b.breakEnd ?? '')}
+                                  onChange={e => handleBarberEditChange(b.id, 'breakEnd', e.target.value || null as unknown as string)}
+                                  style={{ flex: 1, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }} />
+                              </div>
+                            </div>
                             <div>
                               <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Rol</label>
                               {(() => {

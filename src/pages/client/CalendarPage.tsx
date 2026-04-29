@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
-import { getMaxBookingDate, getAvailableBarbersForDate } from '@/domain/booking'
+import { getMaxBookingDate, getAvailableBarbersForDate, getBarbersAvailableForSlot } from '@/domain/booking'
 import { DEFAULT_WEEKLY_SCHEDULE, type DayKey } from '@/domain/schedule'
 import { MonthCalendar } from '@/components/calendar'
 import { TimeSlots } from '@/components/calendar'
@@ -32,6 +32,16 @@ function getInitials(fullName: string): string {
 const CARD = 'bg-[var(--bg-2)] border border-[var(--line)] rounded-xl p-4 md:p-5'
 const SECTION_LABEL = 'font-[var(--font-display)] text-[13px] tracking-widest text-[var(--fg-3)] mb-3.5'
 
+// Must match the slots generated in TimeSlots component (10:00–19:00)
+const BOOKING_SLOTS: string[] = (() => {
+  const slots: string[] = []
+  for (let h = 10; h <= 19; h++) {
+    slots.push(`${String(h).padStart(2, '0')}:00`)
+    if (h < 19) slots.push(`${String(h).padStart(2, '0')}:30`)
+  }
+  return slots
+})()
+
 export default function CalendarPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -59,6 +69,15 @@ export default function CalendarPage() {
     if (loadingSchedule || !selectedDate) return allBarbers.filter(b => b.isActive)
     return getAvailableBarbersForDate(selectedDate, schedule, blocks, allBarbers)
   }, [selectedDate, allBarbers, schedule, blocks, loadingSchedule])
+
+  // Slots blocked because all available barbers (or just the selected one) are on break
+  const breakBlockedSlots = useMemo<string[]>(() => {
+    if (!selectedService) return []
+    const barbersToCheck = selectedBarber ? [selectedBarber] : availableBarbers
+    return BOOKING_SLOTS.filter(slot =>
+      getBarbersAvailableForSlot(slot, selectedService.durationMinutes, barbersToCheck).length === 0,
+    )
+  }, [selectedService, selectedBarber, availableBarbers])
 
   // Day-of-week numbers (0=Mon … 6=Sun ISO) that are fully closed per the weekly schedule
   const closedDayOfWeeks = useMemo<number[]>(() => {
@@ -163,7 +182,7 @@ export default function CalendarPage() {
               <TimeSlots
                 selected={selectedSlot}
                 onSelect={setSelectedSlot}
-                taken={[]}
+                taken={breakBlockedSlots}
               />
             </div>
           )}
