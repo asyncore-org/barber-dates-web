@@ -199,7 +199,7 @@ export default function SettingsPage() {
   // ── Handlers: barbers ───────────────────────────────────────────────────────
   const getBarberEdit = (id: string): Partial<Barber> => barberEdits[id] ?? {}
 
-  const handleBarberEditChange = (id: string, field: keyof Barber, val: string | boolean) => {
+  const handleBarberEditChange = (id: string, field: keyof Barber, val: string | boolean | null) => {
     setBarberEdits(e => ({ ...e, [id]: { ...e[id], [field]: val } }))
   }
 
@@ -737,11 +737,11 @@ export default function SettingsPage() {
                               <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Descanso (sin reservas)</label>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <input type="time" value={String(edits.breakStart ?? b.breakStart ?? '')}
-                                  onChange={e => handleBarberEditChange(b.id, 'breakStart', e.target.value || null as unknown as string)}
+                                  onChange={e => handleBarberEditChange(b.id, 'breakStart', e.target.value || null)}
                                   style={{ flex: 1, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }} />
                                 <span style={{ color: 'var(--fg-3)', fontSize: 12 }}>–</span>
                                 <input type="time" value={String(edits.breakEnd ?? b.breakEnd ?? '')}
-                                  onChange={e => handleBarberEditChange(b.id, 'breakEnd', e.target.value || null as unknown as string)}
+                                  onChange={e => handleBarberEditChange(b.id, 'breakEnd', e.target.value || null)}
                                   style={{ flex: 1, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }} />
                               </div>
                             </div>
