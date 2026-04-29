@@ -1,9 +1,23 @@
-import type { Profile, UpdateProfileData } from '@/domain/user'
+import type { Profile, UpdateProfileData, UserRole } from '@/domain/user'
 import { insforgeClient } from './client'
 
 interface ProfileRow {
   id: string
   email: string
+}
+
+interface AdminProfileRow {
+  id: string
+  email: string
+  full_name: string | null
+  role: UserRole
+}
+
+export interface AdminProfile {
+  id: string
+  email: string
+  fullName: string | null
+  role: UserRole
 }
 
 export class InsForgeProfileRepository {
@@ -24,6 +38,29 @@ export class InsForgeProfileRepository {
     const { error } = await insforgeClient.database
       .from('profiles')
       .update(patch)
+      .eq('id', id)
+    if (error) throw error
+  }
+
+  async getAll(): Promise<AdminProfile[]> {
+    const { data, error } = await insforgeClient.database
+      .from('profiles')
+      .select('id, email, full_name, role')
+      .order('role')
+      .order('email')
+    if (error) throw error
+    return ((data ?? []) as AdminProfileRow[]).map(r => ({
+      id: r.id,
+      email: r.email,
+      fullName: r.full_name,
+      role: r.role,
+    }))
+  }
+
+  async updateRole(id: string, role: UserRole): Promise<void> {
+    const { error } = await insforgeClient.database
+      .from('profiles')
+      .update({ role })
       .eq('id', id)
     if (error) throw error
   }
