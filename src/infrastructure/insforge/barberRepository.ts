@@ -9,13 +9,14 @@ interface BarberRow {
   avatar_url: string | null
   phone: string | null
   email: string | null
-  specialty_ids: string[] | null
   is_active: boolean
   break_start: string | null
   break_end: string | null
 }
 
-const SELECT = 'id, full_name, role, bio, avatar_url, phone, email, specialty_ids, is_active, break_start, break_end'
+// specialty_ids (JSONB) excluded — InsForge rejects JSONB columns in GET ?select param.
+// Specialty filtering is not implemented in the UI; always defaults to [].
+const SELECT = 'id, full_name, role, bio, avatar_url, phone, email, is_active, break_start, break_end'
 
 function mapToBarber(row: BarberRow): Barber {
   return {
@@ -26,7 +27,7 @@ function mapToBarber(row: BarberRow): Barber {
     avatarUrl: row.avatar_url,
     phone: row.phone,
     email: row.email,
-    specialtyIds: Array.isArray(row.specialty_ids) ? row.specialty_ids : [],
+    specialtyIds: [],
     isActive: row.is_active,
     breakStart: row.break_start,
     breakEnd: row.break_end,
