@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { ConfirmDialog, Modal } from '@/components/ui'
 import { MonthCalendar } from '@/components/calendar'
-import { useTheme } from '@/hooks'
 import { useShopContext } from '@/context/ShopContext'
 import { useAllServices, useCreateService, useUpdateService, useDeleteService } from '@/hooks/useServices'
 import { useAllBarbers, useCreateBarber, useUpdateBarber, useDeleteBarber } from '@/hooks/useBarbers'
@@ -15,9 +14,9 @@ import type { Service } from '@/domain/service'
 import type { Barber } from '@/domain/barber'
 import type { Reward } from '@/domain/loyalty'
 
-type Section = 'servicios' | 'horarios' | 'barberos' | 'fidelizacion' | 'barberia' | 'apariencia'
+type Section = 'servicios' | 'horarios' | 'barberos' | 'fidelizacion' | 'barberia'
 
-const BARBER_ROLES = ['Barbero', 'Barbera', 'Propietario', 'Estilista'] as const
+const BARBER_ROLES = ['Barbero', 'Propietario'] as const
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: 'servicios',    label: 'Servicios' },
@@ -25,7 +24,6 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: 'barberos',     label: 'Barberos' },
   { id: 'fidelizacion', label: 'Fidelización' },
   { id: 'barberia',     label: 'Barbería' },
-  { id: 'apariencia',   label: 'Apariencia' },
 ]
 
 const DAY_KEYS: { key: DayKey; name: string }[] = [
@@ -92,7 +90,6 @@ function SaveBtn({ onClick, loading, isDirty }: { onClick: () => void; loading?:
 }
 
 export default function SettingsPage() {
-  const { theme, toggleTheme } = useTheme()
   const { name: shopName, allowBarberChoice } = useShopContext()
   const [section, setSection] = useState<Section>('servicios')
   const [pendingNavSection, setPendingNavSection] = useState<Section | null>(null)
@@ -332,7 +329,6 @@ export default function SettingsPage() {
     barberos:     Object.keys(barberEdits).length > 0,
     fidelizacion: Object.keys(rewardEdits).length > 0,
     barberia:     Object.keys(shopEdits).length > 0,
-    apariencia:   false,
   }
   const anyDirty = Object.values(sectionDirty).some(Boolean)
 
@@ -941,24 +937,6 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {/* === APARIENCIA === */}
-          {section === 'apariencia' && (
-            <div>
-              <SectionTitle>APARIENCIA</SectionTitle>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)', gap: '1rem' }}>
-                <div>
-                  <div style={{ fontSize: 14, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>Modo de color</div>
-                  <div style={{ fontSize: 12, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', marginTop: 2 }}>
-                    Actualmente: <span style={{ color: 'var(--fg-0)' }}>{theme === 'dark' ? 'Oscuro' : 'Claro'}</span>
-                  </div>
-                </div>
-                <button onClick={toggleTheme}
-                  style={{ padding: '0.6rem 1rem', minHeight: 44, borderRadius: 8, flexShrink: 0, border: '1px solid var(--line)', background: 'var(--bg-4)', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>
-                  Cambiar a {theme === 'dark' ? 'claro' : 'oscuro'}
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
