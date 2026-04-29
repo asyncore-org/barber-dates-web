@@ -1,1 +1,1 @@
-pnpm run lint --quiet && pnpm run type-check
+npm run lint --quiet && npm run type-check

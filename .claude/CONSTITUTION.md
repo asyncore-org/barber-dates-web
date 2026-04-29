@@ -74,26 +74,30 @@ domain/ no importa NADA externo
 ## Art. 5 — Modelo de datos (PostgreSQL/InsForge)
 
 ```
-profiles          id, full_name, phone, avatar_url, role('client'|'admin'), created_at, updated_at
+barbers           id, full_name, role, bio, avatar_url, phone, email, specialty_ids(JSONB), is_active
+profiles          id→auth.users, full_name, phone, avatar_url, role('client'|'admin')
 services          id, name, description, duration_minutes, price, loyalty_points, is_active, sort_order
-appointments      id, client_id→profiles, service_id→services, start_time, end_time, status, notes
+appointments      id, client_id→profiles, barber_id→barbers, service_id→services, start_time, end_time, status, notes
                   status: 'confirmed' | 'completed' | 'cancelled' | 'no_show'
-schedule_blocks   id, block_date, start_time, end_time, day_of_week, reason, is_recurring
+schedule_blocks   id, barber_id→barbers (NULL=todos), block_date, start_time, end_time, day_of_week, reason, is_recurring
 shop_config       id, key (unique), value(JSONB)
+                  keys: shop_info, schedule, booking, loyalty
 loyalty_cards     id, client_id→profiles (unique), total_points, total_visits
 loyalty_transactions  id, card_id→loyalty_cards, appointment_id→appointments, points, type, description
                   type: 'earned' | 'redeemed' | 'bonus' | 'adjustment'
-rewards           id, name, description, points_cost, is_active
+rewards           id, label, cost, is_active, sort_order
 redeemed_rewards  id, card_id→loyalty_cards, reward_id→rewards, redeemed_at
 ```
 
 ### RLS (Row Level Security) — obligatorio en todas las tablas
 
 - `profiles`: cada usuario ve el suyo; admin ve todos.
+- `barbers`: lectura pública; escritura solo admin.
 - `appointments`: clientes ven las suyas; admin gestiona todas.
 - `services`: lectura pública; escritura solo admin.
 - `rewards`: lectura pública; escritura solo admin.
 - `loyalty_cards`, `loyalty_transactions`: cada cliente ve los suyos; admin ve todos.
+- `schedule_blocks`, `shop_config`: lectura pública; escritura solo admin.
 
 **Convención de mapeo**: snake_case en DB ↔ camelCase en dominio. El mapper vive en `infrastructure/`, nunca filtra snake_case a capas superiores.
 
@@ -116,7 +120,8 @@ redeemed_rewards  id, card_id→loyalty_cards, reward_id→rewards, redeemed_at
 App carga
   └─ ¿Sesión activa?
        ├─ SÍ → admin? → < 15 días? → /admin/dashboard  (else signOut → /)
-       │     → client? → /calendar
+       │     → client? → ¿tiene cita upcoming? → /appointments
+       │                                       → (sin cita) /calendar
        └─ NO → /
 ```
 

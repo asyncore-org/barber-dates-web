@@ -55,6 +55,20 @@ export const authHandlers = [
     return HttpResponse.json(currentSession)
   }),
 
+  // POST /auth/v1/signup — registro fake (respeta VITE_MOCK_ROLE)
+  http.post('*/auth/v1/signup', () => {
+    const user = getMockUser()
+    const accessToken = `mock-token-${user.role}-${Date.now()}`
+    currentSession = {
+      access_token: accessToken,
+      refresh_token: `mock-refresh-${Date.now()}`,
+      token_type: 'bearer',
+      expires_in: 3600,
+      user: buildSupabaseUser(user),
+    }
+    return HttpResponse.json(currentSession)
+  }),
+
   // POST /auth/v1/logout
   http.post('*/auth/v1/logout', () => {
     currentSession = null
