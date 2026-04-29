@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useSyncExternalStore } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
 import { Icon } from '@/components/ui'
@@ -7,6 +7,18 @@ import type { WeekAppt, RescheduleUpdate, NewAppointmentData } from '@/component
 import { useBarbers } from '@/hooks/useBarbers'
 import { useAllServices } from '@/hooks/useServices'
 import { useAllAppointments, useCreateAppointment, useFindProfileByEmail } from '@/hooks/useAppointments'
+
+const landscapeMq = typeof window !== 'undefined'
+  ? window.matchMedia('(orientation: landscape) and (max-height: 600px)')
+  : null
+
+function useLandscape() {
+  return useSyncExternalStore(
+    cb => { landscapeMq?.addEventListener('change', cb); return () => landscapeMq?.removeEventListener('change', cb) },
+    () => landscapeMq?.matches ?? false,
+    () => false,
+  )
+}
 
 const DAYS_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 const HOURS = Array.from({ length: 11 }, (_, i) => i + 9) // 9 → 19
@@ -69,6 +81,7 @@ function addMinutes(date: Date, minutes: number): Date {
 }
 
 export default function DashboardPage() {
+  const isLandscape = useLandscape()
   const { name: shopName } = useShopContext()
   const { data: barbers = [] } = useBarbers()
   const { data: services = [] } = useAllServices()
@@ -215,8 +228,8 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Mobile-only: day agenda first, then metrics */}
-      <div className="md:hidden flex flex-col gap-4 mb-4">
+      {/* Mobile-only: day agenda first, then metrics (hidden in landscape — desktop calendar shows instead) */}
+      <div className={`md:hidden flex flex-col gap-4 mb-4${isLandscape ? ' hidden' : ''}`}>
         {/* Day agenda — first */}
         <AgendaListView
           items={appointments.filter(a => a.day === mobileDayCol)}
@@ -281,8 +294,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Desktop: two-column layout */}
-      <div className="hidden md:grid md:grid-cols-[1fr_360px] gap-6 items-start">
+      {/* Desktop + landscape mobile: two-column layout */}
+      <div className={`${isLandscape ? 'flex flex-col gap-4' : 'hidden md:grid md:grid-cols-[1fr_360px]'} gap-6 items-start`}>
 
         {/* Left: agenda semanal */}
         <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden' }}>
@@ -309,9 +322,9 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Grid body — outer div enables horizontal scroll on mobile */}
-          <div style={{ overflowX: 'auto' }}>
-          <div style={{ maxHeight: 520, overflowY: 'auto', minWidth: 600 }}>
+          {/* Grid body — horizontal scroll only needed in portrait narrow screens */}
+          <div style={{ overflowX: isLandscape ? 'hidden' : 'auto' }}>
+          <div style={{ maxHeight: isLandscape ? 'calc(100dvh - 140px)' : 520, overflowY: 'auto', minWidth: isLandscape ? undefined : 600 }}>
             {/* Day headers — sticky so scrollbar width is shared with the content grid */}
             <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', borderBottom: '1px solid var(--line)', position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-2)' }}>
               <div />
