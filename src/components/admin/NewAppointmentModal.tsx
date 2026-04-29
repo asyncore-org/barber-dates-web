@@ -1,8 +1,18 @@
 import { useState } from 'react'
 import { Modal } from '@/components/ui'
 import { MonthCalendar, TimeSlots } from '@/components/calendar'
+import { getBarbersAvailableForSlot } from '@/domain/booking'
 import { useServices } from '@/hooks/useServices'
 import { useBarbers } from '@/hooks/useBarbers'
+
+const BOOKING_SLOTS: string[] = (() => {
+  const slots: string[] = []
+  for (let h = 10; h <= 19; h++) {
+    slots.push(`${String(h).padStart(2, '0')}:00`)
+    if (h < 19) slots.push(`${String(h).padStart(2, '0')}:30`)
+  }
+  return slots
+})()
 
 function calcInitials(name: string): string {
   return name.trim().split(/\s+/).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '?'
@@ -41,6 +51,13 @@ export function NewAppointmentModal({ onClose, onConfirm, errorMessage, isPendin
   const selectedService = activeServices.find(s => s.id === serviceId) ?? null
   const selectedBarber = barberId !== '__any__' ? activeBarbers.find(b => b.id === barberId) : null
   const canConfirm = email.trim().length > 3 && serviceId != null && barberId !== '' && date != null && slot != null && !isPending
+
+  const barbersToCheck = selectedBarber ? [selectedBarber] : activeBarbers
+  const breakBlockedSlots = !selectedService
+    ? []
+    : BOOKING_SLOTS.filter(s =>
+        getBarbersAvailableForSlot(s, selectedService.durationMinutes, barbersToCheck).length === 0,
+      )
 
   const LABEL = {
     fontFamily: 'var(--font-display)',
@@ -167,7 +184,7 @@ export function NewAppointmentModal({ onClose, onConfirm, errorMessage, isPendin
             <TimeSlots
               selected={slot}
               onSelect={setSlot}
-              taken={[]}
+              taken={breakBlockedSlots}
             />
           </div>
         )}
