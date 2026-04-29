@@ -28,16 +28,32 @@ export function TopBar() {
     navigate('/auth')
   }
 
-  const isAdmin = user?.role === 'admin'
+  const role = user?.role
   const clientLinks = [
     { to: '/calendar', label: 'Pedir cita', icon: 'calendar' as const },
     { to: '/appointments', label: 'Mis citas', icon: 'clipboard' as const },
   ]
-  const adminLinks = [
+  const ownerLinks = [
     { to: '/admin/dashboard', label: 'Agenda', icon: 'calendar' as const },
     { to: '/admin/settings', label: 'Configuración', icon: 'settings' as const },
   ]
-  const links = isAdmin ? adminLinks : clientLinks
+  const adminLinks = [
+    ...ownerLinks,
+    { to: '/super-admin', label: 'Admin', icon: 'settings' as const },
+  ]
+  const links =
+    role === 'admin' ? adminLinks :
+    role === 'owner' ? ownerLinks :
+    clientLinks
+
+  const ROLE_LABEL: Record<string, string> = {
+    admin: 'Administrador',
+    owner: 'Propietario',
+    barber: 'Barbero',
+    client: 'Cliente',
+  }
+  const roleLabel = role ? (ROLE_LABEL[role] ?? role) : 'Cliente'
+  const roleIsAdmin = role === 'admin' || role === 'owner'
 
   return (
     <>
@@ -168,10 +184,10 @@ export function TopBar() {
                     fontWeight: 700,
                     letterSpacing: '0.06em',
                     textTransform: 'uppercase',
-                    background: isAdmin ? 'rgba(139,58,31,0.2)' : 'rgba(123,79,255,0.15)',
-                    color: isAdmin ? 'var(--brick-warm)' : 'var(--led-soft)',
+                    background: roleIsAdmin ? 'rgba(139,58,31,0.2)' : 'rgba(123,79,255,0.15)',
+                    color: roleIsAdmin ? 'var(--brick-warm)' : 'var(--led-soft)',
                   }}>
-                    {isAdmin ? 'Propietario' : 'Cliente'}
+                    {roleLabel}
                   </div>
                 </div>
                 {/* Mis datos */}
@@ -182,13 +198,13 @@ export function TopBar() {
                   <Icon name="user" size={14} />
                   Mis datos
                 </button>
-                {/* Apariencia */}
+                {/* Theme toggle — no cierra el dropdown para que el cambio sea visible */}
                 <button
-                  onClick={() => { toggleTheme(); setMenuOpen(false) }}
+                  onClick={toggleTheme}
                   style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.5rem 0.75rem', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--fg-1)', fontSize: 13, fontFamily: 'var(--font-ui)', cursor: 'pointer', textAlign: 'left' }}
                 >
                   <Icon name="sun" size={14} />
-                  {theme === 'dark' ? 'Tema claro' : 'Tema oscuro'}
+                  Cambiar a {theme === 'dark' ? 'claro' : 'oscuro'}
                 </button>
                 <div style={{ height: 1, background: 'var(--line)', margin: '0.25rem 0.75rem' }} />
                 <button
