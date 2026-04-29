@@ -374,7 +374,7 @@ export default function DashboardPage() {
                         top: nowTop,
                         height: 2,
                         background: 'var(--led)',
-                        boxShadow: '0 0 8px rgba(123,79,255,0.8)',
+                        boxShadow: '0 0 0 1px rgba(255,255,255,0.55), 0 0 8px rgba(123,79,255,0.8)',
                         zIndex: 5,
                         pointerEvents: 'none',
                       }}
