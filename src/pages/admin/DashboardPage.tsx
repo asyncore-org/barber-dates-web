@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect, useRef, useSyncExternalStore } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
 import { Icon } from '@/components/ui'
@@ -7,11 +6,9 @@ import { AgendaListView, NewAppointmentModal, RescheduleModal } from '@/componen
 import type { WeekAppt, RescheduleUpdate, NewAppointmentData } from '@/components/admin'
 import { useBarbers } from '@/hooks/useBarbers'
 import { useAllServices } from '@/hooks/useServices'
-import { useAllAppointments, useCreateAppointment, useFindProfileByEmail } from '@/hooks/useAppointments'
+import { useAllAppointments, useCreateAppointment, useUpdateAppointment, useFindProfileByEmail } from '@/hooks/useAppointments'
 import { useWeeklySchedule } from '@/hooks/useSchedule'
 import { DEFAULT_WEEKLY_SCHEDULE } from '@/domain/schedule'
-import { repositories } from '@/infrastructure'
-import { queryKeys } from '@/hooks/queryKeys'
 
 const landscapeMq = typeof window !== 'undefined'
   ? window.matchMedia('(orientation: landscape) and (max-height: 600px)')
@@ -74,8 +71,8 @@ export default function DashboardPage() {
   const { data: dbAppointments = [] } = useAllAppointments()
   const { data: schedule = DEFAULT_WEEKLY_SCHEDULE } = useWeeklySchedule()
   const createApptMut = useCreateAppointment()
+  const updateApptMut = useUpdateAppointment()
   const findProfileByEmail = useFindProfileByEmail()
-  const qc = useQueryClient()
   const activeBarbers = barbers.filter(b => b.isActive)
   const [weekOffset, setWeekOffset] = useState(0)
   const [dayOffset, setDayOffset] = useState(0)
@@ -170,27 +167,24 @@ export default function DashboardPage() {
     )
   }
 
-  const handleRescheduleConfirm = async (update: RescheduleUpdate) => {
+  const handleRescheduleConfirm = (update: RescheduleUpdate) => {
     if (!rescheduleAppt) return
     const svc = services.find(s => s.id === update.serviceId)
     if (!svc) return
     const startDt = combineDateSlot(update.date, update.slot)
     const endDt = addMinutes(startDt, svc.durationMinutes)
 
-    try {
-      await repositories.appointments().updateAppointment(rescheduleAppt.id, {
-        startTime: startDt.toISOString(),
-        endTime: endDt.toISOString(),
-        barberId: update.barberId,
-        serviceId: update.serviceId,
-      })
-      await qc.invalidateQueries({ queryKey: queryKeys.appointments.all() })
-    } catch { /* silencio — toast no se muestra si falla */ }
-
-    setRescheduleAppt(null)
-    setSelectedAppt(null)
-    setRescheduleToast(true)
-    setTimeout(() => setRescheduleToast(false), 3000)
+    updateApptMut.mutate(
+      { id: rescheduleAppt.id, data: { startTime: startDt.toISOString(), endTime: endDt.toISOString(), barberId: update.barberId, serviceId: update.serviceId } },
+      {
+        onSuccess: () => {
+          setRescheduleAppt(null)
+          setSelectedAppt(null)
+          setRescheduleToast(true)
+          setTimeout(() => setRescheduleToast(false), 3000)
+        },
+      },
+    )
   }
 
   const now = new Date()
