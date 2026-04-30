@@ -6,6 +6,7 @@ export const CANCELLATION_LIMIT_HOURS = 2
 export interface Appointment {
   id: string
   clientId: string
+  clientName?: string
   barberId: string
   serviceId: string
   /** ISO datetime string */
@@ -36,10 +37,18 @@ export function canCancelAppointment(
   return start - nowTimestamp > limitMs
 }
 
+export interface UpdateAppointmentData {
+  startTime: string
+  endTime: string
+  barberId: string
+  serviceId: string
+}
+
 export interface IAppointmentRepository {
   getForClient(clientId: string): Promise<Appointment[]>
   getAll(): Promise<Appointment[]>
   create(data: CreateAppointmentData): Promise<Appointment>
   cancel(id: string): Promise<void>
   updateStatus(id: string, status: AppointmentStatus): Promise<void>
+  updateAppointment(id: string, data: UpdateAppointmentData): Promise<void>
 }

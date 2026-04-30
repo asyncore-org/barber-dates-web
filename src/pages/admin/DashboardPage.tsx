@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useSyncExternalStore } from 'react'
+import { useState, useMemo, useEffect, useRef, useSyncExternalStore } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
 import { Icon } from '@/components/ui'
@@ -9,6 +10,8 @@ import { useAllServices } from '@/hooks/useServices'
 import { useAllAppointments, useCreateAppointment, useFindProfileByEmail } from '@/hooks/useAppointments'
 import { useWeeklySchedule } from '@/hooks/useSchedule'
 import { DEFAULT_WEEKLY_SCHEDULE } from '@/domain/schedule'
+import { repositories } from '@/infrastructure'
+import { queryKeys } from '@/hooks/queryKeys'
 
 const landscapeMq = typeof window !== 'undefined'
   ? window.matchMedia('(orientation: landscape) and (max-height: 600px)')
@@ -25,26 +28,7 @@ function useLandscape() {
 const DAYS_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 const HOURS = Array.from({ length: 11 }, (_, i) => i + 9) // 9 → 19
 
-const INITIAL_APPOINTMENTS: WeekAppt[] = [
-  { id: 'w1',  day: 0, startH: 10, startM: 0,  durationMin: 45, client: 'Carlos M.',   service: 'Corte + Barba',         barberId: 'b1', color: 'led' },
-  { id: 'w2',  day: 0, startH: 11, startM: 30, durationMin: 30, client: 'Rubén G.',    service: 'Corte Clásico',          barberId: 'b2', color: 'brick' },
-  { id: 'w3',  day: 0, startH: 14, startM: 0,  durationMin: 60, client: 'Javier P.',   service: 'Corte Premium',          barberId: 'b1', color: 'led' },
-  { id: 'w4',  day: 1, startH: 9,  startM: 30, durationMin: 45, client: 'Miguel Á.',   service: 'Corte + Barba',         barberId: 'b2', color: 'brick' },
-  { id: 'w5',  day: 1, startH: 11, startM: 0,  durationMin: 30, client: 'Toni R.',     service: 'Afeitado Tradicional',   barberId: 'b1', color: 'gold' },
-  { id: 'w6',  day: 1, startH: 16, startM: 0,  durationMin: 75, client: 'Álex F.',     service: 'Tinte + Corte',          barberId: 'b2', color: 'brick' },
-  { id: 'w7',  day: 2, startH: 10, startM: 30, durationMin: 30, client: 'Marc V.',     service: 'Corte Clásico',          barberId: 'b1', color: 'led' },
-  { id: 'w8',  day: 2, startH: 12, startM: 0,  durationMin: 45, client: 'Sergio L.',   service: 'Corte + Barba',         barberId: 'b2', color: 'brick' },
-  { id: 'w9',  day: 2, startH: 15, startM: 30, durationMin: 60, client: 'Iván M.',     service: 'Corte Premium',          barberId: 'b1', color: 'led' },
-  { id: 'w10', day: 3, startH: 9,  startM: 0,  durationMin: 25, client: 'Leo (niño)',  service: 'Niños (-12)',            barberId: 'b2', color: 'gold' },
-  { id: 'w11', day: 3, startH: 11, startM: 30, durationMin: 45, client: 'Raúl C.',     service: 'Corte + Barba',         barberId: 'b1', color: 'led' },
-  { id: 'w12', day: 3, startH: 17, startM: 0,  durationMin: 30, client: 'Paco G.',     service: 'Afeitado Tradicional',   barberId: 'b2', color: 'gold' },
-  { id: 'w13', day: 4, startH: 10, startM: 0,  durationMin: 30, client: 'Daniel H.',   service: 'Corte Clásico',          barberId: 'b1', color: 'brick' },
-  { id: 'w14', day: 4, startH: 13, startM: 0,  durationMin: 75, client: 'Omar S.',     service: 'Tinte + Corte',          barberId: 'b2', color: 'brick' },
-  { id: 'w15', day: 4, startH: 16, startM: 30, durationMin: 45, client: 'Dani R.',     service: 'Corte + Barba',         barberId: 'b1', color: 'led' },
-  { id: 'w16', day: 5, startH: 9,  startM: 30, durationMin: 30, client: 'Vicent M.',   service: 'Corte Clásico',          barberId: 'b2', color: 'gold' },
-  { id: 'w17', day: 5, startH: 10, startM: 30, durationMin: 60, client: 'Lucas B.',    service: 'Corte Premium',          barberId: 'b1', color: 'led' },
-  { id: 'w18', day: 5, startH: 12, startM: 0,  durationMin: 45, client: 'Andrés T.',   service: 'Corte + Barba',         barberId: 'b2', color: 'brick' },
-]
+const APPT_COLORS = ['led', 'brick', 'gold'] as const
 
 const COLOR_MAP = {
   led:   { bg: 'rgba(123,79,255,0.18)',  border: 'var(--led)',       text: 'var(--led-soft)' },
@@ -91,10 +75,10 @@ export default function DashboardPage() {
   const { data: schedule = DEFAULT_WEEKLY_SCHEDULE } = useWeeklySchedule()
   const createApptMut = useCreateAppointment()
   const findProfileByEmail = useFindProfileByEmail()
+  const qc = useQueryClient()
   const activeBarbers = barbers.filter(b => b.isActive)
   const [weekOffset, setWeekOffset] = useState(0)
   const [dayOffset, setDayOffset] = useState(0)
-  const [appointments, setAppointments] = useState<WeekAppt[]>(INITIAL_APPOINTMENTS)
   const [selectedAppt, setSelectedAppt] = useState<WeekAppt | null>(null)
   const [rescheduleAppt, setRescheduleAppt] = useState<WeekAppt | null>(null)
   const [newApptOpen, setNewApptOpen] = useState(false)
@@ -102,6 +86,36 @@ export default function DashboardPage() {
   const [rescheduleToast, setRescheduleToast] = useState(false)
   const [apptError, setApptError] = useState<string | null>(null)
   const nowLineRef = useRef<HTMLDivElement>(null)
+
+  const weekStart = useMemo(() => {
+    const ws = getWeekStart(new Date())
+    ws.setDate(ws.getDate() + weekOffset * 7)
+    return ws
+  }, [weekOffset])
+
+  const appointments = useMemo<WeekAppt[]>(() => {
+    return dbAppointments
+      .filter(a => a.status !== 'cancelled' && a.status !== 'no_show')
+      .flatMap((a, i) => {
+        const start = new Date(a.startTime)
+        const end = new Date(a.endTime)
+        const dayDiff = Math.round((start.getTime() - weekStart.getTime()) / 86_400_000)
+        if (dayDiff < 0 || dayDiff > 6) return []
+        const svc = services.find(s => s.id === a.serviceId)
+        const barberIdx = barbers.findIndex(b => b.id === a.barberId)
+        return [{
+          id: a.id,
+          day: dayDiff,
+          startH: start.getHours(),
+          startM: start.getMinutes(),
+          durationMin: Math.round((end.getTime() - start.getTime()) / 60_000),
+          client: a.clientName ?? `Cliente ${a.clientId.slice(0, 6)}`,
+          service: svc?.name ?? 'Servicio',
+          barberId: a.barberId,
+          color: APPT_COLORS[barberIdx >= 0 ? barberIdx % 3 : i % 3],
+        } satisfies WeekAppt]
+      })
+  }, [dbAppointments, weekStart, services, barbers])
 
   const handleNewApptConfirm = async (data: NewAppointmentData) => {
     setApptError(null)
@@ -158,32 +172,26 @@ export default function DashboardPage() {
 
   const handleRescheduleConfirm = async (update: RescheduleUpdate) => {
     if (!rescheduleAppt) return
-    const [newH, newM] = update.slot.split(':').map(Number)
-    const newDayIdx = Math.round((update.date.getTime() - weekStart.getTime()) / 86_400_000)
-    const newService = services.find(s => s.id === update.serviceId)?.name ?? rescheduleAppt.service
-
-    setAppointments(prev => prev.map(a =>
-      a.id === rescheduleAppt.id
-        ? { ...a, day: newDayIdx, startH: newH, startM: newM, service: newService, barberId: update.barberId }
-        : a
-    ))
+    const svc = services.find(s => s.id === update.serviceId)
+    if (!svc) return
+    const startDt = combineDateSlot(update.date, update.slot)
+    const endDt = addMinutes(startDt, svc.durationMinutes)
 
     try {
-      await fetch(`/rest/v1/appointments?id=eq.${rescheduleAppt.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scheduled_at: update.date.toISOString() }),
+      await repositories.appointments().updateAppointment(rescheduleAppt.id, {
+        startTime: startDt.toISOString(),
+        endTime: endDt.toISOString(),
+        barberId: update.barberId,
+        serviceId: update.serviceId,
       })
-    } catch { /* ignorar */ }
+      await qc.invalidateQueries({ queryKey: queryKeys.appointments.all() })
+    } catch { /* silencio — toast no se muestra si falla */ }
 
     setRescheduleAppt(null)
     setSelectedAppt(null)
     setRescheduleToast(true)
     setTimeout(() => setRescheduleToast(false), 3000)
   }
-
-  const weekStart = getWeekStart(new Date())
-  weekStart.setDate(weekStart.getDate() + weekOffset * 7)
 
   const now = new Date()
   const nowTop = Math.min(topPx(now.getHours(), now.getMinutes()), MAX_TOP_PX)
@@ -327,7 +335,7 @@ export default function DashboardPage() {
 
           {/* Grid body — horizontal scroll only needed in portrait narrow screens */}
           <div style={{ overflowX: isLandscape ? 'hidden' : 'auto' }}>
-          <div style={{ maxHeight: isLandscape ? 'calc(100dvh - 140px)' : 520, overflowY: 'auto', minWidth: isLandscape ? undefined : 600 }}>
+          <div style={{ maxHeight: isLandscape ? 'calc(100dvh - 140px)' : 'calc(100dvh - 200px)', overflowY: 'auto', minWidth: isLandscape ? undefined : 600 }}>
             {/* Day headers — sticky so scrollbar width is shared with the content grid */}
             <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', borderBottom: '1px solid var(--line)', position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-2)' }}>
               <div />

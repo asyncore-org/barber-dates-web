@@ -3,6 +3,7 @@ import type {
   Appointment,
   AppointmentStatus,
   CreateAppointmentData,
+  UpdateAppointmentData,
 } from '@/domain/appointment'
 import { insforgeClient } from './client'
 
@@ -16,12 +17,14 @@ interface AppointmentRow {
   status: string
   notes: string | null
   created_at: string
+  profiles?: { full_name: string | null }[] | null
 }
 
 function mapToAppointment(row: AppointmentRow): Appointment {
   return {
     id: row.id,
     clientId: row.client_id,
+    clientName: row.profiles?.[0]?.full_name ?? undefined,
     barberId: row.barber_id,
     serviceId: row.service_id,
     startTime: row.start_time,
@@ -34,6 +37,9 @@ function mapToAppointment(row: AppointmentRow): Appointment {
 
 const SELECT_FIELDS =
   'id, client_id, barber_id, service_id, start_time, end_time, status, notes, created_at'
+
+const SELECT_FIELDS_WITH_CLIENT =
+  'id, client_id, barber_id, service_id, start_time, end_time, status, notes, created_at, profiles!appointments_client_id_fkey(full_name)'
 
 export class InsForgeAppointmentRepository implements IAppointmentRepository {
   async getForClient(clientId: string): Promise<Appointment[]> {
@@ -49,7 +55,7 @@ export class InsForgeAppointmentRepository implements IAppointmentRepository {
   async getAll(): Promise<Appointment[]> {
     const { data, error } = await insforgeClient.database
       .from('appointments')
-      .select(SELECT_FIELDS)
+      .select(SELECT_FIELDS_WITH_CLIENT)
       .order('start_time', { ascending: false })
     if (error) throw error
     return ((data ?? []) as AppointmentRow[]).map(mapToAppointment)
@@ -84,6 +90,19 @@ export class InsForgeAppointmentRepository implements IAppointmentRepository {
     const { error } = await insforgeClient.database
       .from('appointments')
       .update({ status })
+      .eq('id', id)
+    if (error) throw error
+  }
+
+  async updateAppointment(id: string, data: UpdateAppointmentData): Promise<void> {
+    const { error } = await insforgeClient.database
+      .from('appointments')
+      .update({
+        start_time: data.startTime,
+        end_time: data.endTime,
+        barber_id: data.barberId,
+        service_id: data.serviceId,
+      })
       .eq('id', id)
     if (error) throw error
   }
