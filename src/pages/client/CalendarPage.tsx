@@ -4,8 +4,7 @@ import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
 import { getMaxBookingDate, getAvailableBarbersForDate, getBarbersAvailableForSlot } from '@/domain/booking'
 import { DEFAULT_WEEKLY_SCHEDULE, type DayKey } from '@/domain/schedule'
-import { MonthCalendar } from '@/components/calendar'
-import { TimeSlots } from '@/components/calendar'
+import { MonthCalendar, TimeSlots, generateScheduleSlots } from '@/components/calendar'
 import { ServiceCard } from '@/components/appointments'
 import { Modal } from '@/components/ui'
 import { useAuth } from '@/hooks'
@@ -32,15 +31,7 @@ function getInitials(fullName: string): string {
 const CARD = 'bg-[var(--bg-2)] border border-[var(--line)] rounded-xl p-4 md:p-5'
 const SECTION_LABEL = 'font-[var(--font-display)] text-[13px] tracking-widest text-[var(--fg-3)] mb-3.5'
 
-// Must match the slots generated in TimeSlots component (10:00–19:00)
-const BOOKING_SLOTS: string[] = (() => {
-  const slots: string[] = []
-  for (let h = 10; h <= 19; h++) {
-    slots.push(`${String(h).padStart(2, '0')}:00`)
-    if (h < 19) slots.push(`${String(h).padStart(2, '0')}:30`)
-  }
-  return slots
-})()
+const JS_TO_DAY: Record<number, DayKey> = { 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat', 0: 'sun' }
 
 export default function CalendarPage() {
   const navigate = useNavigate()
@@ -65,6 +56,13 @@ export default function CalendarPage() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [bookingError, setBookingError] = useState<string | null>(null)
 
+  const { fromTime, toTime } = useMemo(() => {
+    if (!selectedDate) return { fromTime: '10:00', toTime: '19:00' }
+    const key = JS_TO_DAY[selectedDate.getDay()]
+    const day = schedule[key]
+    return { fromTime: day.from || '10:00', toTime: day.to || '19:00' }
+  }, [selectedDate, schedule])
+
   // While schedule is loading, show all active barbers unfiltered to avoid empty flicker
   const availableBarbers = useMemo<Barber[]>(() => {
     if (loadingSchedule || !selectedDate) return allBarbers.filter(b => b.isActive)
@@ -75,10 +73,10 @@ export default function CalendarPage() {
   const breakBlockedSlots = useMemo<string[]>(() => {
     if (!selectedService) return []
     const barbersToCheck = selectedBarber ? [selectedBarber] : availableBarbers
-    return BOOKING_SLOTS.filter(slot =>
+    return generateScheduleSlots(fromTime, toTime).filter(slot =>
       getBarbersAvailableForSlot(slot, selectedService.durationMinutes, barbersToCheck).length === 0,
     )
-  }, [selectedService, selectedBarber, availableBarbers])
+  }, [selectedService, selectedBarber, availableBarbers, fromTime, toTime])
 
   const busyDays = useMemo<number[]>(() => {
     return myAppointments
@@ -202,6 +200,8 @@ export default function CalendarPage() {
                 selected={selectedSlot}
                 onSelect={setSelectedSlot}
                 taken={breakBlockedSlots}
+                fromTime={fromTime}
+                toTime={toTime}
               />
             </div>
           )}
