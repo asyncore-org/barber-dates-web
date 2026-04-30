@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks'
 import { useServices } from '@/hooks/useServices'
 import { useBarbers } from '@/hooks/useBarbers'
 import { useWeeklySchedule, useScheduleBlocks } from '@/hooks/useSchedule'
-import { useCreateAppointment } from '@/hooks/useAppointments'
+import { useClientAppointments, useCreateAppointment } from '@/hooks/useAppointments'
 import type { Service } from '@/domain/service'
 import type { Barber } from '@/domain/barber'
 
@@ -53,6 +53,7 @@ export default function CalendarPage() {
   const { data: allBarbers = [] } = useBarbers()
   const { data: schedule = DEFAULT_WEEKLY_SCHEDULE, isLoading: loadingSchedule } = useWeeklySchedule()
   const { data: blocks = [] } = useScheduleBlocks()
+  const { data: myAppointments = [] } = useClientAppointments(user?.id)
   const createAppointment = useCreateAppointment()
 
   const [month, setMonth] = useState(today.getMonth())
@@ -78,6 +79,16 @@ export default function CalendarPage() {
       getBarbersAvailableForSlot(slot, selectedService.durationMinutes, barbersToCheck).length === 0,
     )
   }, [selectedService, selectedBarber, availableBarbers])
+
+  const busyDays = useMemo<number[]>(() => {
+    return myAppointments
+      .filter(a => a.status !== 'cancelled' && a.status !== 'no_show')
+      .filter(a => {
+        const d = new Date(a.startTime)
+        return d.getFullYear() === year && d.getMonth() === month
+      })
+      .map(a => new Date(a.startTime).getDate())
+  }, [myAppointments, year, month])
 
   // Day-of-week numbers (0=Mon … 6=Sun ISO) that are fully closed per the weekly schedule
   const closedDayOfWeeks = useMemo<number[]>(() => {
@@ -170,6 +181,7 @@ export default function CalendarPage() {
               maxDate={maxDate}
               closedDayOfWeeks={closedDayOfWeeks}
               partialDates={partialDates}
+              busyDays={busyDays}
             />
           </div>
 
