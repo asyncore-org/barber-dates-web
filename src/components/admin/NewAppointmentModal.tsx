@@ -1,18 +1,12 @@
 import { useState } from 'react'
 import { Modal } from '@/components/ui'
-import { MonthCalendar, TimeSlots } from '@/components/calendar'
+import { MonthCalendar, TimeSlots, generateScheduleSlots } from '@/components/calendar'
 import { getBarbersAvailableForSlot } from '@/domain/booking'
 import { useServices } from '@/hooks/useServices'
 import { useBarbers } from '@/hooks/useBarbers'
+import type { WeeklySchedule, DayKey } from '@/domain/schedule'
 
-const BOOKING_SLOTS: string[] = (() => {
-  const slots: string[] = []
-  for (let h = 10; h <= 19; h++) {
-    slots.push(`${String(h).padStart(2, '0')}:00`)
-    if (h < 19) slots.push(`${String(h).padStart(2, '0')}:30`)
-  }
-  return slots
-})()
+const JS_TO_DAY: Record<number, DayKey> = { 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat', 0: 'sun' }
 
 function calcInitials(name: string): string {
   return name.trim().split(/\s+/).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '?'
@@ -29,11 +23,12 @@ export interface NewAppointmentData {
 interface Props {
   onClose: () => void
   onConfirm: (data: NewAppointmentData) => void
+  schedule: WeeklySchedule
   errorMessage?: string
   isPending?: boolean
 }
 
-export function NewAppointmentModal({ onClose, onConfirm, errorMessage, isPending }: Props) {
+export function NewAppointmentModal({ onClose, onConfirm, schedule, errorMessage, isPending }: Props) {
   const today = new Date()
   const { data: services = [] } = useServices()
   const { data: barbers = [] } = useBarbers()
@@ -52,10 +47,13 @@ export function NewAppointmentModal({ onClose, onConfirm, errorMessage, isPendin
   const selectedBarber = barberId !== '__any__' ? activeBarbers.find(b => b.id === barberId) : null
   const canConfirm = email.trim().length > 3 && serviceId != null && barberId !== '' && date != null && slot != null && !isPending
 
+  const fromTime = date ? (schedule[JS_TO_DAY[date.getDay()]].from || '10:00') : '10:00'
+  const toTime = date ? (schedule[JS_TO_DAY[date.getDay()]].to || '19:00') : '19:00'
+
   const barbersToCheck = selectedBarber ? [selectedBarber] : activeBarbers
   const breakBlockedSlots = !selectedService
     ? []
-    : BOOKING_SLOTS.filter(s =>
+    : generateScheduleSlots(fromTime, toTime).filter(s =>
         getBarbersAvailableForSlot(s, selectedService.durationMinutes, barbersToCheck).length === 0,
       )
 
@@ -185,6 +183,8 @@ export function NewAppointmentModal({ onClose, onConfirm, errorMessage, isPendin
               selected={slot}
               onSelect={setSlot}
               taken={breakBlockedSlots}
+              fromTime={fromTime}
+              toTime={toTime}
             />
           </div>
         )}

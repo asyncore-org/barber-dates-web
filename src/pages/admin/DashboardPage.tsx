@@ -7,6 +7,8 @@ import type { WeekAppt, RescheduleUpdate, NewAppointmentData } from '@/component
 import { useBarbers } from '@/hooks/useBarbers'
 import { useAllServices } from '@/hooks/useServices'
 import { useAllAppointments, useCreateAppointment, useFindProfileByEmail } from '@/hooks/useAppointments'
+import { useWeeklySchedule } from '@/hooks/useSchedule'
+import { DEFAULT_WEEKLY_SCHEDULE } from '@/domain/schedule'
 
 const landscapeMq = typeof window !== 'undefined'
   ? window.matchMedia('(orientation: landscape) and (max-height: 600px)')
@@ -86,6 +88,7 @@ export default function DashboardPage() {
   const { data: barbers = [] } = useBarbers()
   const { data: services = [] } = useAllServices()
   const { data: dbAppointments = [] } = useAllAppointments()
+  const { data: schedule = DEFAULT_WEEKLY_SCHEDULE } = useWeeklySchedule()
   const createApptMut = useCreateAppointment()
   const findProfileByEmail = useFindProfileByEmail()
   const activeBarbers = barbers.filter(b => b.isActive)
@@ -505,6 +508,7 @@ export default function DashboardPage() {
         <NewAppointmentModal
           onClose={() => { setNewApptOpen(false); setApptError(null) }}
           onConfirm={handleNewApptConfirm}
+          schedule={schedule}
           errorMessage={apptError ?? undefined}
           isPending={createApptMut.isPending}
         />
@@ -557,6 +561,7 @@ export default function DashboardPage() {
         <RescheduleModal
           appt={rescheduleAppt}
           weekStart={weekStart}
+          schedule={schedule}
           onClose={() => setRescheduleAppt(null)}
           onConfirm={handleRescheduleConfirm}
         />
