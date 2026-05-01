@@ -559,10 +559,10 @@ export default function SettingsPage() {
                         {d.open && (
                           <>
                             <input type="time" step="3600" value={d.from} onChange={e => handleTimeChange(key, 'from', e.target.value)}
-                              style={{ width: 64, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.35rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }} />
+                              style={{ width: 90, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.35rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }} />
                             <span style={{ color: 'var(--fg-3)', fontSize: 13 }}>–</span>
                             <input type="time" step="3600" value={d.to} onChange={e => handleTimeChange(key, 'to', e.target.value)}
-                              style={{ width: 64, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.35rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }} />
+                              style={{ width: 90, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.35rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }} />
                           </>
                         )}
                       </div>
