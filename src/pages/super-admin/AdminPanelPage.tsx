@@ -31,7 +31,7 @@ export default function AdminPanelPage() {
   const { user } = useAuth()
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all')
-  const [sortKey, setSortKey] = useState<SortKey>('name')
+  const [sortKey, setSortKey] = useState<SortKey>('role')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [page, setPage] = useState(0)
   const [pendingRoles, setPendingRoles] = useState<Record<string, PendingRole>>({})
@@ -86,7 +86,7 @@ export default function AdminPanelPage() {
   }
 
   function handleRoleChange(id: string, currentRole: UserRole, newRole: UserRole) {
-    if (currentRole === 'admin') return
+    if (currentRole === 'admin' || newRole === 'admin') return
     setPendingRoles(prev => {
       const original = prev[id]?.from ?? currentRole
       if (original === newRole) {
@@ -274,7 +274,7 @@ export default function AdminPanelPage() {
                         cursor: 'pointer', outline: 'none',
                       }}
                     >
-                      {ALL_ROLES.map(r => (
+                      {ALL_ROLES.filter(r => r !== 'admin').map(r => (
                         <option key={r} value={r}>{ROLE_LABELS[r]}</option>
                       ))}
                     </select>
