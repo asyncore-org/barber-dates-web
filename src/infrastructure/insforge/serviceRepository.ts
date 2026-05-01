@@ -9,10 +9,11 @@ interface ServiceRow {
   price: number | string
   loyalty_points: number
   is_active: boolean
+  is_deleted: boolean
   sort_order: number
 }
 
-const SELECT = 'id, name, description, duration_minutes, price, loyalty_points, is_active, sort_order'
+const SELECT = 'id, name, description, duration_minutes, price, loyalty_points, is_active, is_deleted, sort_order'
 
 function mapToService(row: ServiceRow): Service {
   return {
@@ -23,6 +24,7 @@ function mapToService(row: ServiceRow): Service {
     price: Number(row.price),
     loyaltyPoints: row.loyalty_points,
     isActive: row.is_active,
+    isDeleted: row.is_deleted,
     sortOrder: row.sort_order,
   }
 }
@@ -33,6 +35,7 @@ export class InsForgeServiceRepository implements IServiceRepository {
       .from('services')
       .select(SELECT)
       .eq('is_active', true)
+      .eq('is_deleted', false)
       .order('sort_order')
     if (error) throw error
     return ((data ?? []) as ServiceRow[]).map(mapToService)
@@ -42,6 +45,7 @@ export class InsForgeServiceRepository implements IServiceRepository {
     const { data, error } = await insforgeClient.database
       .from('services')
       .select(SELECT)
+      .eq('is_deleted', false)
       .order('sort_order')
     if (error) throw error
     return ((data ?? []) as ServiceRow[]).map(mapToService)
@@ -58,6 +62,7 @@ export class InsForgeServiceRepository implements IServiceRepository {
         description: data.description ?? null,
         sort_order: data.sortOrder ?? 99,
         is_active: true,
+        is_deleted: false,
       })
       .select(SELECT)
       .single()
@@ -86,10 +91,27 @@ export class InsForgeServiceRepository implements IServiceRepository {
   }
 
   async delete(id: string): Promise<void> {
-    // Soft-delete — bypass update() to avoid chaining .select() on the PATCH request.
+    // Deactivate — prevents new bookings but existing appointments complete
     const { error } = await insforgeClient.database
       .from('services')
       .update({ is_active: false })
+      .eq('id', id)
+    if (error) throw error
+  }
+
+  async reactivate(id: string): Promise<void> {
+    const { error } = await insforgeClient.database
+      .from('services')
+      .update({ is_active: true })
+      .eq('id', id)
+    if (error) throw error
+  }
+
+  async softDelete(id: string): Promise<void> {
+    // Permanently hides the service — only safe when no active appointments remain
+    const { error } = await insforgeClient.database
+      .from('services')
+      .update({ is_deleted: true })
       .eq('id', id)
     if (error) throw error
   }
