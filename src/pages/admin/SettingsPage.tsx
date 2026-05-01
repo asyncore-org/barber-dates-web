@@ -4,7 +4,8 @@ import { ConfirmDialog, Modal } from '@/components/ui'
 import { MonthCalendar } from '@/components/calendar'
 import { useAuth } from '@/hooks'
 import { useShopContext } from '@/context/ShopContext'
-import { useAllServices, useCreateService, useUpdateService, useDeleteService } from '@/hooks/useServices'
+import { useAllServices, useCreateService, useUpdateService, useDeleteService, useReactivateService, useSoftDeleteService } from '@/hooks/useServices'
+import { useAllAppointments } from '@/hooks/useAppointments'
 import { useAllBarbers, useUpdateBarber, useDeleteBarber, useAddBarberByEmail } from '@/hooks/useBarbers'
 import { useWeeklySchedule, useScheduleBlocks, useMutateWeeklySchedule, useAddScheduleBlock, useDeleteScheduleBlock } from '@/hooks/useSchedule'
 import { useShopInfo, useBookingConfig, useMutateShopInfo, useMutateBookingConfig } from '@/hooks/useShopConfig'
@@ -106,9 +107,12 @@ export default function SettingsPage() {
   const { data: rewardsData = [] } = useAllRewards()
 
   // ── Mutation hooks ──────────────────────────────────────────────────────────
+  const { data: allAppointments = [] } = useAllAppointments()
   const createService    = useCreateService()
   const updateService    = useUpdateService()
   const deleteService    = useDeleteService()
+  const reactivateService = useReactivateService()
+  const softDeleteService = useSoftDeleteService()
   const addBarberByEmail = useAddBarberByEmail()
   const updateBarber     = useUpdateBarber()
   const deleteBarber     = useDeleteBarber()
@@ -123,8 +127,12 @@ export default function SettingsPage() {
 
   // ── Services local state ────────────────────────────────────────────────────
   const [serviceEdits, setServiceEdits] = useState<Record<string, Partial<Service>>>({})
-  const services = servicesData.filter(svc => svc.isActive).map(svc => ({ ...svc, ...serviceEdits[svc.id] }))
+  const services = servicesData.map(svc => ({ ...svc, ...serviceEdits[svc.id] }))
   const [deleteServiceTarget, setDeleteServiceTarget] = useState<Service | null>(null)
+  const [softDeleteServiceTarget, setSoftDeleteServiceTarget] = useState<Service | null>(null)
+
+  const serviceHasActiveAppts = (serviceId: string) =>
+    allAppointments.some(a => a.serviceId === serviceId && a.status === 'confirmed')
 
   // ── Barbers local state ─────────────────────────────────────────────────────
   const [editingBarberId, setEditingBarberId] = useState<string | null>(null)
@@ -194,6 +202,15 @@ export default function SettingsPage() {
   const handleConfirmDeleteService = () => {
     if (!deleteServiceTarget) return
     deleteService.mutate(deleteServiceTarget.id, { onSuccess: () => setDeleteServiceTarget(null) })
+  }
+
+  const handleConfirmSoftDeleteService = () => {
+    if (!softDeleteServiceTarget) return
+    softDeleteService.mutate(softDeleteServiceTarget.id, { onSuccess: () => setSoftDeleteServiceTarget(null) })
+  }
+
+  const handleReactivateService = (id: string) => {
+    reactivateService.mutate(id)
   }
 
   // ── Handlers: barbers ───────────────────────────────────────────────────────
@@ -468,10 +485,15 @@ export default function SettingsPage() {
                   </thead>
                   <tbody>
                     {services.map(svc => (
-                      <tr key={svc.id} style={{ borderBottom: '1px solid var(--line)' }}>
+                      <tr key={svc.id} style={{ borderBottom: '1px solid var(--line)', opacity: svc.isActive ? 1 : 0.65 }}>
                         <td style={{ padding: '0.4rem 0.5rem' }}>
-                          <input value={svc.name} onChange={e => handleServiceFieldChange(svc.id, 'name', e.target.value)}
-                            style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.3rem 0.5rem', color: 'var(--fg-0)', width: 160, fontFamily: 'var(--font-ui)', fontSize: 13 }} />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <input value={svc.name} onChange={e => handleServiceFieldChange(svc.id, 'name', e.target.value)}
+                              style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.3rem 0.5rem', color: 'var(--fg-0)', width: 140, fontFamily: 'var(--font-ui)', fontSize: 13 }} />
+                            {!svc.isActive && (
+                              <span style={{ fontSize: 9, fontFamily: 'var(--font-ui)', letterSpacing: '0.08em', color: 'var(--fg-3)', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 3, padding: '1px 5px' }}>INACTIVO</span>
+                            )}
+                          </div>
                         </td>
                         <td style={{ padding: '0.4rem 0.5rem' }}>
                           <input type="number" value={svc.durationMinutes} onChange={e => handleServiceFieldChange(svc.id, 'durationMinutes', Number(e.target.value))}
@@ -485,8 +507,22 @@ export default function SettingsPage() {
                           <input type="number" value={svc.loyaltyPoints} onChange={e => handleServiceFieldChange(svc.id, 'loyaltyPoints', Number(e.target.value))}
                             style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.3rem 0.5rem', color: 'var(--fg-0)', width: 70, fontFamily: 'var(--font-ui)', fontSize: 13 }} />
                         </td>
-                        <td style={{ padding: '0.4rem 0.5rem' }}>
-                          <button onClick={() => setDeleteServiceTarget(svc)} style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 13 }}>Eliminar</button>
+                        <td style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap' }}>
+                          {svc.isActive ? (
+                            <button onClick={() => setDeleteServiceTarget(svc)} style={{ background: 'transparent', border: 'none', color: 'var(--fg-2)', cursor: 'pointer', fontSize: 12 }}>Desactivar</button>
+                          ) : (
+                            <>
+                              <button onClick={() => handleReactivateService(svc.id)} style={{ background: 'transparent', border: 'none', color: 'var(--led-soft)', cursor: 'pointer', fontSize: 12, marginRight: 6 }}>Reactivar</button>
+                              <button
+                                onClick={() => setSoftDeleteServiceTarget(svc)}
+                                disabled={serviceHasActiveAppts(svc.id)}
+                                title={serviceHasActiveAppts(svc.id) ? 'Hay citas activas con este servicio' : ''}
+                                style={{ background: 'transparent', border: 'none', color: serviceHasActiveAppts(svc.id) ? 'var(--fg-3)' : 'var(--danger)', cursor: serviceHasActiveAppts(svc.id) ? 'not-allowed' : 'pointer', fontSize: 12 }}
+                              >
+                                Eliminar
+                              </button>
+                            </>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -497,11 +533,32 @@ export default function SettingsPage() {
               {/* Mobile cards */}
               <div className="md:hidden flex flex-col gap-3">
                 {services.map(svc => (
-                  <div key={svc.id} style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 8, padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                  <div key={svc.id} style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 8, padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.625rem', opacity: svc.isActive ? 1 : 0.7 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
-                      <input value={svc.name} onChange={e => handleServiceFieldChange(svc.id, 'name', e.target.value)}
-                        style={{ flex: 1, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.35rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 500 }} />
-                      <button onClick={() => setDeleteServiceTarget(svc)} style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 14, flexShrink: 0, padding: '0.25rem' }}>✕</button>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                        <input value={svc.name} onChange={e => handleServiceFieldChange(svc.id, 'name', e.target.value)}
+                          style={{ width: '100%', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.35rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 500 }} />
+                        {!svc.isActive && (
+                          <span style={{ fontSize: 9, fontFamily: 'var(--font-ui)', letterSpacing: '0.08em', color: 'var(--fg-3)', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 3, padding: '1px 5px', alignSelf: 'flex-start' }}>INACTIVO</span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-end', flexShrink: 0 }}>
+                        {svc.isActive ? (
+                          <button onClick={() => setDeleteServiceTarget(svc)} style={{ background: 'transparent', border: 'none', color: 'var(--fg-2)', cursor: 'pointer', fontSize: 11 }}>Desactivar</button>
+                        ) : (
+                          <>
+                            <button onClick={() => handleReactivateService(svc.id)} style={{ background: 'transparent', border: 'none', color: 'var(--led-soft)', cursor: 'pointer', fontSize: 11 }}>Reactivar</button>
+                            <button
+                              onClick={() => setSoftDeleteServiceTarget(svc)}
+                              disabled={serviceHasActiveAppts(svc.id)}
+                              title={serviceHasActiveAppts(svc.id) ? 'Hay citas activas con este servicio' : ''}
+                              style={{ background: 'transparent', border: 'none', color: serviceHasActiveAppts(svc.id) ? 'var(--fg-3)' : 'var(--danger)', cursor: serviceHasActiveAppts(svc.id) ? 'not-allowed' : 'pointer', fontSize: 11 }}
+                            >
+                              Eliminar
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
                       {([
@@ -558,11 +615,11 @@ export default function SettingsPage() {
                         </button>
                         {d.open && (
                           <>
-                            <input value={d.from} onChange={e => handleTimeChange(key, 'from', e.target.value)}
-                              style={{ width: 64, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.35rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }} />
+                            <input type="time" step="3600" value={d.from} onChange={e => handleTimeChange(key, 'from', e.target.value)}
+                              style={{ width: 90, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.35rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }} />
                             <span style={{ color: 'var(--fg-3)', fontSize: 13 }}>–</span>
-                            <input value={d.to} onChange={e => handleTimeChange(key, 'to', e.target.value)}
-                              style={{ width: 64, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.35rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }} />
+                            <input type="time" step="3600" value={d.to} onChange={e => handleTimeChange(key, 'to', e.target.value)}
+                              style={{ width: 90, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.35rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }} />
                           </>
                         )}
                       </div>
@@ -962,12 +1019,23 @@ export default function SettingsPage() {
 
       {deleteServiceTarget && (
         <ConfirmDialog
-          title="Eliminar servicio"
-          message={`¿Eliminar "${deleteServiceTarget.name}"? Esta acción no se puede deshacer.`}
-          confirmLabel="Eliminar"
+          title="Desactivar servicio"
+          message={`¿Desactivar "${deleteServiceTarget.name}"? Los clientes no podrán reservar este servicio. Las citas ya existentes no se verán afectadas.`}
+          confirmLabel="Desactivar"
           danger
           onConfirm={handleConfirmDeleteService}
           onCancel={() => setDeleteServiceTarget(null)}
+        />
+      )}
+
+      {softDeleteServiceTarget && (
+        <ConfirmDialog
+          title="Eliminar servicio"
+          message={`¿Eliminar permanentemente "${softDeleteServiceTarget.name}"? Desaparecerá de todas las vistas. Esta acción no se puede deshacer.`}
+          confirmLabel="Eliminar"
+          danger
+          onConfirm={handleConfirmSoftDeleteService}
+          onCancel={() => setSoftDeleteServiceTarget(null)}
         />
       )}
 

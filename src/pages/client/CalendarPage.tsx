@@ -4,15 +4,14 @@ import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
 import { getMaxBookingDate, getAvailableBarbersForDate, getBarbersAvailableForSlot } from '@/domain/booking'
 import { DEFAULT_WEEKLY_SCHEDULE, type DayKey } from '@/domain/schedule'
-import { MonthCalendar } from '@/components/calendar'
-import { TimeSlots } from '@/components/calendar'
+import { MonthCalendar, TimeSlots, generateScheduleSlots } from '@/components/calendar'
 import { ServiceCard } from '@/components/appointments'
 import { Modal } from '@/components/ui'
 import { useAuth } from '@/hooks'
 import { useServices } from '@/hooks/useServices'
 import { useBarbers } from '@/hooks/useBarbers'
 import { useWeeklySchedule, useScheduleBlocks } from '@/hooks/useSchedule'
-import { useCreateAppointment } from '@/hooks/useAppointments'
+import { useClientAppointments, useAllAppointments, useCreateAppointment } from '@/hooks/useAppointments'
 import type { Service } from '@/domain/service'
 import type { Barber } from '@/domain/barber'
 
@@ -32,15 +31,7 @@ function getInitials(fullName: string): string {
 const CARD = 'bg-[var(--bg-2)] border border-[var(--line)] rounded-xl p-4 md:p-5'
 const SECTION_LABEL = 'font-[var(--font-display)] text-[13px] tracking-widest text-[var(--fg-3)] mb-3.5'
 
-// Must match the slots generated in TimeSlots component (10:00–19:00)
-const BOOKING_SLOTS: string[] = (() => {
-  const slots: string[] = []
-  for (let h = 10; h <= 19; h++) {
-    slots.push(`${String(h).padStart(2, '0')}:00`)
-    if (h < 19) slots.push(`${String(h).padStart(2, '0')}:30`)
-  }
-  return slots
-})()
+const JS_TO_DAY: Record<number, DayKey> = { 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat', 0: 'sun' }
 
 export default function CalendarPage() {
   const navigate = useNavigate()
@@ -53,6 +44,8 @@ export default function CalendarPage() {
   const { data: allBarbers = [] } = useBarbers()
   const { data: schedule = DEFAULT_WEEKLY_SCHEDULE, isLoading: loadingSchedule } = useWeeklySchedule()
   const { data: blocks = [] } = useScheduleBlocks()
+  const { data: myAppointments = [] } = useClientAppointments(user?.id)
+  const { data: allAppointments = [] } = useAllAppointments()
   const createAppointment = useCreateAppointment()
 
   const [month, setMonth] = useState(today.getMonth())
@@ -63,6 +56,14 @@ export default function CalendarPage() {
   const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [bookingError, setBookingError] = useState<string | null>(null)
+  const [bookingBlocked, setBookingBlocked] = useState(false)
+
+  const { fromTime, toTime } = useMemo(() => {
+    if (!selectedDate) return { fromTime: '10:00', toTime: '19:00' }
+    const key = JS_TO_DAY[selectedDate.getDay()]
+    const day = schedule[key]
+    return { fromTime: day.from || '10:00', toTime: day.to || '19:00' }
+  }, [selectedDate, schedule])
 
   // While schedule is loading, show all active barbers unfiltered to avoid empty flicker
   const availableBarbers = useMemo<Barber[]>(() => {
@@ -74,10 +75,76 @@ export default function CalendarPage() {
   const breakBlockedSlots = useMemo<string[]>(() => {
     if (!selectedService) return []
     const barbersToCheck = selectedBarber ? [selectedBarber] : availableBarbers
-    return BOOKING_SLOTS.filter(slot =>
+    return generateScheduleSlots(fromTime, toTime).filter(slot =>
       getBarbersAvailableForSlot(slot, selectedService.durationMinutes, barbersToCheck).length === 0,
     )
-  }, [selectedService, selectedBarber, availableBarbers])
+  }, [selectedService, selectedBarber, availableBarbers, fromTime, toTime])
+
+  // Slots blocked because the barber(s) already have a confirmed appointment overlapping the slot
+  const appointmentBlockedSlots = useMemo<string[]>(() => {
+    if (!selectedDate || allAppointments.length === 0) return []
+    const barbersToCheck = selectedBarber
+      ? [selectedBarber.id]
+      : availableBarbers.map(b => b.id)
+    const dateStr = selectedDate.toISOString().slice(0, 10)
+    const dayAppts = allAppointments.filter(a =>
+      a.status === 'confirmed' &&
+      barbersToCheck.includes(a.barberId) &&
+      new Date(a.startTime).toISOString().slice(0, 10) === dateStr,
+    )
+    if (dayAppts.length === 0) return []
+    return generateScheduleSlots(fromTime, toTime).filter(slot => {
+      const [h, m] = slot.split(':').map(Number)
+      const slotStart = new Date(selectedDate)
+      slotStart.setHours(h, m, 0, 0)
+      const slotEnd = new Date(slotStart.getTime() + 30 * 60_000)
+      return dayAppts.some(a => new Date(a.startTime) < slotEnd && new Date(a.endTime) > slotStart)
+    })
+  }, [selectedDate, allAppointments, selectedBarber, availableBarbers, fromTime, toTime])
+
+  const takenSlots = useMemo<string[]>(
+    () => [...new Set([...breakBlockedSlots, ...appointmentBlockedSlots])],
+    [breakBlockedSlots, appointmentBlockedSlots],
+  )
+
+  // Services that can't be picked because their duration would overlap with an existing barber appointment
+  const unavailableServiceIds = useMemo<Set<string>>(() => {
+    if (!selectedDate || !selectedSlot || !selectedBarber) return new Set()
+    const [h, m] = selectedSlot.split(':').map(Number)
+    const slotStart = new Date(selectedDate)
+    slotStart.setHours(h, m, 0, 0)
+    const dateStr = selectedDate.toISOString().slice(0, 10)
+    const barberAppts = allAppointments.filter(a =>
+      a.status === 'confirmed' &&
+      a.barberId === selectedBarber.id &&
+      new Date(a.startTime).toISOString().slice(0, 10) === dateStr,
+    )
+    const ids = new Set<string>()
+    for (const service of services) {
+      const slotEnd = new Date(slotStart.getTime() + service.durationMinutes * 60_000)
+      const overlaps = barberAppts.some(a =>
+        new Date(a.startTime) < slotEnd && new Date(a.endTime) > slotStart,
+      )
+      if (overlaps) ids.add(service.id)
+    }
+    return ids
+  }, [selectedDate, selectedSlot, selectedBarber, allAppointments, services])
+
+  // True if client already has a future confirmed appointment
+  const hasActiveAppt = useMemo(() => {
+    const now = new Date()
+    return myAppointments.some(a => a.status === 'confirmed' && new Date(a.startTime) > now)
+  }, [myAppointments])
+
+  const busyDays = useMemo<number[]>(() => {
+    return myAppointments
+      .filter(a => a.status !== 'cancelled' && a.status !== 'no_show')
+      .filter(a => {
+        const d = new Date(a.startTime)
+        return d.getFullYear() === year && d.getMonth() === month
+      })
+      .map(a => new Date(a.startTime).getDate())
+  }, [myAppointments, year, month])
 
   // Day-of-week numbers (0=Mon … 6=Sun ISO) that are fully closed per the weekly schedule
   const closedDayOfWeeks = useMemo<number[]>(() => {
@@ -105,6 +172,7 @@ export default function CalendarPage() {
     if (closedDayOfWeeks.includes(dayOfWeek)) return
     setSelectedDate(d)
     setSelectedSlot(null)
+    setBookingBlocked(hasActiveAppt)
     if (selectedBarber) {
       const stillAvailable = getAvailableBarbersForDate(d, schedule, blocks, allBarbers)
         .some(b => b.id === selectedBarber.id)
@@ -170,6 +238,7 @@ export default function CalendarPage() {
               maxDate={maxDate}
               closedDayOfWeeks={closedDayOfWeeks}
               partialDates={partialDates}
+              busyDays={busyDays}
             />
           </div>
 
@@ -183,14 +252,36 @@ export default function CalendarPage() {
           )}
           {selectedDate && availableBarbers.length > 0 && (
             <div className={CARD}>
-              <div className={SECTION_LABEL}>
-                HORA — {fmt(selectedDate).toUpperCase()}
-              </div>
-              <TimeSlots
-                selected={selectedSlot}
-                onSelect={setSelectedSlot}
-                taken={breakBlockedSlots}
-              />
+              {bookingBlocked ? (
+                <div style={{ padding: '0.25rem 0' }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', marginBottom: 6 }}>
+                    Ya tienes una cita reservada
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', lineHeight: 1.6 }}>
+                    Para cambiar el horario, reprograma tu cita desde{' '}
+                    <button
+                      onClick={() => navigate('/appointments')}
+                      style={{ background: 'none', border: 'none', padding: 0, color: 'var(--led-soft)', cursor: 'pointer', fontFamily: 'var(--font-ui)', fontSize: 13 }}
+                    >
+                      Mis Citas
+                    </button>
+                    .
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className={SECTION_LABEL}>
+                    HORA — {fmt(selectedDate).toUpperCase()}
+                  </div>
+                  <TimeSlots
+                    selected={selectedSlot}
+                    onSelect={setSelectedSlot}
+                    taken={takenSlots}
+                    fromTime={fromTime}
+                    toTime={toTime}
+                  />
+                </>
+              )}
             </div>
           )}
 
@@ -268,6 +359,7 @@ export default function CalendarPage() {
                     service={s}
                     selected={selectedService?.id === s.id}
                     onClick={() => setSelectedService(s)}
+                    disabled={unavailableServiceIds.has(s.id)}
                   />
                 ))}
               </div>

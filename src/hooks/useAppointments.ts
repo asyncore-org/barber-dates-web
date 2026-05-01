@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { repositories } from '@/infrastructure'
-import type { CreateAppointmentData, AppointmentStatus } from '@/domain/appointment'
+import type { CreateAppointmentData, AppointmentStatus, UpdateAppointmentData } from '@/domain/appointment'
 import { queryKeys, STALE } from './queryKeys'
 
 /** Client view: returns appointments for the given user */
@@ -46,6 +46,15 @@ export function useUpdateAppointmentStatus() {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: AppointmentStatus }) =>
       repositories.appointments().updateStatus(id, status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.appointments.all() }),
+  })
+}
+
+export function useUpdateAppointment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateAppointmentData }) =>
+      repositories.appointments().updateAppointment(id, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.appointments.all() }),
   })
 }

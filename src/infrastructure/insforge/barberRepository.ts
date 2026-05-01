@@ -52,6 +52,17 @@ export class InsForgeBarberRepository implements IBarberRepository {
     return ((data ?? []) as BarberRow[]).map(mapToBarber)
   }
 
+  async findByEmail(email: string): Promise<Barber | null> {
+    const { data, error } = await insforgeClient.database
+      .from('barbers')
+      .select(SELECT)
+      .eq('email', email)
+      .limit(1)
+    if (error) throw error
+    const rows = (data ?? []) as BarberRow[]
+    return rows.length > 0 ? mapToBarber(rows[0]) : null
+  }
+
   async create(data: CreateBarberData): Promise<Barber> {
     // InsForge does not support ?select on POST — insert without returning clause.
     // The caller (useAddBarberByEmail) ignores the return value and invalidates
