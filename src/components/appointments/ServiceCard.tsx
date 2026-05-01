@@ -4,12 +4,14 @@ interface ServiceCardProps {
   service: Service
   selected: boolean
   onClick: () => void
+  disabled?: boolean
 }
 
-export function ServiceCard({ service, selected, onClick }: ServiceCardProps) {
+export function ServiceCard({ service, selected, onClick, disabled = false }: ServiceCardProps) {
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
       style={{
         width: '100%',
         textAlign: 'left',
@@ -17,14 +19,16 @@ export function ServiceCard({ service, selected, onClick }: ServiceCardProps) {
         minHeight: 44,
         borderRadius: 8,
         border: selected ? '1px solid var(--led-soft)' : '1px solid var(--line)',
-        background: selected ? 'rgba(123,79,255,0.08)' : 'var(--bg-3)',
-        cursor: 'pointer',
-        boxShadow: selected ? 'var(--glow-led)' : 'none',
+        background: disabled ? 'var(--bg-2)' : selected ? 'rgba(123,79,255,0.08)' : 'var(--bg-3)',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        boxShadow: selected && !disabled ? 'var(--glow-led)' : 'none',
         transition: 'all 0.15s',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: '0.75rem',
+        opacity: disabled ? 0.4 : 1,
+        position: 'relative',
       }}
     >
       <div>
@@ -36,13 +40,18 @@ export function ServiceCard({ service, selected, onClick }: ServiceCardProps) {
         }}>
           {service.name}
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', marginTop: 2 }}>
+        <div style={{ display: 'flex', gap: '0.75rem', marginTop: 2, alignItems: 'center' }}>
           <span style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>
             {service.durationMinutes} min
           </span>
           <span style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--gold)' }}>
             +{service.loyaltyPoints} pts
           </span>
+          {disabled && (
+            <span style={{ fontSize: 10, fontFamily: 'var(--font-ui)', color: 'var(--fg-3)', letterSpacing: '0.05em' }}>
+              NO DISPONIBLE
+            </span>
+          )}
         </div>
       </div>
       <div style={{

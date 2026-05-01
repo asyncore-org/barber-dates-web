@@ -154,10 +154,10 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
                 <div style={{
                   position: 'absolute',
                   bottom: 3,
-                  width: 4,
-                  height: 4,
+                  width: 6,
+                  height: 6,
                   borderRadius: '50%',
-                  background: isPartial ? 'var(--gold)' : 'var(--brick)',
+                  background: isPartial ? 'var(--gold)' : 'var(--led)',
                 }} />
               )}
             </button>
