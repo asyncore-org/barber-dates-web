@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ColorThemeConfig, CustomPalette } from '@/domain/colorTheme'
-import { getPaletteById } from '@/domain/colorTheme'
+import { getPaletteById, DEFAULT_DARK_PALETTE_ID, DEFAULT_LIGHT_PALETTE_ID } from '@/domain/colorTheme'
 import { useColorTheme, useMutateColorTheme } from '@/hooks/useColorTheme'
 import { PalettePicker } from './PalettePicker'
 import { ThemePreview } from './ThemePreview'
@@ -24,8 +24,12 @@ export function AppearanceSection() {
   const activeLightId = pendingLightId ?? savedConfig?.activeLightPaletteId ?? null
   const customs = pendingCustom.length > 0 ? pendingCustom : (savedConfig?.customPalettes ?? [])
 
-  const darkTokens = activeDarkId ? getPaletteById(activeDarkId, customs)?.tokens ?? null : null
-  const lightTokens = activeLightId ? getPaletteById(activeLightId, customs)?.tokens ?? null : null
+  // When no palette is saved in DB, show the CSS defaults as "currently active" in the picker
+  const effectiveDarkId = activeDarkId ?? DEFAULT_DARK_PALETTE_ID
+  const effectiveLightId = activeLightId ?? DEFAULT_LIGHT_PALETTE_ID
+
+  const darkTokens = getPaletteById(effectiveDarkId, customs)?.tokens ?? null
+  const lightTokens = getPaletteById(effectiveLightId, customs)?.tokens ?? null
 
   const isDirty =
     activeDarkId !== (savedConfig?.activeDarkPaletteId ?? null) ||
@@ -101,8 +105,8 @@ export function AppearanceSection() {
           Paletas
         </h2>
         <PalettePicker
-          selectedDarkId={activeDarkId}
-          selectedLightId={activeLightId}
+          selectedDarkId={effectiveDarkId}
+          selectedLightId={effectiveLightId}
           customPalettes={customs}
           onSelectDark={(id) => setPendingDarkId(id)}
           onSelectLight={(id) => setPendingLightId(id)}

@@ -28,6 +28,9 @@ export type ColorThemeConfig = {
   customPalettes: CustomPalette[]
 }
 
+export const DEFAULT_DARK_PALETTE_ID = 'murasaki'
+export const DEFAULT_LIGHT_PALETTE_ID = 'gio-original'
+
 export const PREDEFINED_PALETTES: ColorPalette[] = [
   // — DARK (10) —
   {
@@ -110,7 +113,15 @@ export const PREDEFINED_PALETTES: ColorPalette[] = [
     pairedWith: 'tokiwa',
     tokens: { led: '#1e4a7a', ledSoft: '#3a78b0', gold: '#d0a030', brick: '#143060', brickWarm: '#2a608a' },
   },
-  // — LIGHT (10) —
+  // — LIGHT (11: original + 10 Sanzo Wada) —
+  {
+    id: 'gio-original',
+    name: 'Original Claro',
+    nameEs: 'Paleta original de la app',
+    mode: 'light',
+    pairedWith: 'murasaki',
+    tokens: { led: '#6235e0', ledSoft: '#7b4fff', gold: '#a88030', brick: '#a04528', brickWarm: '#b0552d' },
+  },
   {
     id: 'sakura',
     name: 'Sakura 桜',
