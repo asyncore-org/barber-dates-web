@@ -2,7 +2,7 @@
 
 > **Este documento es la fuente de verdad inmutable.** Ningún agente debe modificarlo sin permiso explícito del usuario. Si detecta que algo ha cambiado en la realidad del código y el Constitution debería actualizarse, **avisa primero**, explica QUÉ cambia, QUÉ quedará y POR QUÉ, y espera confirmación.
 
-Versión: 1.1.0 · Última revisión: 2026-04-17
+Versión: 1.2.0 · Última revisión: 2026-05-04
 
 ---
 
@@ -208,23 +208,34 @@ Formato: `type(scope): descripción en inglés, presente imperativo`.
 
 ---
 
-## Art. 10 — Paleta de colores (no cambiar sin consenso)
+## Art. 10 — Tokens de color (CSS vars — defaults no cambiar sin consenso)
 
-| Token             | Valor     | Uso                                          |
-| ----------------- | --------- | -------------------------------------------- |
-| Primario (Dorado) | `#C8A44E` | Acentos, botones principales, iconos activos |
-| Hover dorado      | `#b8943e` | Hover botones dorados                        |
-| Fondo oscuro      | `#1A1A1A` | Tema oscuro                                  |
-| Fondo claro       | `#FAFAFA` | Tema claro                                   |
-| Texto primario    | `#111111` |                                              |
-| Texto secundario  | `#6B7280` |                                              |
-| Borde             | `#E5E7EB` |                                              |
-| Éxito             | `#10B981` | Cita confirmada                              |
-| Error             | `#EF4444` | Cancelación, errores                         |
-| Warning           | `#F59E0B` | Avisos                                       |
-| Superficie card   | `#FFFFFF` |                                              |
+Los colores se definen como CSS custom properties en `src/styles/globals.css`.
+Los 5 tokens de acento son configurables por el admin desde **Apariencia → SettingsPage** y se persisten en `shop_config → color_theme`. Se aplican sobreescribiendo las vars via `<style id="gio-palette-style">` inyectado antes de `createRoot`.
 
-**Tipografía**: Inter (Google Fonts), `font-display: swap`, preconnect en `<head>`.
+### Tokens de acento (configurables por admin)
+
+| CSS Var         | Default dark | Default light | Uso                                |
+| --------------- | ------------ | ------------- | ---------------------------------- |
+| `--led`         | `#7b4fff`    | `#6235e0`     | Acento principal, botones activos  |
+| `--led-soft`    | `#a689ff`    | `#7b4fff`     | Hover, variante suave del acento   |
+| `--gold`        | `#c9a24a`    | `#a88030`     | Tono cálido, CTAs secundarios      |
+| `--brick`       | `#8b3a1f`    | `#9a4010`     | Acento secundario                  |
+| `--brick-warm`  | `#c06a3d`    | `#c06030`     | Variante cálida de brick           |
+| `--card-accent` | `var(--gold)` | `var(--gold)` | Acento LoyaltyCard (contexto dark) |
+
+### Tokens de estado y semánticos (no configurables)
+
+| CSS Var     | Uso              |
+| ----------- | ---------------- |
+| `--danger`  | Error, cancelación (`#c04040` dark / `#c03030` light) |
+| `--ok`      | Éxito, confirmado (`#6dbb6d`) |
+
+### Tipografía
+
+Inter (Google Fonts), `font-display: swap`, preconnect en `<head>`.
+
+**Los defaults en `globals.css` y las paletas predefinidas en `src/domain/colorTheme/index.ts` no se cambian sin consenso.**
 
 ---
 
