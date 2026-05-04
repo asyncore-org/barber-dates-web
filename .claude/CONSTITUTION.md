@@ -68,6 +68,7 @@ domain/ no importa NADA externo
 5. Los servicios tienen duración fija que determina los slots disponibles.
 6. Sesión **cliente**: persistente indefinida.
 7. Sesión **admin**: máximo **15 días** desde el login (`ADMIN_SESSION_MAX_DAYS = 15`). Forzar logout si supera. Timestamp en localStorage (`admin_login_time`).
+8. Los servicios tienen **dos estados independientes**: `is_active` (desactivar: nadie puede pedir cita nueva, las existentes se completan) e `is_deleted` (soft-delete: oculto en todo — solo aplicable cuando el servicio ya no tiene citas activas). El admin puede desactivar/reactivar libremente; solo puede eliminar si `serviceHasActiveAppts === false`.
 
 ---
 
@@ -76,12 +77,14 @@ domain/ no importa NADA externo
 ```
 barbers           id, full_name, role, bio, avatar_url, phone, email, specialty_ids(JSONB), is_active
 profiles          id→auth.users, full_name, phone, avatar_url, role('client'|'admin')
-services          id, name, description, duration_minutes, price, loyalty_points, is_active, sort_order
+services          id, name, description, duration_minutes, price, loyalty_points, is_active, is_deleted, sort_order
+                  is_active=false → desactivado (admin ve; clientes no pueden reservar; citas activas se completan)
+                  is_deleted=true → soft-delete (oculto en todo; solo aplicar cuando no hay citas activas del servicio)
 appointments      id, client_id→profiles, barber_id→barbers, service_id→services, start_time, end_time, status, notes
                   status: 'confirmed' | 'completed' | 'cancelled' | 'no_show'
 schedule_blocks   id, barber_id→barbers (NULL=todos), block_date, start_time, end_time, day_of_week, reason, is_recurring
 shop_config       id, key (unique), value(JSONB)
-                  keys: shop_info, schedule, booking, loyalty
+                  keys: shop_info, schedule, booking, loyalty, color_theme
 loyalty_cards     id, client_id→profiles (unique), total_points, total_visits
 loyalty_transactions  id, card_id→loyalty_cards, appointment_id→appointments, points, type, description
                   type: 'earned' | 'redeemed' | 'bonus' | 'adjustment'

@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import type { PaletteTokens } from '@/domain/colorTheme'
 import { PreviewAppointmentsMock } from './PreviewAppointmentsMock'
 import { PreviewCalendarMock } from './PreviewCalendarMock'
@@ -7,7 +8,7 @@ interface ThemePreviewProps {
   lightTokens: PaletteTokens | null
 }
 
-function toVars(tokens: PaletteTokens): React.CSSProperties {
+function toVars(tokens: PaletteTokens): CSSProperties {
   return {
     '--led': tokens.led,
     '--led-soft': tokens.ledSoft,
@@ -15,7 +16,7 @@ function toVars(tokens: PaletteTokens): React.CSSProperties {
     '--brick': tokens.brick,
     '--brick-warm': tokens.brickWarm,
     '--card-accent': tokens.cardAccent ?? tokens.gold,
-  } as React.CSSProperties
+  } as CSSProperties
 }
 
 export function ThemePreview({ darkTokens, lightTokens }: ThemePreviewProps) {
