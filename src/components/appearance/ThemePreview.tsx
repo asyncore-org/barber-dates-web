@@ -1,5 +1,5 @@
 import type { PaletteTokens } from '@/domain/colorTheme'
-import { PreviewHeroMock } from './PreviewHeroMock'
+import { PreviewAppointmentsMock } from './PreviewAppointmentsMock'
 import { PreviewCalendarMock } from './PreviewCalendarMock'
 
 interface ThemePreviewProps {
@@ -23,13 +23,13 @@ export function ThemePreview({ darkTokens, lightTokens }: ThemePreviewProps) {
       {/* Dark preview */}
       <div className="space-y-1.5">
         <p className="text-[11px] font-semibold tracking-widest uppercase" style={{ color: 'var(--fg-3)' }}>
-          Modo oscuro — Configuración
+          Modo oscuro — Mis citas
         </p>
         <div
           style={darkTokens ? toVars(darkTokens) : undefined}
           className="pointer-events-none select-none rounded-xl overflow-hidden ring-1 ring-white/10"
         >
-          <PreviewHeroMock />
+          <PreviewAppointmentsMock />
         </div>
       </div>
 
