@@ -27,10 +27,14 @@ export const DEFAULT_BOOKING_CONFIG: BookingConfig = {
   bufferMinutes: 0,
 }
 
+import type { ColorThemeConfig } from '@/domain/colorTheme'
+
 export interface IShopRepository {
   getShopInfo(): Promise<ShopInfo | null>
   getBookingConfig(): Promise<BookingConfig | null>
   getLoyaltyConfig(): Promise<LoyaltyConfig | null>
+  getColorTheme(): Promise<ColorThemeConfig | null>
   updateShopInfo(info: Partial<ShopInfo>): Promise<void>
   updateBookingConfig(config: Partial<BookingConfig>): Promise<void>
+  updateColorTheme(config: ColorThemeConfig): Promise<void>
 }

@@ -1,4 +1,5 @@
 import type { IShopRepository, ShopInfo, BookingConfig, LoyaltyConfig } from '@/domain/shop'
+import type { ColorThemeConfig } from '@/domain/colorTheme'
 import { insforgeClient } from './client'
 
 interface ShopConfigRow {
@@ -44,5 +45,13 @@ export class InsForgeShopRepository implements IShopRepository {
   async updateBookingConfig(config: Partial<BookingConfig>): Promise<void> {
     const current = await this.getBookingConfig()
     await upsertConfigValue('booking', { ...current, ...config })
+  }
+
+  getColorTheme(): Promise<ColorThemeConfig | null> {
+    return getConfigValue<ColorThemeConfig>('color_theme')
+  }
+
+  async updateColorTheme(config: ColorThemeConfig): Promise<void> {
+    await upsertConfigValue('color_theme', config)
   }
 }
