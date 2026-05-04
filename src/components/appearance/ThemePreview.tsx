@@ -14,6 +14,7 @@ function toVars(tokens: PaletteTokens): React.CSSProperties {
     '--gold': tokens.gold,
     '--brick': tokens.brick,
     '--brick-warm': tokens.brickWarm,
+    '--card-accent': tokens.cardAccent ?? tokens.gold,
   } as React.CSSProperties
 }
 
