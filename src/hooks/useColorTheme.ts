@@ -37,7 +37,12 @@ export function useApplyColorTheme() {
       ? getPaletteById(config.activeLightPaletteId, customs)
       : null
 
-    if (!darkPalette && !lightPalette) return
+    if (!darkPalette && !lightPalette) {
+      const el = document.getElementById(PALETTE_STYLE_ID) as HTMLStyleElement | null
+      if (el) el.textContent = ''
+      localStorage.removeItem(PALETTE_CSS_KEY)
+      return
+    }
 
     const css = buildPaletteCSS(
       darkPalette?.tokens ?? null,
