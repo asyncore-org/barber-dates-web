@@ -1,5 +1,6 @@
 import { useState, useId } from 'react'
 import type { CustomPalette, PaletteTokens } from '@/domain/colorTheme'
+import { deriveAccentVariant } from '@/domain/colorTheme'
 
 interface CustomPaletteEditorProps {
   mode: 'dark' | 'light'
@@ -8,24 +9,13 @@ interface CustomPaletteEditorProps {
   onCancel?: () => void
 }
 
-function deriveSecondary(hex: string, mode: 'dark' | 'light'): string {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  const mix = mode === 'dark' ? 180 : 80
-  const nr = Math.round(r + (mix - r) * 0.45)
-  const ng = Math.round(g + (mix - g) * 0.45)
-  const nb = Math.round(b + (mix - b) * 0.45)
-  return `#${nr.toString(16).padStart(2, '0')}${ng.toString(16).padStart(2, '0')}${nb.toString(16).padStart(2, '0')}`
-}
-
 function tokensFromBaseColors(led: string, gold: string, brick: string, mode: 'dark' | 'light'): PaletteTokens {
   return {
     led,
-    ledSoft: deriveSecondary(led, mode),
+    ledSoft: deriveAccentVariant(led, mode),
     gold,
     brick,
-    brickWarm: deriveSecondary(brick, mode),
+    brickWarm: deriveAccentVariant(brick, mode),
   }
 }
 
@@ -98,7 +88,7 @@ export function CustomPaletteEditor({ mode, onSave, initialValues, onCancel }: C
 
       {/* Preview swatches */}
       <div className="flex gap-1.5">
-        {[led, deriveSecondary(led, mode), gold, brick, deriveSecondary(brick, mode)].map((color, i) => (
+        {[led, deriveAccentVariant(led, mode), gold, brick, deriveAccentVariant(brick, mode)].map((color, i) => (
           <div key={i} className="h-4 flex-1 rounded-full" style={{ background: color }} />
         ))}
       </div>
