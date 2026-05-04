@@ -1,73 +1,100 @@
+const NAV_ITEMS = ['Servicios', 'Horarios', 'Barberos', 'Fidelización', 'Barbería']
+const SERVICES = [
+  { name: 'Corte de pelo', duration: '30 min', price: '18€' },
+  { name: 'Arreglo de barba', duration: '20 min', price: '14€' },
+]
+
 export function PreviewHeroMock() {
   return (
     <div
-      className="relative overflow-hidden rounded-lg"
-      style={{ background: 'var(--bg-0)', fontFamily: 'var(--font-display)' }}
+      style={{
+        display: 'flex',
+        borderRadius: 8,
+        overflow: 'hidden',
+        background: 'var(--bg-1)',
+        fontFamily: 'var(--font-ui)',
+        minHeight: 180,
+      }}
     >
-      {/* Hero */}
+      {/* Sidebar */}
       <div
-        className="flex flex-col items-center justify-center px-4 py-8 text-center"
-        style={{ background: '#1A1A1A' }}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+          padding: 6,
+          background: 'var(--bg-2)',
+          width: 88,
+          flexShrink: 0,
+          borderRight: '1px solid var(--line)',
+        }}
       >
-        <p
-          className="text-xs tracking-[0.25em] font-semibold uppercase mb-3"
-          style={{ color: 'var(--gold)' }}
-        >
-          Barcelona · Est. 2019
-        </p>
-        <h2
-          className="text-3xl font-bold leading-none mb-3"
-          style={{ color: 'var(--fg-0, #fff)', fontFamily: 'var(--font-display)' }}
-        >
-          Gio<br />
-          <span style={{ color: 'var(--gold)' }}>Barber</span><br />
-          Shop
-        </h2>
-        <p className="text-xs mb-5 max-w-[160px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.45)' }}>
-          Barbería premium. Reserva online y acumula puntos.
-        </p>
-        <div className="flex gap-2">
+        {NAV_ITEMS.map((item, i) => (
           <div
-            className="rounded-lg px-4 py-2 text-xs font-bold"
-            style={{ background: 'var(--gold)', color: '#000' }}
+            key={item}
+            style={
+              i === 0
+                ? {
+                    padding: '5px 8px',
+                    borderRadius: 6,
+                    fontSize: 9,
+                    fontWeight: 600,
+                    color: 'var(--led)',
+                    background: `color-mix(in srgb, var(--led) 12%, transparent)`,
+                    borderLeft: '2px solid var(--led)',
+                  }
+                : {
+                    padding: '5px 8px',
+                    borderRadius: 6,
+                    fontSize: 9,
+                    fontWeight: 400,
+                    color: 'var(--fg-2)',
+                  }
+            }
           >
-            Reservar
+            {item}
           </div>
-          <div
-            className="rounded-lg px-4 py-2 text-xs font-semibold border"
-            style={{ borderColor: 'rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.7)' }}
-          >
-            Entrar
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* Servicios */}
-      <div className="px-4 py-5" style={{ background: '#111' }}>
-        <p className="text-center text-[10px] tracking-[0.25em] uppercase mb-3" style={{ color: 'var(--gold)' }}>
+      {/* Content */}
+      <div style={{ flex: 1, padding: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <p style={{ fontSize: 8, letterSpacing: '0.18em', fontWeight: 600, textTransform: 'uppercase', color: 'var(--fg-3)', margin: 0 }}>
           Servicios
         </p>
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { name: 'Corte', price: '18€' },
-            { name: 'Barba', price: '14€' },
-            { name: 'Corte+Barba', price: '28€' },
-          ].map(({ name, price }) => (
-            <div
-              key={name}
-              className="flex flex-col items-center text-center rounded-lg p-3 border"
-              style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}
-            >
-              <div
-                className="w-7 h-7 rounded-full flex items-center justify-center mb-2 text-[10px] font-bold"
-                style={{ background: `color-mix(in srgb, var(--gold) 15%, transparent)`, color: 'var(--gold)' }}
-              >
-                ✂
-              </div>
-              <div className="text-[10px] font-semibold mb-0.5" style={{ color: '#fff' }}>{name}</div>
-              <div className="text-xs font-bold" style={{ color: 'var(--gold)' }}>{price}</div>
+        {SERVICES.map((s) => (
+          <div
+            key={s.name}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '6px 8px',
+              borderRadius: 6,
+              background: 'var(--bg-3)',
+              border: '1px solid var(--line)',
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--fg-0)' }}>{s.name}</div>
+              <div style={{ fontSize: 8, color: 'var(--fg-3)' }}>{s.duration}</div>
             </div>
-          ))}
+            <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--gold)' }}>{s.price}</div>
+          </div>
+        ))}
+        <div
+          style={{
+            width: '100%',
+            padding: '5px 0',
+            borderRadius: 6,
+            textAlign: 'center',
+            fontSize: 8,
+            fontWeight: 700,
+            background: 'var(--led)',
+            color: '#fff',
+          }}
+        >
+          + Añadir servicio
         </div>
       </div>
     </div>

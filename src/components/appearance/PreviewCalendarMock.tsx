@@ -2,37 +2,35 @@ const DAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 const DATES = [5, 6, 7, 8, 9, 10, 11]
 const SLOTS = ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30']
 const BUSY = new Set(['10:30', '11:30'])
+const SELECTED = '11:00'
 
 export function PreviewCalendarMock() {
   return (
     <div
-      className="rounded-lg overflow-hidden"
-      style={{ background: 'var(--bg-1, #1a1a1a)', fontFamily: 'var(--font-sans, sans-serif)' }}
+      style={{
+        borderRadius: 8,
+        overflow: 'hidden',
+        background: 'var(--bg-1)',
+        fontFamily: 'var(--font-ui)',
+      }}
     >
-      {/* Header */}
-      <div
-        className="px-4 py-3 flex items-center justify-between border-b"
-        style={{ borderColor: 'var(--line, rgba(255,255,255,0.1))' }}
-      >
-        <span className="text-xs font-semibold" style={{ color: 'var(--fg-0, #fff)' }}>
-          Reservar cita
-        </span>
-        <span className="text-[10px]" style={{ color: 'var(--fg-3, rgba(255,255,255,0.4))' }}>
-          Mayo 2026
-        </span>
+      {/* Section label */}
+      <div style={{ padding: '10px 12px 4px' }}>
+        <p style={{ margin: 0, fontSize: 8, letterSpacing: '0.2em', fontWeight: 600, textTransform: 'uppercase', color: 'var(--fg-3)' }}>
+          Seleccionar fecha
+        </p>
       </div>
 
       {/* Day strip */}
-      <div className="grid grid-cols-7 gap-1 px-3 py-3">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, padding: '4px 12px 8px' }}>
         {DAYS.map((d, i) => (
-          <div key={d} className="flex flex-col items-center gap-1">
-            <span className="text-[9px]" style={{ color: 'var(--fg-3, rgba(255,255,255,0.4))' }}>{d}</span>
+          <div key={d} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+            <span style={{ fontSize: 8, color: 'var(--fg-3)' }}>{d}</span>
             <div
-              className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold"
               style={
                 i === 2
-                  ? { background: 'var(--led)', color: '#fff' }
-                  : { color: 'var(--fg-1, rgba(255,255,255,0.8))' }
+                  ? { width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, background: 'var(--led)', color: '#fff' }
+                  : { width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: 'var(--fg-1)' }
               }
             >
               {DATES[i]}
@@ -41,40 +39,21 @@ export function PreviewCalendarMock() {
         ))}
       </div>
 
-      {/* Slots */}
-      <div
-        className="px-3 pb-3 border-t"
-        style={{ borderColor: 'var(--line, rgba(255,255,255,0.1))' }}
-      >
-        <p
-          className="text-[9px] tracking-widest uppercase py-2"
-          style={{ color: 'var(--fg-3, rgba(255,255,255,0.4))' }}
-        >
-          Horas disponibles
+      {/* Hour section */}
+      <div style={{ padding: '8px 12px 6px', borderTop: '1px solid var(--line)' }}>
+        <p style={{ margin: '0 0 6px', fontSize: 8, letterSpacing: '0.2em', fontWeight: 600, textTransform: 'uppercase', color: 'var(--fg-3)' }}>
+          Hora — miércoles 7
         </p>
-        <div className="grid grid-cols-3 gap-1.5">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
           {SLOTS.map((slot) => (
             <div
               key={slot}
-              className="rounded-lg py-1.5 text-center text-[10px] font-medium border"
               style={
                 BUSY.has(slot)
-                  ? {
-                      borderColor: 'rgba(255,255,255,0.05)',
-                      color: 'rgba(255,255,255,0.2)',
-                      background: 'rgba(255,255,255,0.02)',
-                      textDecoration: 'line-through',
-                    }
-                  : slot === '12:00'
-                  ? {
-                      borderColor: 'var(--led)',
-                      color: 'var(--led)',
-                      background: `color-mix(in srgb, var(--led) 10%, transparent)`,
-                    }
-                  : {
-                      borderColor: 'var(--line, rgba(255,255,255,0.1))',
-                      color: 'var(--fg-1, rgba(255,255,255,0.8))',
-                    }
+                  ? { padding: '4px 0', borderRadius: 5, textAlign: 'center', fontSize: 8, fontWeight: 500, border: '1px solid var(--line)', color: 'var(--fg-3)', textDecoration: 'line-through' }
+                  : slot === SELECTED
+                  ? { padding: '4px 0', borderRadius: 5, textAlign: 'center', fontSize: 8, fontWeight: 700, border: '1px solid var(--led)', background: 'var(--led)', color: '#fff' }
+                  : { padding: '4px 0', borderRadius: 5, textAlign: 'center', fontSize: 8, fontWeight: 500, border: '1px solid var(--line)', color: 'var(--fg-1)' }
               }
             >
               {slot}
@@ -84,10 +63,18 @@ export function PreviewCalendarMock() {
       </div>
 
       {/* CTA */}
-      <div className="px-3 pb-3">
+      <div style={{ padding: '6px 12px 10px' }}>
         <div
-          className="w-full rounded-lg py-2 text-center text-[11px] font-bold"
-          style={{ background: 'var(--led)', color: '#fff' }}
+          style={{
+            width: '100%',
+            padding: '7px 0',
+            borderRadius: 7,
+            textAlign: 'center',
+            fontSize: 9,
+            fontWeight: 700,
+            background: 'var(--led)',
+            color: '#fff',
+          }}
         >
           Confirmar reserva
         </div>

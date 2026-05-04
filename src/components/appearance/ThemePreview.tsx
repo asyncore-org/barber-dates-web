@@ -23,7 +23,7 @@ export function ThemePreview({ darkTokens, lightTokens }: ThemePreviewProps) {
       {/* Dark preview */}
       <div className="space-y-1.5">
         <p className="text-[11px] font-semibold tracking-widest uppercase" style={{ color: 'var(--fg-3)' }}>
-          Modo oscuro — Inicio
+          Modo oscuro — Configuración
         </p>
         <div
           style={darkTokens ? toVars(darkTokens) : undefined}
