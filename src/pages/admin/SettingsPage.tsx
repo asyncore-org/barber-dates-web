@@ -15,8 +15,9 @@ import type { WeeklySchedule, DayKey } from '@/domain/schedule'
 import type { Service } from '@/domain/service'
 import type { Barber } from '@/domain/barber'
 import type { Reward } from '@/domain/loyalty'
+import { AppearanceSection } from '@/components/appearance'
 
-type Section = 'servicios' | 'horarios' | 'barberos' | 'fidelizacion' | 'barberia'
+type Section = 'servicios' | 'horarios' | 'barberos' | 'fidelizacion' | 'barberia' | 'apariencia'
 
 const BARBER_ROLES = ['Barbero', 'Propietario'] as const
 
@@ -26,6 +27,7 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: 'barberos',     label: 'Barberos' },
   { id: 'fidelizacion', label: 'Fidelización' },
   { id: 'barberia',     label: 'Barbería' },
+  { id: 'apariencia',   label: 'Apariencia' },
 ]
 
 const DAY_KEYS: { key: DayKey; name: string }[] = [
@@ -363,6 +365,7 @@ export default function SettingsPage() {
     barberos:     Object.keys(barberEdits).length > 0,
     fidelizacion: Object.keys(rewardEdits).length > 0,
     barberia:     Object.keys(shopEdits).length > 0,
+    apariencia:   false, // AppearanceSection manages its own confirm dialog
   }
   const anyDirty = Object.values(sectionDirty).some(Boolean)
 
@@ -980,6 +983,14 @@ export default function SettingsPage() {
               {sectionError.fidelizacion && (
                 <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', marginTop: 8, marginBottom: 0 }}>{sectionError.fidelizacion}</p>
               )}
+            </div>
+          )}
+
+          {/* === APARIENCIA === */}
+          {section === 'apariencia' && (
+            <div>
+              <SectionTitle>APARIENCIA</SectionTitle>
+              <AppearanceSection />
             </div>
           )}
 
