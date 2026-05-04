@@ -16,10 +16,12 @@ export function PaletteCard({ palette, isSelected, suggestedPair, onClick, onEdi
   const isPredefined = !('id' in palette && !('pairedWith' in palette))
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className="w-full text-left rounded-xl border p-3 transition-all"
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
+      className="w-full text-left rounded-xl border p-3 transition-all cursor-pointer"
       style={{
         borderColor: isSelected ? 'var(--gold)' : 'var(--line)',
         background: isSelected ? 'color-mix(in srgb, var(--gold) 6%, var(--bg-2))' : 'var(--bg-2)',
@@ -86,6 +88,6 @@ export function PaletteCard({ palette, isSelected, suggestedPair, onClick, onEdi
           Editar
         </button>
       )}
-    </button>
+    </div>
   )
 }
