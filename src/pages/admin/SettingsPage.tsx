@@ -95,6 +95,8 @@ function SaveBtn({ onClick, loading, isDirty }: { onClick: () => void; loading?:
 
 export default function SettingsPage() {
   const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
+  const visibleSections = isAdmin ? SECTIONS : SECTIONS.filter(s => s.id !== 'apariencia')
   const { name: shopName, allowBarberChoice } = useShopContext()
   const [section, setSection] = useState<Section>('servicios')
   const [pendingNavSection, setPendingNavSection] = useState<Section | null>(null)
@@ -425,7 +427,7 @@ export default function SettingsPage() {
       {/* Mobile section tabs */}
       <div className="md:hidden overflow-x-auto pb-2 mb-4 -mx-4 px-4">
         <div className="flex gap-2 w-max">
-          {SECTIONS.map(s => (
+          {visibleSections.map(s => (
             <button
               key={s.id}
               onClick={() => handleSectionChange(s.id)}
@@ -455,7 +457,7 @@ export default function SettingsPage() {
           className="hidden md:block"
           style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '0.5rem', position: 'sticky', top: 72 }}
         >
-          {SECTIONS.map(s => (
+          {visibleSections.map(s => (
             <button key={s.id} onClick={() => handleSectionChange(s.id)} style={sidebarBtn(s.id)}>
               <span style={{ flex: 1 }}>{s.label}</span>
               {sectionDirty[s.id] && (
@@ -987,7 +989,7 @@ export default function SettingsPage() {
           )}
 
           {/* === APARIENCIA === */}
-          {section === 'apariencia' && (
+          {section === 'apariencia' && isAdmin && (
             <div>
               <SectionTitle>APARIENCIA</SectionTitle>
               <AppearanceSection />
