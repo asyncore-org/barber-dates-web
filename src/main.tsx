@@ -24,6 +24,15 @@ const queryClient = new QueryClient({
 })
 
 async function bootstrap() {
+  // Inject cached palette CSS synchronously before first render to prevent color flash
+  const cachedCSS = localStorage.getItem('gio_palette_css')
+  if (cachedCSS) {
+    const el = document.createElement('style')
+    el.id = 'gio-palette-style'
+    el.textContent = cachedCSS
+    document.head.appendChild(el)
+  }
+
   if (import.meta.env.VITE_USE_MOCKS === 'true') {
     const { worker } = await import('./mocks/browser')
     await worker.start({ onUnhandledRequest: 'warn' })
