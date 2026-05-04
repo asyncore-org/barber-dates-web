@@ -11,7 +11,7 @@ type EditorState =
   | { open: true; mode: 'dark' | 'light'; editing?: CustomPalette }
 
 export function AppearanceSection() {
-  const { data: savedConfig, isLoading } = useColorTheme()
+  const { data: savedConfig, isLoading, isError } = useColorTheme()
   const { mutate: saveTheme, isPending: isSaving } = useMutateColorTheme()
 
   const [pendingDarkId, setPendingDarkId] = useState<string | null>(null)
@@ -67,6 +67,14 @@ export function AppearanceSection() {
     return (
       <div className="flex items-center justify-center py-16" style={{ color: 'var(--fg-3)' }}>
         Cargando...
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center py-16" style={{ color: 'var(--brick)' }}>
+        No se pudo cargar la configuración de color.
       </div>
     )
   }
