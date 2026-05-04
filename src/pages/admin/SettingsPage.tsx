@@ -442,6 +442,9 @@ export default function SettingsPage() {
               }}
             >
               {s.label}
+              {s.id === 'apariencia' && (
+                <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', padding: '1px 5px', borderRadius: 4, background: 'rgba(200,164,78,0.2)', color: section === s.id ? '#7a5a00' : '#c8a44e', flexShrink: 0 }}>ADMIN</span>
+              )}
               {sectionDirty[s.id] && (
                 <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: section === s.id ? '#000' : 'var(--led)', flexShrink: 0 }} />
               )}
@@ -460,6 +463,9 @@ export default function SettingsPage() {
           {visibleSections.map(s => (
             <button key={s.id} onClick={() => handleSectionChange(s.id)} style={sidebarBtn(s.id)}>
               <span style={{ flex: 1 }}>{s.label}</span>
+              {s.id === 'apariencia' && (
+                <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', padding: '1px 5px', borderRadius: 4, background: 'rgba(200,164,78,0.2)', color: '#c8a44e', flexShrink: 0 }}>ADMIN</span>
+              )}
               {sectionDirty[s.id] && (
                 <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--led)', flexShrink: 0 }} />
               )}
