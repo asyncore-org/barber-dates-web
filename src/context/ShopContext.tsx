@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react'
 import { useShopInfo, useBookingConfig } from '@/hooks/useShopConfig'
+import { useApplyColorTheme } from '@/hooks/useColorTheme'
 import type { ShopInfo } from '@/domain/shop'
 import { DEFAULT_BOOKING_CONFIG } from '@/domain/shop'
 
@@ -33,6 +34,7 @@ const ShopContext = createContext<ShopContextValue | null>(null)
 export function ShopProvider({ children }: { children: React.ReactNode }) {
   const { data: shopInfo, isLoading: loadingInfo } = useShopInfo()
   const { data: bookingConfig, isLoading: loadingBooking } = useBookingConfig()
+  useApplyColorTheme()
 
   const info = shopInfo ?? DEFAULT_SHOP_INFO
   const booking = bookingConfig ?? DEFAULT_BOOKING_CONFIG
