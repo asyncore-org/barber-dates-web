@@ -20,6 +20,16 @@ interface AppointmentRow {
   profiles?: { full_name: string | null } | null
 }
 
+// InsForge SDK returns profiles as an array for embedded joins; normalize before mapping
+type AppointmentRowRaw = Omit<AppointmentRow, 'profiles'> & {
+  profiles: Array<{ full_name: string | null }> | { full_name: string | null } | null
+}
+
+function normalizeRow(raw: AppointmentRowRaw): AppointmentRow {
+  const profiles = Array.isArray(raw.profiles) ? (raw.profiles[0] ?? null) : (raw.profiles ?? null)
+  return { ...raw, profiles }
+}
+
 function mapToAppointment(row: AppointmentRow): Appointment {
   return {
     id: row.id,
@@ -58,7 +68,7 @@ export class InsForgeAppointmentRepository implements IAppointmentRepository {
       .select(SELECT_FIELDS_WITH_CLIENT)
       .order('start_time', { ascending: false })
     if (error) throw error
-    return ((data ?? []) as unknown as AppointmentRow[]).map(mapToAppointment)
+    return ((data ?? []) as AppointmentRowRaw[]).map((row) => mapToAppointment(normalizeRow(row)))
   }
 
   async create(appt: CreateAppointmentData): Promise<Appointment> {
