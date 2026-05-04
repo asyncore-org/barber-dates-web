@@ -1,2 +1,2 @@
 export { MonthCalendar } from './MonthCalendar'
-export { TimeSlots } from './TimeSlots'
+export { TimeSlots, generateScheduleSlots } from './TimeSlots'

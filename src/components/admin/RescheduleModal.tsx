@@ -3,7 +3,10 @@ import { Modal } from '@/components/ui'
 import { MonthCalendar, TimeSlots } from '@/components/calendar'
 import { useServices } from '@/hooks/useServices'
 import { useBarbers } from '@/hooks/useBarbers'
+import type { WeeklySchedule, DayKey } from '@/domain/schedule'
 import type { WeekAppt, RescheduleUpdate } from './types'
+
+const JS_TO_DAY: Record<number, DayKey> = { 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat', 0: 'sun' }
 
 function calcInitials(name: string): string {
   return name.trim().split(/\s+/).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '?'
@@ -12,6 +15,7 @@ function calcInitials(name: string): string {
 interface Props {
   appt: WeekAppt
   weekStart: Date
+  schedule: WeeklySchedule
   onClose: () => void
   onConfirm: (update: RescheduleUpdate) => void
 }
@@ -24,7 +28,7 @@ const LABEL: React.CSSProperties = {
   marginBottom: '0.5rem',
 }
 
-export function RescheduleModal({ appt, weekStart, onClose, onConfirm }: Props) {
+export function RescheduleModal({ appt, weekStart, schedule, onClose, onConfirm }: Props) {
   const { data: services = [] } = useServices()
   const { data: barbers = [] } = useBarbers()
   const activeServices = services.filter(s => s.isActive)
@@ -47,6 +51,9 @@ export function RescheduleModal({ appt, weekStart, onClose, onConfirm }: Props) 
   const selectedService = activeServices.find(s => s.id === serviceId)
   const selectedBarber = activeBarbers.find(b => b.id === barberId)
   const canConfirm = !!(serviceId && barberId && date && slot)
+
+  const fromTime = date ? (schedule[JS_TO_DAY[date.getDay()]].from || '10:00') : '10:00'
+  const toTime = date ? (schedule[JS_TO_DAY[date.getDay()]].to || '19:00') : '19:00'
 
   const handleConfirm = () => {
     if (!date || !slot) return
@@ -161,6 +168,8 @@ export function RescheduleModal({ appt, weekStart, onClose, onConfirm }: Props) 
               selected={slot}
               onSelect={setSlot}
               taken={[]}
+              fromTime={fromTime}
+              toTime={toTime}
             />
           </div>
         )}

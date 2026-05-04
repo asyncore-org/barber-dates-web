@@ -48,6 +48,12 @@ export function useAddBarberByEmail() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (email: string) => {
+      const existing = await repositories.barbers().findByEmail(email)
+      if (existing) {
+        if (existing.isActive) throw new Error('Ya existe un barbero con ese email')
+        await repositories.barbers().update(existing.id, { isActive: true })
+        return
+      }
       const profile = await repositories.profiles().findByEmailFull(email)
       if (!profile) throw new Error('Email no registrado')
       // Role update first — if create fails, the role is already correct and the

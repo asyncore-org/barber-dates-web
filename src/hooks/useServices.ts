@@ -43,3 +43,19 @@ export function useDeleteService() {
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.services.all() }),
   })
 }
+
+export function useReactivateService() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => repositories.services().reactivate(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.services.all() }),
+  })
+}
+
+export function useSoftDeleteService() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => repositories.services().softDelete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.services.all() }),
+  })
+}

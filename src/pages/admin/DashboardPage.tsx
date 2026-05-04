@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useSyncExternalStore } from 'react'
+import { useState, useMemo, useEffect, useRef, useSyncExternalStore } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
 import { Icon } from '@/components/ui'
@@ -6,7 +6,9 @@ import { AgendaListView, NewAppointmentModal, RescheduleModal } from '@/componen
 import type { WeekAppt, RescheduleUpdate, NewAppointmentData } from '@/components/admin'
 import { useBarbers } from '@/hooks/useBarbers'
 import { useAllServices } from '@/hooks/useServices'
-import { useAllAppointments, useCreateAppointment, useFindProfileByEmail } from '@/hooks/useAppointments'
+import { useAllAppointments, useCreateAppointment, useUpdateAppointment, useFindProfileByEmail } from '@/hooks/useAppointments'
+import { useWeeklySchedule } from '@/hooks/useSchedule'
+import { DEFAULT_WEEKLY_SCHEDULE } from '@/domain/schedule'
 
 const landscapeMq = typeof window !== 'undefined'
   ? window.matchMedia('(orientation: landscape) and (max-height: 600px)')
@@ -23,26 +25,7 @@ function useLandscape() {
 const DAYS_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 const HOURS = Array.from({ length: 11 }, (_, i) => i + 9) // 9 → 19
 
-const INITIAL_APPOINTMENTS: WeekAppt[] = [
-  { id: 'w1',  day: 0, startH: 10, startM: 0,  durationMin: 45, client: 'Carlos M.',   service: 'Corte + Barba',         barberId: 'b1', color: 'led' },
-  { id: 'w2',  day: 0, startH: 11, startM: 30, durationMin: 30, client: 'Rubén G.',    service: 'Corte Clásico',          barberId: 'b2', color: 'brick' },
-  { id: 'w3',  day: 0, startH: 14, startM: 0,  durationMin: 60, client: 'Javier P.',   service: 'Corte Premium',          barberId: 'b1', color: 'led' },
-  { id: 'w4',  day: 1, startH: 9,  startM: 30, durationMin: 45, client: 'Miguel Á.',   service: 'Corte + Barba',         barberId: 'b2', color: 'brick' },
-  { id: 'w5',  day: 1, startH: 11, startM: 0,  durationMin: 30, client: 'Toni R.',     service: 'Afeitado Tradicional',   barberId: 'b1', color: 'gold' },
-  { id: 'w6',  day: 1, startH: 16, startM: 0,  durationMin: 75, client: 'Álex F.',     service: 'Tinte + Corte',          barberId: 'b2', color: 'brick' },
-  { id: 'w7',  day: 2, startH: 10, startM: 30, durationMin: 30, client: 'Marc V.',     service: 'Corte Clásico',          barberId: 'b1', color: 'led' },
-  { id: 'w8',  day: 2, startH: 12, startM: 0,  durationMin: 45, client: 'Sergio L.',   service: 'Corte + Barba',         barberId: 'b2', color: 'brick' },
-  { id: 'w9',  day: 2, startH: 15, startM: 30, durationMin: 60, client: 'Iván M.',     service: 'Corte Premium',          barberId: 'b1', color: 'led' },
-  { id: 'w10', day: 3, startH: 9,  startM: 0,  durationMin: 25, client: 'Leo (niño)',  service: 'Niños (-12)',            barberId: 'b2', color: 'gold' },
-  { id: 'w11', day: 3, startH: 11, startM: 30, durationMin: 45, client: 'Raúl C.',     service: 'Corte + Barba',         barberId: 'b1', color: 'led' },
-  { id: 'w12', day: 3, startH: 17, startM: 0,  durationMin: 30, client: 'Paco G.',     service: 'Afeitado Tradicional',   barberId: 'b2', color: 'gold' },
-  { id: 'w13', day: 4, startH: 10, startM: 0,  durationMin: 30, client: 'Daniel H.',   service: 'Corte Clásico',          barberId: 'b1', color: 'brick' },
-  { id: 'w14', day: 4, startH: 13, startM: 0,  durationMin: 75, client: 'Omar S.',     service: 'Tinte + Corte',          barberId: 'b2', color: 'brick' },
-  { id: 'w15', day: 4, startH: 16, startM: 30, durationMin: 45, client: 'Dani R.',     service: 'Corte + Barba',         barberId: 'b1', color: 'led' },
-  { id: 'w16', day: 5, startH: 9,  startM: 30, durationMin: 30, client: 'Vicent M.',   service: 'Corte Clásico',          barberId: 'b2', color: 'gold' },
-  { id: 'w17', day: 5, startH: 10, startM: 30, durationMin: 60, client: 'Lucas B.',    service: 'Corte Premium',          barberId: 'b1', color: 'led' },
-  { id: 'w18', day: 5, startH: 12, startM: 0,  durationMin: 45, client: 'Andrés T.',   service: 'Corte + Barba',         barberId: 'b2', color: 'brick' },
-]
+const APPT_COLORS = ['led', 'brick', 'gold'] as const
 
 const COLOR_MAP = {
   led:   { bg: 'rgba(123,79,255,0.18)',  border: 'var(--led)',       text: 'var(--led-soft)' },
@@ -86,12 +69,13 @@ export default function DashboardPage() {
   const { data: barbers = [] } = useBarbers()
   const { data: services = [] } = useAllServices()
   const { data: dbAppointments = [] } = useAllAppointments()
+  const { data: schedule = DEFAULT_WEEKLY_SCHEDULE } = useWeeklySchedule()
   const createApptMut = useCreateAppointment()
+  const updateApptMut = useUpdateAppointment()
   const findProfileByEmail = useFindProfileByEmail()
   const activeBarbers = barbers.filter(b => b.isActive)
   const [weekOffset, setWeekOffset] = useState(0)
   const [dayOffset, setDayOffset] = useState(0)
-  const [appointments, setAppointments] = useState<WeekAppt[]>(INITIAL_APPOINTMENTS)
   const [selectedAppt, setSelectedAppt] = useState<WeekAppt | null>(null)
   const [rescheduleAppt, setRescheduleAppt] = useState<WeekAppt | null>(null)
   const [newApptOpen, setNewApptOpen] = useState(false)
@@ -99,6 +83,36 @@ export default function DashboardPage() {
   const [rescheduleToast, setRescheduleToast] = useState(false)
   const [apptError, setApptError] = useState<string | null>(null)
   const nowLineRef = useRef<HTMLDivElement>(null)
+
+  const weekStart = useMemo(() => {
+    const ws = getWeekStart(new Date())
+    ws.setDate(ws.getDate() + weekOffset * 7)
+    return ws
+  }, [weekOffset])
+
+  const appointments = useMemo<WeekAppt[]>(() => {
+    return dbAppointments
+      .filter(a => a.status !== 'cancelled' && a.status !== 'no_show')
+      .flatMap((a, i) => {
+        const start = new Date(a.startTime)
+        const end = new Date(a.endTime)
+        const dayDiff = Math.round((start.getTime() - weekStart.getTime()) / 86_400_000)
+        if (dayDiff < 0 || dayDiff > 6) return []
+        const svc = services.find(s => s.id === a.serviceId)
+        const barberIdx = barbers.findIndex(b => b.id === a.barberId)
+        return [{
+          id: a.id,
+          day: dayDiff,
+          startH: start.getHours(),
+          startM: start.getMinutes(),
+          durationMin: Math.round((end.getTime() - start.getTime()) / 60_000),
+          client: a.clientName ?? `Cliente ${a.clientId.slice(0, 6)}`,
+          service: svc?.name ?? 'Servicio',
+          barberId: a.barberId,
+          color: APPT_COLORS[barberIdx >= 0 ? barberIdx % 3 : i % 3],
+        } satisfies WeekAppt]
+      })
+  }, [dbAppointments, weekStart, services, barbers])
 
   const handleNewApptConfirm = async (data: NewAppointmentData) => {
     setApptError(null)
@@ -153,34 +167,25 @@ export default function DashboardPage() {
     )
   }
 
-  const handleRescheduleConfirm = async (update: RescheduleUpdate) => {
+  const handleRescheduleConfirm = (update: RescheduleUpdate) => {
     if (!rescheduleAppt) return
-    const [newH, newM] = update.slot.split(':').map(Number)
-    const newDayIdx = Math.round((update.date.getTime() - weekStart.getTime()) / 86_400_000)
-    const newService = services.find(s => s.id === update.serviceId)?.name ?? rescheduleAppt.service
+    const svc = services.find(s => s.id === update.serviceId)
+    if (!svc) return
+    const startDt = combineDateSlot(update.date, update.slot)
+    const endDt = addMinutes(startDt, svc.durationMinutes)
 
-    setAppointments(prev => prev.map(a =>
-      a.id === rescheduleAppt.id
-        ? { ...a, day: newDayIdx, startH: newH, startM: newM, service: newService, barberId: update.barberId }
-        : a
-    ))
-
-    try {
-      await fetch(`/rest/v1/appointments?id=eq.${rescheduleAppt.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scheduled_at: update.date.toISOString() }),
-      })
-    } catch { /* ignorar */ }
-
-    setRescheduleAppt(null)
-    setSelectedAppt(null)
-    setRescheduleToast(true)
-    setTimeout(() => setRescheduleToast(false), 3000)
+    updateApptMut.mutate(
+      { id: rescheduleAppt.id, data: { startTime: startDt.toISOString(), endTime: endDt.toISOString(), barberId: update.barberId, serviceId: update.serviceId } },
+      {
+        onSuccess: () => {
+          setRescheduleAppt(null)
+          setSelectedAppt(null)
+          setRescheduleToast(true)
+          setTimeout(() => setRescheduleToast(false), 3000)
+        },
+      },
+    )
   }
-
-  const weekStart = getWeekStart(new Date())
-  weekStart.setDate(weekStart.getDate() + weekOffset * 7)
 
   const now = new Date()
   const nowTop = Math.min(topPx(now.getHours(), now.getMinutes()), MAX_TOP_PX)
@@ -205,6 +210,38 @@ export default function DashboardPage() {
 
   const upcomingToday = appointments.filter(a => a.day === todayCols)
     .sort((a, b) => a.startH * 60 + a.startM - (b.startH * 60 + b.startM))
+
+  const landscapeRows = useMemo(() => {
+    const todayDate = new Date()
+    todayDate.setHours(0, 0, 0, 0)
+    const tomorrowDate = new Date(todayDate)
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1)
+    const todayStr = todayDate.toISOString().slice(0, 10)
+    const tomorrowStr = tomorrowDate.toISOString().slice(0, 10)
+    const base = dbAppointments.filter(a => a.status !== 'cancelled' && a.status !== 'no_show')
+    const mapAppts = (dateStr: string): WeekAppt[] =>
+      base
+        .filter(a => new Date(a.startTime).toISOString().slice(0, 10) === dateStr)
+        .map((a, i) => {
+          const start = new Date(a.startTime)
+          const end = new Date(a.endTime)
+          const svc = services.find(s => s.id === a.serviceId)
+          const barberIdx = barbers.findIndex(b => b.id === a.barberId)
+          return {
+            id: a.id, day: 0,
+            startH: start.getHours(), startM: start.getMinutes(),
+            durationMin: Math.round((end.getTime() - start.getTime()) / 60_000),
+            client: a.clientName ?? `Cliente ${a.clientId.slice(0, 6)}`,
+            service: svc?.name ?? 'Servicio',
+            barberId: a.barberId,
+            color: APPT_COLORS[barberIdx >= 0 ? barberIdx % 3 : i % 3],
+          } satisfies WeekAppt
+        })
+    return [
+      { label: 'Hoy',    date: todayDate,    appts: mapAppts(todayStr) },
+      { label: 'Mañana', date: tomorrowDate, appts: mapAppts(tomorrowStr) },
+    ]
+  }, [dbAppointments, services, barbers])
 
   return (
     <>
@@ -322,121 +359,161 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Grid body — horizontal scroll only needed in portrait narrow screens */}
-          <div style={{ overflowX: isLandscape ? 'hidden' : 'auto' }}>
-          <div style={{ maxHeight: isLandscape ? 'calc(100dvh - 140px)' : 520, overflowY: 'auto', minWidth: isLandscape ? undefined : 600 }}>
-            {/* Day headers — sticky so scrollbar width is shared with the content grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', borderBottom: '1px solid var(--line)', position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-2)' }}>
-              <div />
-              {DAYS_ES.map((d, i) => {
-                const dayDate = new Date(weekStart)
-                dayDate.setDate(dayDate.getDate() + i)
-                const isToday = weekOffset === 0 && i === todayCols
-                return (
-                  <div key={d} style={{ padding: '0.6rem 0', textAlign: 'center', borderLeft: '1px solid var(--line)' }}>
-                    <div style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{d}</div>
-                    <div style={{
-                      fontFamily: 'var(--font-display)', fontSize: 20,
-                      color: isToday ? 'var(--led-soft)' : 'var(--fg-0)',
-                      lineHeight: 1.1,
-                      textShadow: isToday ? '0 0 16px rgba(123,79,255,0.5)' : 'none',
-                    }}>
-                      {dayDate.getDate()}
+          {/* Grid body */}
+          {isLandscape ? (
+            /* Landscape mobile: 2 days (today + tomorrow), hours on X axis */
+            <div style={{ overflowX: 'auto' }}>
+              <div style={{ minWidth: 560 }}>
+                {/* Hour header row */}
+                <div style={{ display: 'flex', borderBottom: '1px solid var(--line)', background: 'var(--bg-2)' }}>
+                  <div style={{ width: 56, flexShrink: 0 }} />
+                  {HOURS.map(h => (
+                    <div key={h} style={{ flex: 1, textAlign: 'center', padding: '0.3rem 0', fontSize: 9, color: 'var(--fg-3)', fontFamily: 'var(--font-mono, monospace)' }}>
+                      {h}:00
                     </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', position: 'relative' }}>
-              {/* Hour labels */}
-              <div>
-                {HOURS.map(h => (
-                  <div key={h} style={{ height: CELL_HEIGHT_PX, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: 8, paddingTop: 4 }}>
-                    <span style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-mono, monospace)' }}>{h}:00</span>
+                  ))}
+                </div>
+                {/* Day rows */}
+                {landscapeRows.map(({ label, date, appts }) => (
+                  <div key={label} style={{ display: 'flex', height: 68, borderBottom: '1px solid var(--line)' }}>
+                    <div style={{ width: 56, flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', borderRight: '1px solid var(--line)', gap: 2 }}>
+                      <div style={{ fontSize: 8, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
+                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: label === 'Hoy' ? 'var(--led-soft)' : 'var(--fg-0)', lineHeight: 1 }}>{date.getDate()}</div>
+                    </div>
+                    <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+                      {/* Vertical hour grid lines */}
+                      {HOURS.slice(1).map((_, i) => (
+                        <div key={i} style={{ position: 'absolute', top: 0, bottom: 0, left: `${(i + 1) / HOURS.length * 100}%`, width: 1, background: 'var(--line)', opacity: 0.3, pointerEvents: 'none' }} />
+                      ))}
+                      {/* Appointments */}
+                      {appts.map(appt => {
+                        const c = COLOR_MAP[appt.color]
+                        const leftPct = Math.max(0, (appt.startH - DAY_START_H + appt.startM / 60) / HOURS.length * 100)
+                        const widthPct = Math.max(2, (appt.durationMin / 60) / HOURS.length * 100)
+                        return (
+                          <div key={appt.id} onClick={() => setSelectedAppt(appt)} style={{
+                            position: 'absolute', top: 4, bottom: 4,
+                            left: `${leftPct}%`, width: `${widthPct}%`,
+                            background: c.bg, border: `1px solid ${c.border}`,
+                            borderRadius: 4, padding: '2px 4px',
+                            cursor: 'pointer', overflow: 'hidden', zIndex: 4,
+                          }}>
+                            <div style={{ fontSize: 9, fontWeight: 700, color: c.text, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {appt.startH.toString().padStart(2,'0')}:{appt.startM.toString().padStart(2,'0')} {appt.client}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
                 ))}
               </div>
-
-              {/* Day columns */}
-              {DAYS_ES.map((_, colIdx) => (
-                <div key={colIdx} style={{ borderLeft: '1px solid var(--line)', position: 'relative', minHeight: CELL_HEIGHT_PX * HOURS.length }}>
-                  {HOURS.map(h => (
-                    <div key={h} style={{ height: CELL_HEIGHT_PX, borderTop: '1px solid var(--line)', opacity: 0.4, boxSizing: 'border-box' }} />
-                  ))}
-
-                  {weekOffset === 0 && colIdx === todayCols && (
-                    <div
-                      ref={nowLineRef}
-                      style={{
-                        position: 'absolute',
-                        left: 0, right: 0,
-                        top: nowTop,
-                        height: 2,
-                        background: 'var(--led)',
-                        boxShadow: '0 0 0 1px rgba(255,255,255,0.55), 0 0 8px rgba(123,79,255,0.8)',
-                        zIndex: 5,
-                        pointerEvents: 'none',
-                      }}
-                    >
-                      <span style={{
-                        position: 'absolute',
-                        left: 2,
-                        top: -18,
-                        fontSize: 9,
-                        fontFamily: 'var(--font-ui)',
-                        color: 'var(--led)',
-                        fontWeight: 600,
-                        letterSpacing: '0.04em',
-                        lineHeight: 1,
-                        pointerEvents: 'none',
-                        whiteSpace: 'nowrap',
+            </div>
+          ) : (
+            /* Portrait/desktop: 7-day grid */
+            <div style={{ overflowX: 'auto' }}>
+            <div style={{ maxHeight: 'calc(100dvh - 200px)', overflowY: 'auto', minWidth: 600 }}>
+              {/* Day headers */}
+              <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', borderBottom: '1px solid var(--line)', position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-2)' }}>
+                <div />
+                {DAYS_ES.map((d, i) => {
+                  const dayDate = new Date(weekStart)
+                  dayDate.setDate(dayDate.getDate() + i)
+                  const isToday = weekOffset === 0 && i === todayCols
+                  return (
+                    <div key={d} style={{ padding: '0.6rem 0', textAlign: 'center', borderLeft: '1px solid var(--line)' }}>
+                      <div style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{d}</div>
+                      <div style={{
+                        fontFamily: 'var(--font-display)', fontSize: 20,
+                        color: isToday ? 'var(--led-soft)' : 'var(--fg-0)',
+                        lineHeight: 1.1,
+                        textShadow: isToday ? '0 0 16px rgba(123,79,255,0.5)' : 'none',
                       }}>
-                        {now.getHours().toString().padStart(2, '0')}:{now.getMinutes().toString().padStart(2, '0')}
-                      </span>
+                        {dayDate.getDate()}
+                      </div>
                     </div>
-                  )}
+                  )
+                })}
+              </div>
 
-                  {appointments.filter(a => a.day === colIdx).map(appt => {
-                    const c = COLOR_MAP[appt.color]
-                    return (
+              <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', position: 'relative' }}>
+                {/* Hour labels */}
+                <div>
+                  {HOURS.map(h => (
+                    <div key={h} style={{ height: CELL_HEIGHT_PX, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingRight: 8, paddingTop: 4 }}>
+                      <span style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-mono, monospace)' }}>{h}:00</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Day columns */}
+                {DAYS_ES.map((_, colIdx) => (
+                  <div key={colIdx} style={{ borderLeft: '1px solid var(--line)', position: 'relative', minHeight: CELL_HEIGHT_PX * HOURS.length }}>
+                    {HOURS.map(h => (
+                      <div key={h} style={{ height: CELL_HEIGHT_PX, borderTop: '1px solid var(--line)', opacity: 0.4, boxSizing: 'border-box' }} />
+                    ))}
+
+                    {weekOffset === 0 && colIdx === todayCols && (
                       <div
-                        key={appt.id}
-                        onClick={() => setSelectedAppt(appt)}
+                        ref={nowLineRef}
                         style={{
                           position: 'absolute',
-                          left: 3, right: 3,
-                          top: topPx(appt.startH, appt.startM),
-                          height: Math.max(heightPx(appt.durationMin), 24),
-                          background: c.bg,
-                          border: `1px solid ${c.border}`,
-                          borderRadius: 6,
-                          padding: '3px 6px',
-                          cursor: 'pointer',
-                          overflow: 'hidden',
-                          zIndex: 4,
+                          left: 0, right: 0,
+                          top: nowTop,
+                          height: 2,
+                          background: 'var(--led)',
+                          boxShadow: '0 0 0 1px rgba(255,255,255,0.55), 0 0 8px rgba(123,79,255,0.8)',
+                          zIndex: 5,
+                          pointerEvents: 'none',
                         }}
                       >
-                        <div style={{ fontSize: 10, fontWeight: 700, color: c.text, fontFamily: 'var(--font-ui)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {appt.client}
-                        </div>
-                        {heightPx(appt.durationMin) > 30 && (
-                          <div style={{ fontSize: 9, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {appt.service}
-                          </div>
-                        )}
+                        <span style={{
+                          position: 'absolute', left: 2, top: -18,
+                          fontSize: 9, fontFamily: 'var(--font-ui)', color: 'var(--led)',
+                          fontWeight: 600, letterSpacing: '0.04em', lineHeight: 1,
+                          pointerEvents: 'none', whiteSpace: 'nowrap',
+                        }}>
+                          {now.getHours().toString().padStart(2, '0')}:{now.getMinutes().toString().padStart(2, '0')}
+                        </span>
                       </div>
-                    )
-                  })}
-                </div>
-              ))}
+                    )}
+
+                    {appointments.filter(a => a.day === colIdx).map(appt => {
+                      const c = COLOR_MAP[appt.color]
+                      return (
+                        <div
+                          key={appt.id}
+                          onClick={() => setSelectedAppt(appt)}
+                          style={{
+                            position: 'absolute', left: 3, right: 3,
+                            top: topPx(appt.startH, appt.startM),
+                            height: Math.max(heightPx(appt.durationMin), 24),
+                            background: c.bg, border: `1px solid ${c.border}`,
+                            borderRadius: 6, padding: '3px 6px',
+                            cursor: 'pointer', overflow: 'hidden', zIndex: 4,
+                          }}
+                        >
+                          <div style={{ fontSize: 10, fontWeight: 700, color: c.text, fontFamily: 'var(--font-ui)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {appt.client}
+                          </div>
+                          {heightPx(appt.durationMin) > 30 && (
+                            <div style={{ fontSize: 9, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {appt.service}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-          </div>{/* end overflow-x */}
+            </div>
+          )}
         </div>
 
-        {/* Right column */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {/* Right column — hidden in landscape to keep the grid in full view */}
+        {!isLandscape && <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {/* Upcoming today — first */}
           <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '1.25rem' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)', marginBottom: '0.875rem' }}>
@@ -497,7 +574,7 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
-        </div>
+        </div>}
       </div>
 
       {/* New appointment modal */}
@@ -505,6 +582,7 @@ export default function DashboardPage() {
         <NewAppointmentModal
           onClose={() => { setNewApptOpen(false); setApptError(null) }}
           onConfirm={handleNewApptConfirm}
+          schedule={schedule}
           errorMessage={apptError ?? undefined}
           isPending={createApptMut.isPending}
         />
@@ -557,6 +635,7 @@ export default function DashboardPage() {
         <RescheduleModal
           appt={rescheduleAppt}
           weekStart={weekStart}
+          schedule={schedule}
           onClose={() => setRescheduleAppt(null)}
           onConfirm={handleRescheduleConfirm}
         />

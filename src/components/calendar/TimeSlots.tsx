@@ -2,23 +2,30 @@ interface TimeSlotsProps {
   selected: string | null
   onSelect: (slot: string) => void
   taken?: string[]
+  fromTime?: string
+  toTime?: string
 }
 
-function generateSlots() {
+export function generateScheduleSlots(from = '10:00', to = '19:00'): string[] {
+  const [fromH, fromM] = from.split(':').map(Number)
+  const [toH, toM] = to.split(':').map(Number)
+  const toMinutes = toH * 60 + toM
   const slots: string[] = []
-  for (let h = 10; h <= 19; h++) {
-    slots.push(`${h.toString().padStart(2, '0')}:00`)
-    if (h < 19) slots.push(`${h.toString().padStart(2, '0')}:30`)
+  let minutes = fromH * 60 + fromM
+  while (minutes < toMinutes) {
+    const h = Math.floor(minutes / 60)
+    const m = minutes % 60
+    slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+    minutes += 30
   }
   return slots
 }
 
-const ALL_SLOTS = generateSlots()
-
-export function TimeSlots({ selected, onSelect, taken = [] }: TimeSlotsProps) {
+export function TimeSlots({ selected, onSelect, taken = [], fromTime, toTime }: TimeSlotsProps) {
+  const slots = generateScheduleSlots(fromTime, toTime)
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-      {ALL_SLOTS.map(slot => {
+      {slots.map(slot => {
         const isTaken = taken.includes(slot)
         const isSelected = selected === slot
 

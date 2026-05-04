@@ -36,6 +36,7 @@ export interface UpdateBarberData {
 export interface IBarberRepository {
   getActive(): Promise<Barber[]>
   getAll(): Promise<Barber[]>
+  findByEmail(email: string): Promise<Barber | null>
   create(data: CreateBarberData): Promise<Barber>
   update(id: string, data: UpdateBarberData): Promise<Barber>
   delete(id: string): Promise<void>
