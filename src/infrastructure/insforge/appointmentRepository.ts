@@ -17,14 +17,14 @@ interface AppointmentRow {
   status: string
   notes: string | null
   created_at: string
-  profiles?: { full_name: string | null }[] | null
+  profiles?: { full_name: string | null } | null
 }
 
 function mapToAppointment(row: AppointmentRow): Appointment {
   return {
     id: row.id,
     clientId: row.client_id,
-    clientName: row.profiles?.[0]?.full_name ?? undefined,
+    clientName: row.profiles?.full_name ?? undefined,
     barberId: row.barber_id,
     serviceId: row.service_id,
     startTime: row.start_time,
@@ -58,7 +58,7 @@ export class InsForgeAppointmentRepository implements IAppointmentRepository {
       .select(SELECT_FIELDS_WITH_CLIENT)
       .order('start_time', { ascending: false })
     if (error) throw error
-    return ((data ?? []) as AppointmentRow[]).map(mapToAppointment)
+    return ((data ?? []) as unknown as AppointmentRow[]).map(mapToAppointment)
   }
 
   async create(appt: CreateAppointmentData): Promise<Appointment> {
