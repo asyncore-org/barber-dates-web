@@ -4,6 +4,7 @@ export type PaletteTokens = {
   gold: string
   brick: string
   brickWarm: string
+  cardAccent?: string
 }
 
 export type ColorPalette = {
@@ -39,7 +40,7 @@ export const PREDEFINED_PALETTES: ColorPalette[] = [
     nameEs: 'Violeta noche',
     mode: 'dark',
     pairedWith: 'sakura',
-    tokens: { led: '#7b4fff', ledSoft: '#a689ff', gold: '#c9a24a', brick: '#8b3a1f', brickWarm: '#c06a3d' },
+    tokens: { led: '#7b4fff', ledSoft: '#a689ff', gold: '#c9a24a', brick: '#8b3a1f', brickWarm: '#c06a3d', cardAccent: '#c9a24a' },
   },
   {
     id: 'kon-ai',
@@ -47,7 +48,7 @@ export const PREDEFINED_PALETTES: ColorPalette[] = [
     nameEs: 'Índigo profundo',
     mode: 'dark',
     pairedWith: 'hanada',
-    tokens: { led: '#1e4a9a', ledSoft: '#4a78d4', gold: '#c9a24a', brick: '#1a3560', brickWarm: '#3060a0' },
+    tokens: { led: '#1e4a9a', ledSoft: '#4a78d4', gold: '#c9a24a', brick: '#1a3560', brickWarm: '#3060a0', cardAccent: '#b8a44a' },
   },
   {
     id: 'enji',
@@ -55,7 +56,7 @@ export const PREDEFINED_PALETTES: ColorPalette[] = [
     nameEs: 'Laca carmesí',
     mode: 'dark',
     pairedWith: 'kaki',
-    tokens: { led: '#8b1a35', ledSoft: '#c04060', gold: '#c0801a', brick: '#6a1525', brickWarm: '#a03050' },
+    tokens: { led: '#8b1a35', ledSoft: '#c04060', gold: '#c0801a', brick: '#6a1525', brickWarm: '#a03050', cardAccent: '#d4893a' },
   },
   {
     id: 'rikyu',
@@ -63,7 +64,7 @@ export const PREDEFINED_PALETTES: ColorPalette[] = [
     nameEs: 'Té ceremonial',
     mode: 'dark',
     pairedWith: 'ukon',
-    tokens: { led: '#2d5a3d', ledSoft: '#4a8a62', gold: '#b8912a', brick: '#1e3d28', brickWarm: '#3a7050' },
+    tokens: { led: '#2d5a3d', ledSoft: '#4a8a62', gold: '#b8912a', brick: '#1e3d28', brickWarm: '#3a7050', cardAccent: '#c89540' },
   },
   {
     id: 'nando',
@@ -71,7 +72,7 @@ export const PREDEFINED_PALETTES: ColorPalette[] = [
     nameEs: 'Teal almacén',
     mode: 'dark',
     pairedWith: 'asagi',
-    tokens: { led: '#1a5c6e', ledSoft: '#3a8a9e', gold: '#c09a3a', brick: '#0e3a48', brickWarm: '#2a6878' },
+    tokens: { led: '#1a5c6e', ledSoft: '#3a8a9e', gold: '#c09a3a', brick: '#0e3a48', brickWarm: '#2a6878', cardAccent: '#c09a3a' },
   },
   {
     id: 'rurikon',
@@ -79,7 +80,7 @@ export const PREDEFINED_PALETTES: ColorPalette[] = [
     nameEs: 'Lapislázuli',
     mode: 'dark',
     pairedWith: 'shion',
-    tokens: { led: '#1e3578', ledSoft: '#3a5ab0', gold: '#d4a044', brick: '#142060', brickWarm: '#2a4890' },
+    tokens: { led: '#1e3578', ledSoft: '#3a5ab0', gold: '#d4a044', brick: '#142060', brickWarm: '#2a4890', cardAccent: '#caa840' },
   },
   {
     id: 'fuji',
@@ -87,7 +88,7 @@ export const PREDEFINED_PALETTES: ColorPalette[] = [
     nameEs: 'Glicinia',
     mode: 'dark',
     pairedWith: 'kohbai',
-    tokens: { led: '#7a3a8a', ledSoft: '#b060c0', gold: '#d4902a', brick: '#5a1a6a', brickWarm: '#9050a0' },
+    tokens: { led: '#7a3a8a', ledSoft: '#b060c0', gold: '#d4902a', brick: '#5a1a6a', brickWarm: '#9050a0', cardAccent: '#c89548' },
   },
   {
     id: 'sohi',
@@ -95,7 +96,7 @@ export const PREDEFINED_PALETTES: ColorPalette[] = [
     nameEs: 'Madera de sapán',
     mode: 'dark',
     pairedWith: 'yamabuki',
-    tokens: { led: '#7a2a0e', ledSoft: '#b05030', gold: '#c09020', brick: '#501a08', brickWarm: '#904020' },
+    tokens: { led: '#7a2a0e', ledSoft: '#b05030', gold: '#c09020', brick: '#501a08', brickWarm: '#904020', cardAccent: '#d49038' },
   },
   {
     id: 'rokusho',
@@ -103,7 +104,7 @@ export const PREDEFINED_PALETTES: ColorPalette[] = [
     nameEs: 'Pátina verdigris',
     mode: 'dark',
     pairedWith: 'moegi',
-    tokens: { led: '#1a5a4a', ledSoft: '#3a8a72', gold: '#c0901a', brick: '#0e3a30', brickWarm: '#2a7060' },
+    tokens: { led: '#1a5a4a', ledSoft: '#3a8a72', gold: '#c0901a', brick: '#0e3a30', brickWarm: '#2a7060', cardAccent: '#c8a03a' },
   },
   {
     id: 'tsuyukusa',
@@ -111,7 +112,7 @@ export const PREDEFINED_PALETTES: ColorPalette[] = [
     nameEs: 'Flor de rocío',
     mode: 'dark',
     pairedWith: 'tokiwa',
-    tokens: { led: '#1e4a7a', ledSoft: '#3a78b0', gold: '#d0a030', brick: '#143060', brickWarm: '#2a608a' },
+    tokens: { led: '#1e4a7a', ledSoft: '#3a78b0', gold: '#d0a030', brick: '#143060', brickWarm: '#2a608a', cardAccent: '#c09845' },
   },
   // — LIGHT (11: original + 10 Sanzo Wada) —
   {
@@ -231,7 +232,7 @@ export function buildPaletteCSS(
   const blocks: string[] = []
   if (darkTokens) {
     blocks.push(
-      `:root, [data-theme='dark'] { --led: ${darkTokens.led}; --led-soft: ${darkTokens.ledSoft}; --gold: ${darkTokens.gold}; --brick: ${darkTokens.brick}; --brick-warm: ${darkTokens.brickWarm}; }`,
+      `:root, [data-theme='dark'] { --led: ${darkTokens.led}; --led-soft: ${darkTokens.ledSoft}; --gold: ${darkTokens.gold}; --brick: ${darkTokens.brick}; --brick-warm: ${darkTokens.brickWarm}; --card-accent: ${darkTokens.cardAccent ?? darkTokens.gold}; }`,
     )
   }
   if (lightTokens) {
