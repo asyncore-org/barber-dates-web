@@ -20,6 +20,7 @@
   --led: #7b4fff;
   --led-soft: #a689ff;
   --gold: #c9a24a;
+  --card-accent: var(--gold);
   --danger: #c04040;
   --ok: #6dbb6d;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);

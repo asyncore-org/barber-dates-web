@@ -9,12 +9,13 @@
 
 export const queryKeys = {
   shop: {
-    all:     () => ['shop'] as const,
-    info:    () => ['shop', 'info'] as const,
-    booking: () => ['shop', 'booking'] as const,
-    loyalty: () => ['shop', 'loyalty'] as const,
+    all:        () => ['shop'] as const,
+    info:       () => ['shop', 'info'] as const,
+    booking:    () => ['shop', 'booking'] as const,
+    loyalty:    () => ['shop', 'loyalty'] as const,
+    colorTheme: () => ['shop', 'color-theme'] as const,
     /** @deprecated use shop.info / shop.booking instead */
-    config:  () => ['shop', 'config'] as const,
+    config:     () => ['shop', 'config'] as const,
   },
 
   services: {

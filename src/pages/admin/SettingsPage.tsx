@@ -15,8 +15,9 @@ import type { WeeklySchedule, DayKey } from '@/domain/schedule'
 import type { Service } from '@/domain/service'
 import type { Barber } from '@/domain/barber'
 import type { Reward } from '@/domain/loyalty'
+import { AppearanceSection } from '@/components/appearance'
 
-type Section = 'servicios' | 'horarios' | 'barberos' | 'fidelizacion' | 'barberia'
+type Section = 'servicios' | 'horarios' | 'barberos' | 'fidelizacion' | 'barberia' | 'apariencia'
 
 const BARBER_ROLES = ['Barbero', 'Propietario'] as const
 
@@ -26,6 +27,7 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: 'barberos',     label: 'Barberos' },
   { id: 'fidelizacion', label: 'Fidelización' },
   { id: 'barberia',     label: 'Barbería' },
+  { id: 'apariencia',   label: 'Apariencia' },
 ]
 
 const DAY_KEYS: { key: DayKey; name: string }[] = [
@@ -93,6 +95,8 @@ function SaveBtn({ onClick, loading, isDirty }: { onClick: () => void; loading?:
 
 export default function SettingsPage() {
   const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
+  const visibleSections = isAdmin ? SECTIONS : SECTIONS.filter(s => s.id !== 'apariencia')
   const { name: shopName, allowBarberChoice } = useShopContext()
   const [section, setSection] = useState<Section>('servicios')
   const [pendingNavSection, setPendingNavSection] = useState<Section | null>(null)
@@ -363,6 +367,7 @@ export default function SettingsPage() {
     barberos:     Object.keys(barberEdits).length > 0,
     fidelizacion: Object.keys(rewardEdits).length > 0,
     barberia:     Object.keys(shopEdits).length > 0,
+    apariencia:   false, // AppearanceSection manages its own confirm dialog
   }
   const anyDirty = Object.values(sectionDirty).some(Boolean)
 
@@ -422,7 +427,7 @@ export default function SettingsPage() {
       {/* Mobile section tabs */}
       <div className="md:hidden overflow-x-auto pb-2 mb-4 -mx-4 px-4">
         <div className="flex gap-2 w-max">
-          {SECTIONS.map(s => (
+          {visibleSections.map(s => (
             <button
               key={s.id}
               onClick={() => handleSectionChange(s.id)}
@@ -437,6 +442,9 @@ export default function SettingsPage() {
               }}
             >
               {s.label}
+              {s.id === 'apariencia' && (
+                <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', padding: '1px 5px', borderRadius: 4, background: 'rgba(200,164,78,0.2)', color: section === s.id ? '#7a5a00' : '#c8a44e', flexShrink: 0 }}>ADMIN</span>
+              )}
               {sectionDirty[s.id] && (
                 <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: section === s.id ? '#000' : 'var(--led)', flexShrink: 0 }} />
               )}
@@ -452,9 +460,12 @@ export default function SettingsPage() {
           className="hidden md:block"
           style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '0.5rem', position: 'sticky', top: 72 }}
         >
-          {SECTIONS.map(s => (
+          {visibleSections.map(s => (
             <button key={s.id} onClick={() => handleSectionChange(s.id)} style={sidebarBtn(s.id)}>
               <span style={{ flex: 1 }}>{s.label}</span>
+              {s.id === 'apariencia' && (
+                <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', padding: '1px 5px', borderRadius: 4, background: 'rgba(200,164,78,0.2)', color: '#c8a44e', flexShrink: 0 }}>ADMIN</span>
+              )}
               {sectionDirty[s.id] && (
                 <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--led)', flexShrink: 0 }} />
               )}
@@ -980,6 +991,14 @@ export default function SettingsPage() {
               {sectionError.fidelizacion && (
                 <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', marginTop: 8, marginBottom: 0 }}>{sectionError.fidelizacion}</p>
               )}
+            </div>
+          )}
+
+          {/* === APARIENCIA === */}
+          {section === 'apariencia' && isAdmin && (
+            <div>
+              <SectionTitle>APARIENCIA</SectionTitle>
+              <AppearanceSection />
             </div>
           )}
 

@@ -29,10 +29,11 @@ export function LoyaltyCard({ points, target, memberCode, rewards = [] }: Loyalt
 
   return (
     <div
+      data-theme="dark"
       className="p-4 md:p-5"
       style={{
         background: 'linear-gradient(135deg, #0d0d10 0%, #1a1a20 50%, #0d0d10 100%)',
-        border: '1px solid rgba(201,162,74,0.3)',
+        border: '1px solid color-mix(in srgb, var(--card-accent) 30%, transparent)',
         borderRadius: 12,
         position: 'relative',
         overflow: 'hidden',
@@ -41,24 +42,24 @@ export function LoyaltyCard({ points, target, memberCode, rewards = [] }: Loyalt
       {/* Ambient glow */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-        background: 'radial-gradient(circle at 80% 20%, rgba(201,162,74,0.06) 0%, transparent 60%)',
+        background: 'radial-gradient(circle at 80% 20%, color-mix(in srgb, var(--card-accent) 6%, transparent) 0%, transparent 60%)',
         pointerEvents: 'none',
       }} />
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
         <div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.15em', color: 'var(--gold)', marginBottom: 2 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.15em', color: 'var(--card-accent)', marginBottom: 2 }}>
             GIO BLACK CARD
           </div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, letterSpacing: '0.04em', color: '#fff' }}>
             {points.toLocaleString()}
-            <span style={{ fontSize: 14, color: 'var(--gold)', marginLeft: 4 }}>pts</span>
+            <span style={{ fontSize: 14, color: 'var(--card-accent)', marginLeft: 4 }}>pts</span>
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-          <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 10, color: 'rgba(201,162,74,0.5)' }}>MIEMBRO</div>
-          <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 11, color: 'var(--gold)', letterSpacing: '0.1em' }}>{memberCode}</div>
+          <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 10, color: 'color-mix(in srgb, var(--card-accent) 50%, transparent)' }}>MIEMBRO</div>
+          <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 11, color: 'var(--card-accent)', letterSpacing: '0.1em' }}>{memberCode}</div>
         </div>
       </div>
 
@@ -79,7 +80,7 @@ export function LoyaltyCard({ points, target, memberCode, rewards = [] }: Loyalt
               >
                 <span style={{
                   fontFamily: 'var(--font-mono, monospace)', fontSize: 8,
-                  color: m.reached ? 'var(--gold)' : 'rgba(255,255,255,0.25)',
+                  color: m.reached ? 'var(--card-accent)' : 'rgba(255,255,255,0.25)',
                   transition: 'color 0.4s ease',
                   whiteSpace: 'nowrap',
                   maxWidth: 60,
@@ -91,13 +92,13 @@ export function LoyaltyCard({ points, target, memberCode, rewards = [] }: Loyalt
                 </span>
                 <span style={{
                   fontFamily: 'var(--font-mono, monospace)', fontSize: 8,
-                  color: m.reached ? 'rgba(201,162,74,0.7)' : 'rgba(255,255,255,0.2)',
+                  color: m.reached ? 'color-mix(in srgb, var(--card-accent) 70%, transparent)' : 'rgba(255,255,255,0.2)',
                 }}>
                   {m.pts}
                 </span>
                 <div style={{
                   width: 1, height: 6,
-                  background: m.reached ? 'rgba(201,162,74,0.7)' : 'rgba(255,255,255,0.12)',
+                  background: m.reached ? 'color-mix(in srgb, var(--card-accent) 70%, transparent)' : 'rgba(255,255,255,0.12)',
                   transition: 'background 0.4s ease',
                 }} />
               </div>
@@ -112,10 +113,10 @@ export function LoyaltyCard({ points, target, memberCode, rewards = [] }: Loyalt
             style={{
               position: 'absolute', top: 0, left: 0, bottom: 0,
               width: `${pct}%`, maxWidth: '100%',
-              background: 'linear-gradient(90deg, #8b3a1f, var(--gold))',
+              background: 'linear-gradient(90deg, var(--brick), var(--card-accent))',
               borderRadius: 8,
               transition: 'width 0.8s cubic-bezier(0.22,1,0.36,1)',
-              boxShadow: pct > 0 ? '0 0 12px rgba(201,162,74,0.55), 0 0 4px rgba(201,162,74,0.3)' : 'none',
+              boxShadow: pct > 0 ? '0 0 12px color-mix(in srgb, var(--card-accent) 55%, transparent), 0 0 4px color-mix(in srgb, var(--card-accent) 30%, transparent)' : 'none',
             }}
           />
 
@@ -129,8 +130,8 @@ export function LoyaltyCard({ points, target, memberCode, rewards = [] }: Loyalt
                 top: '50%',
                 transform: 'translate(-50%, -50%)',
                 width: 8, height: 8, borderRadius: '50%',
-                background: 'var(--gold)',
-                boxShadow: '0 0 6px rgba(201,162,74,0.9)',
+                background: 'var(--card-accent)',
+                boxShadow: '0 0 6px color-mix(in srgb, var(--card-accent) 90%, transparent)',
                 zIndex: 1,
               }}
             />
@@ -145,8 +146,8 @@ export function LoyaltyCard({ points, target, memberCode, rewards = [] }: Loyalt
                 top: '50%',
                 transform: 'translate(-50%, -50%)',
                 width: 16, height: 16, borderRadius: '50%',
-                background: 'radial-gradient(circle, #fff 30%, var(--gold) 100%)',
-                boxShadow: '0 0 8px rgba(201,162,74,1), 0 0 20px rgba(201,162,74,0.5)',
+                background: 'radial-gradient(circle, #fff 30%, var(--card-accent) 100%)',
+                boxShadow: '0 0 8px var(--card-accent), 0 0 20px color-mix(in srgb, var(--card-accent) 50%, transparent)',
                 zIndex: 2,
                 transition: 'left 0.8s cubic-bezier(0.22,1,0.36,1)',
               }}
@@ -165,12 +166,12 @@ export function LoyaltyCard({ points, target, memberCode, rewards = [] }: Loyalt
           display: 'flex', alignItems: 'center', gap: 6,
           marginTop: '0.875rem',
           padding: '0.5rem 0.75rem',
-          background: 'rgba(201,162,74,0.07)',
-          border: '1px solid rgba(201,162,74,0.18)',
+          background: 'color-mix(in srgb, var(--card-accent) 7%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--card-accent) 18%, transparent)',
           borderRadius: 8,
         }}>
           <span style={{ fontSize: 13 }}>★</span>
-          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--gold)', flex: 1 }}>
+          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--card-accent)', flex: 1 }}>
             {ptsToNext > 0 && nextReward
               ? <><strong>{ptsToNext} pts</strong> para <strong>{nextReward.label}</strong></>
               : <strong>¡Meta alcanzada! Canjea tu recompensa</strong>
