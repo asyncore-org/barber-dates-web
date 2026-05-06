@@ -62,6 +62,16 @@ export class InsForgeAppointmentRepository implements IAppointmentRepository {
     return ((data ?? []) as AppointmentRow[]).map(mapToAppointment)
   }
 
+  async getForBarber(barberId: string): Promise<Appointment[]> {
+    const { data, error } = await insforgeClient.database
+      .from('appointments')
+      .select(SELECT_FIELDS_WITH_CLIENT)
+      .eq('barber_id', barberId)
+      .order('start_time', { ascending: false })
+    if (error) throw error
+    return ((data ?? []) as AppointmentRowRaw[]).map((row) => mapToAppointment(normalizeRow(row)))
+  }
+
   async getAll(): Promise<Appointment[]> {
     const { data, error } = await insforgeClient.database
       .from('appointments')
