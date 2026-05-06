@@ -18,6 +18,8 @@ export interface LoyaltyConfig {
   pointsPerEuro: number
   stampGoal: number
   enabled: boolean
+  /** Whether a reward can be redeemed once per client or repeatedly when points allow. */
+  rewardMode: 'one_time' | 'repeatable'
 }
 
 export const DEFAULT_BOOKING_CONFIG: BookingConfig = {
@@ -36,5 +38,6 @@ export interface IShopRepository {
   getColorTheme(): Promise<ColorThemeConfig | null>
   updateShopInfo(info: Partial<ShopInfo>): Promise<void>
   updateBookingConfig(config: Partial<BookingConfig>): Promise<void>
+  updateLoyaltyConfig(config: Partial<LoyaltyConfig>): Promise<void>
   updateColorTheme(config: ColorThemeConfig): Promise<void>
 }

@@ -40,8 +40,8 @@ export function useRedeemedRewardIds(userId: string | undefined) {
 export function useRedeemReward() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ clientId, rewardId }: { clientId: string; rewardId: string }) =>
-      repositories.loyalty().redeemReward(clientId, rewardId),
+    mutationFn: ({ clientId, rewardId, cost }: { clientId: string; rewardId: string; cost: number }) =>
+      repositories.loyalty().redeemReward(clientId, rewardId, cost),
     onSuccess: (_data, { clientId }) => {
       qc.invalidateQueries({ queryKey: queryKeys.loyalty.redeemed(clientId) })
       qc.invalidateQueries({ queryKey: queryKeys.loyalty.byUser(clientId) })

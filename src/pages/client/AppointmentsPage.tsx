@@ -93,7 +93,7 @@ export default function AppointmentsPage() {
 
   const handleRedeem = () => {
     if (!redeemTarget || !user) return
-    redeemRewardMutation.mutate({ clientId: user.id, rewardId: redeemTarget.id }, {
+    redeemRewardMutation.mutate({ clientId: user.id, rewardId: redeemTarget.id, cost: redeemTarget.cost }, {
       onSuccess: () => setRedeemTarget(null),
     })
   }
