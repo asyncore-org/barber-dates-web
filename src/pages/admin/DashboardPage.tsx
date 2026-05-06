@@ -9,6 +9,9 @@ import { useAllServices } from '@/hooks/useServices'
 import { useAllAppointments, useCreateAppointment, useUpdateAppointment, useFindProfileByEmail } from '@/hooks/useAppointments'
 import { useWeeklySchedule } from '@/hooks/useSchedule'
 import { DEFAULT_WEEKLY_SCHEDULE } from '@/domain/schedule'
+import { useLoyaltyCardsForClients, useAutoAwardPoints } from '@/hooks/useLoyalty'
+import { useLoyaltyConfig } from '@/hooks/useShopConfig'
+import { LoyaltyProgressBar } from '@/components/loyalty'
 
 const landscapeMq = typeof window !== 'undefined'
   ? window.matchMedia('(orientation: landscape) and (max-height: 600px)')
@@ -73,6 +76,14 @@ export default function DashboardPage() {
   const createApptMut = useCreateAppointment()
   const updateApptMut = useUpdateAppointment()
   const findProfileByEmail = useFindProfileByEmail()
+  const { data: loyaltyConfig } = useLoyaltyConfig()
+
+  const uniqueClientIds = useMemo(
+    () => [...new Set(dbAppointments.map(a => a.clientId))],
+    [dbAppointments],
+  )
+  const { data: loyaltyCards } = useLoyaltyCardsForClients(uniqueClientIds)
+  useAutoAwardPoints(dbAppointments)
   const activeBarbers = barbers.filter(b => b.isActive)
   const [weekOffset, setWeekOffset] = useState(0)
   const [dayOffset, setDayOffset] = useState(0)
@@ -107,6 +118,7 @@ export default function DashboardPage() {
           startM: start.getMinutes(),
           durationMin: Math.round((end.getTime() - start.getTime()) / 60_000),
           client: a.clientName ?? `Cliente ${a.clientId.slice(0, 6)}`,
+          clientId: a.clientId,
           service: svc?.name ?? 'Servicio',
           barberId: a.barberId,
           color: APPT_COLORS[barberIdx >= 0 ? barberIdx % 3 : i % 3],
@@ -232,6 +244,7 @@ export default function DashboardPage() {
             startH: start.getHours(), startM: start.getMinutes(),
             durationMin: Math.round((end.getTime() - start.getTime()) / 60_000),
             client: a.clientName ?? `Cliente ${a.clientId.slice(0, 6)}`,
+            clientId: a.clientId,
             service: svc?.name ?? 'Servicio',
             barberId: a.barberId,
             color: APPT_COLORS[barberIdx >= 0 ? barberIdx % 3 : i % 3],
@@ -390,6 +403,8 @@ export default function DashboardPage() {
                         const c = COLOR_MAP[appt.color]
                         const leftPct = Math.max(0, (appt.startH - DAY_START_H + appt.startM / 60) / HOURS.length * 100)
                         const widthPct = Math.max(2, (appt.durationMin / 60) / HOURS.length * 100)
+                        const card = loyaltyCards?.get(appt.clientId)
+                        const stampGoal = loyaltyConfig?.stampGoal ?? 10
                         return (
                           <div key={appt.id} onClick={() => setSelectedAppt(appt)} style={{
                             position: 'absolute', top: 4, bottom: 4,
@@ -397,10 +412,18 @@ export default function DashboardPage() {
                             background: c.bg, border: `1px solid ${c.border}`,
                             borderRadius: 4, padding: '2px 4px',
                             cursor: 'pointer', overflow: 'hidden', zIndex: 4,
+                            display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
                           }}>
                             <div style={{ fontSize: 9, fontWeight: 700, color: c.text, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {appt.startH.toString().padStart(2,'0')}:{appt.startM.toString().padStart(2,'0')} {appt.client}
                             </div>
+                            {card && (
+                              <LoyaltyProgressBar
+                                points={card.points}
+                                target={stampGoal}
+                                accentVar={appt.color === 'gold' ? '--gold' : appt.color === 'brick' ? '--brick-warm' : '--led'}
+                              />
+                            )}
                           </div>
                         )
                       })}
@@ -480,6 +503,9 @@ export default function DashboardPage() {
 
                     {appointments.filter(a => a.day === colIdx).map(appt => {
                       const c = COLOR_MAP[appt.color]
+                      const card = loyaltyCards?.get(appt.clientId)
+                      const stampGoal = loyaltyConfig?.stampGoal ?? 10
+                      const blockH = Math.max(heightPx(appt.durationMin), 24)
                       return (
                         <div
                           key={appt.id}
@@ -487,19 +513,29 @@ export default function DashboardPage() {
                           style={{
                             position: 'absolute', left: 3, right: 3,
                             top: topPx(appt.startH, appt.startM),
-                            height: Math.max(heightPx(appt.durationMin), 24),
+                            height: blockH,
                             background: c.bg, border: `1px solid ${c.border}`,
                             borderRadius: 6, padding: '3px 6px',
                             cursor: 'pointer', overflow: 'hidden', zIndex: 4,
+                            display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
                           }}
                         >
-                          <div style={{ fontSize: 10, fontWeight: 700, color: c.text, fontFamily: 'var(--font-ui)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {appt.client}
-                          </div>
-                          {heightPx(appt.durationMin) > 30 && (
-                            <div style={{ fontSize: 9, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {appt.service}
+                          <div>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: c.text, fontFamily: 'var(--font-ui)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {appt.client}
                             </div>
+                            {blockH > 30 && (
+                              <div style={{ fontSize: 9, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {appt.service}
+                              </div>
+                            )}
+                          </div>
+                          {card && blockH >= 32 && (
+                            <LoyaltyProgressBar
+                              points={card.points}
+                              target={stampGoal}
+                              accentVar={appt.color === 'gold' ? '--gold' : appt.color === 'brick' ? '--brick-warm' : '--led'}
+                            />
                           )}
                         </div>
                       )
