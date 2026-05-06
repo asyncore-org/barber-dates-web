@@ -10,6 +10,7 @@ import { useClientAppointments, useCancelAppointment } from '@/hooks/useAppointm
 import { useServices } from '@/hooks/useServices'
 import { useBarbers } from '@/hooks/useBarbers'
 import { useLoyaltyCard, useRewards, useRedeemedRewardIds, useRedeemReward } from '@/hooks/useLoyalty'
+import { useLoyaltyConfig } from '@/hooks/useShopConfig'
 import type { Reward } from '@/domain/loyalty'
 
 function fmtDate(iso: string) {
@@ -38,6 +39,7 @@ export default function AppointmentsPage() {
   const { data: loyaltyCard } = useLoyaltyCard(user?.id)
   const { data: rewards = [] } = useRewards()
   const { data: redeemedIds = [] } = useRedeemedRewardIds(user?.id)
+  const { data: loyaltyConfig } = useLoyaltyConfig()
   const cancelAppointment = useCancelAppointment()
   const redeemRewardMutation = useRedeemReward()
 
@@ -246,8 +248,9 @@ export default function AppointmentsPage() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {rewards.filter(r => r.isActive).map(r => {
-                  const canRedeem = loyaltyPoints >= r.cost && !redeemedIds.includes(r.id)
-                  const isRedeemed = redeemedIds.includes(r.id)
+                  const isRepeatable = (loyaltyConfig?.rewardMode ?? 'one_time') === 'repeatable'
+                  const isRedeemed = !isRepeatable && redeemedIds.includes(r.id)
+                  const canRedeem = loyaltyPoints >= r.cost && !isRedeemed
                   return (
                     <div key={r.id} style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
