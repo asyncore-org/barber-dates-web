@@ -1,6 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { repositories } from '@/infrastructure'
 import type { UpdateProfileData, UserRole } from '@/domain/user'
+import { STALE } from './queryKeys'
+
+export function useClientProfile(clientId: string | undefined) {
+  return useQuery({
+    queryKey: ['profiles', 'client', clientId ?? ''],
+    queryFn: () => repositories.profiles().getClientById(clientId!),
+    enabled: !!clientId,
+    staleTime: STALE.LONG,
+  })
+}
 
 export function useUpdateProfile() {
   return useMutation({

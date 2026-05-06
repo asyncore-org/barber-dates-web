@@ -2,14 +2,14 @@ import { useState, useMemo, useEffect, useRef, useSyncExternalStore } from 'reac
 import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
 import { Icon } from '@/components/ui'
-import { AgendaListView, NewAppointmentModal, RescheduleModal } from '@/components/admin'
+import { AgendaListView, NewAppointmentModal, RescheduleModal, ClientProfileModal } from '@/components/admin'
 import type { WeekAppt, RescheduleUpdate, NewAppointmentData } from '@/components/admin'
 import { useBarbers } from '@/hooks/useBarbers'
 import { useAllServices } from '@/hooks/useServices'
 import { useAllAppointments, useCreateAppointment, useUpdateAppointment, useFindProfileByEmail } from '@/hooks/useAppointments'
 import { useWeeklySchedule } from '@/hooks/useSchedule'
 import { DEFAULT_WEEKLY_SCHEDULE } from '@/domain/schedule'
-import { useLoyaltyCardsForClients, useAutoAwardPoints } from '@/hooks/useLoyalty'
+import { useLoyaltyCardsForClients, useAutoAwardPoints, useCancelAppointmentWithDeduction } from '@/hooks/useLoyalty'
 import { useLoyaltyConfig } from '@/hooks/useShopConfig'
 import { LoyaltyProgressBar } from '@/components/loyalty'
 
@@ -89,6 +89,8 @@ export default function DashboardPage() {
   const [dayOffset, setDayOffset] = useState(0)
   const [selectedAppt, setSelectedAppt] = useState<WeekAppt | null>(null)
   const [rescheduleAppt, setRescheduleAppt] = useState<WeekAppt | null>(null)
+  const [profileClientId, setProfileClientId] = useState<string | null>(null)
+  const cancelWithDeduction = useCancelAppointmentWithDeduction()
   const [newApptOpen, setNewApptOpen] = useState(false)
   const [newApptToast, setNewApptToast] = useState(false)
   const [rescheduleToast, setRescheduleToast] = useState(false)
@@ -198,6 +200,11 @@ export default function DashboardPage() {
       },
     )
   }
+
+  const selectedApptFull = useMemo(
+    () => selectedAppt ? (dbAppointments.find(a => a.id === selectedAppt.id) ?? null) : null,
+    [selectedAppt, dbAppointments],
+  )
 
   const now = new Date()
   const nowTop = Math.min(topPx(now.getHours(), now.getMinutes()), MAX_TOP_PX)
@@ -637,8 +644,17 @@ export default function DashboardPage() {
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)', marginBottom: '1rem' }}>
               DETALLE DE CITA
             </div>
+            {/* Cliente — clickable para abrir perfil */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
+              <span style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>Cliente</span>
+              <button
+                onClick={() => setProfileClientId(selectedAppt.clientId)}
+                style={{ fontSize: 13, color: 'var(--led)', fontFamily: 'var(--font-ui)', fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}
+              >
+                {selectedAppt.client}
+              </button>
+            </div>
             {[
-              { label: 'Cliente', value: selectedAppt.client },
               { label: 'Servicio', value: selectedAppt.service },
               { label: 'Hora', value: `${selectedAppt.startH.toString().padStart(2,'0')}:${selectedAppt.startM.toString().padStart(2,'0')}` },
               { label: 'Duración', value: `${selectedAppt.durationMin} min` },
@@ -649,19 +665,36 @@ export default function DashboardPage() {
                 <span style={{ fontSize: 13, color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontWeight: 500 }}>{value}</span>
               </div>
             ))}
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-              <button
-                onClick={() => setRescheduleAppt(selectedAppt)}
-                style={{ flex: 1, padding: '0.75rem', minHeight: 44, borderRadius: 8, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: 'var(--glow-led)' }}
-              >
-                Reprogramar
-              </button>
-              <button
-                onClick={() => setSelectedAppt(null)}
-                style={{ flex: 1, padding: '0.75rem', minHeight: 44, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}
-              >
-                Cerrar
-              </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  onClick={() => setRescheduleAppt(selectedAppt)}
+                  style={{ flex: 1, padding: '0.75rem', minHeight: 44, borderRadius: 8, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: 'var(--glow-led)' }}
+                >
+                  Reprogramar
+                </button>
+                <button
+                  onClick={() => setSelectedAppt(null)}
+                  style={{ flex: 1, padding: '0.75rem', minHeight: 44, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}
+                >
+                  Cerrar
+                </button>
+              </div>
+              {selectedApptFull && new Date(selectedApptFull.endTime) < now && (
+                <button
+                  disabled={cancelWithDeduction.isPending}
+                  onClick={() => {
+                    if (!selectedApptFull) return
+                    cancelWithDeduction.mutate(
+                      { id: selectedApptFull.id, endTime: selectedApptFull.endTime, clientId: selectedApptFull.clientId },
+                      { onSuccess: () => setSelectedAppt(null) },
+                    )
+                  }}
+                  style={{ width: '100%', padding: '0.75rem', minHeight: 44, borderRadius: 8, border: '1px solid var(--brick-warm)', background: 'rgba(139,58,31,0.12)', color: 'var(--brick-warm)', fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: cancelWithDeduction.isPending ? 0.6 : 1 }}
+                >
+                  Cancelar (no vino)
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -676,6 +709,17 @@ export default function DashboardPage() {
           onConfirm={handleRescheduleConfirm}
         />
       )}
+
+      {profileClientId && (() => {
+        const name = dbAppointments.find(a => a.clientId === profileClientId)?.clientName ?? profileClientId.slice(0, 8)
+        return (
+          <ClientProfileModal
+            clientId={profileClientId}
+            clientName={name}
+            onClose={() => setProfileClientId(null)}
+          />
+        )
+      })()}
     </>
   )
 }
