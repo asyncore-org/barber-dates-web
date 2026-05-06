@@ -38,9 +38,10 @@ export const queryKeys = {
   },
 
   appointments: {
-    all:    () => ['appointments'] as const,
-    list:   (userId: string) => ['appointments', 'list', userId] as const,
-    byId:   (id: string) => ['appointments', id] as const,
+    all:      () => ['appointments'] as const,
+    list:     (userId: string) => ['appointments', 'list', userId] as const,
+    byId:     (id: string) => ['appointments', id] as const,
+    byBarber: (barberId: string) => ['appointments', 'barber', barberId] as const,
   },
 
   slots: {
