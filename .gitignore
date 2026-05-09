@@ -48,9 +48,9 @@ coverage
 Thumbs.db
 ._*
 
-# iCloud Drive duplicates (macOS crea "archivo 2.ext" al sincronizar)
-* 2
-* 2.*
+# iCloud Drive duplicates (macOS crea "archivo 2.ext", "archivo 3.ext"… al sincronizar)
+* [0-9]
+* [0-9].*
 
 # Claude agentic system — trabajo en curso, NO se commitea
 .claude/tasks/*
@@ -64,7 +64,6 @@ PLAN_GIO_BARBER_SHOP.md
 .agent
 .agents
 .augment
-.claude
 .cline
 .github/copilot*
 .kilocode

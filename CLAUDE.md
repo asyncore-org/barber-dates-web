@@ -73,7 +73,7 @@ bash .claude/scripts/files-touched.sh       # archivos tocados en la tarea
 ├── settings.json         # Permisos + hooks (SessionStart, PostToolUse, PreToolUse)
 ├── workflows/            # Guías por fase (una sección por fase, cargable con section.sh)
 │   ├── feature.md  fix.md  refactor.md  chore.md  hotfix.md  spike.md  review.md
-├── commands/             # 31 comandos slash
+├── commands/             # 33 comandos slash (incluye web.md)
 ├── tasks/                # Trabajo en progreso (NO commiteado)
 │   └── TASK-<fecha>-<tipo>-<slug>/
 │       ├── README.md      # contrato inicial
@@ -88,20 +88,53 @@ bash .claude/scripts/files-touched.sh       # archivos tocados en la tarea
 │       ├── REVIEW.md      # resultado del /review
 │       ├── handoff.md     # doc para retomar en otra sesión
 │       └── CHANGES/       # CHANGE-001.md, CHANGE-002.md...
-└── scripts/              # Utilidades shell
-    ├── new-task.sh        # crea carpeta de tarea
-    ├── active-task.sh     # detecta tarea por rama git
-    ├── art.sh             # extrae artículo del Constitution
-    ├── section.sh         # extrae sección de cualquier MD
-    ├── fetch.sh           # trae archivo de tarea activa
-    ├── plan-step.sh       # extrae paso N del PLAN.md
-    ├── grep-task.sh       # grep en archivos de la tarea
-    ├── diff-task.sh       # diff de la rama vs base
-    ├── files-touched.sh   # archivos tocados (deduplicado)
-│       ├── validate-consistency.sh # chequeo anti-drift (quality gates + docs/comandos)
-    ├── log-file-change.sh # hook PostToolUse
-    ├── session-start.sh   # hook SessionStart
-    └── pre-commit-check.sh # hook PreToolUse
+├── scripts/              # Utilidades shell
+│   ├── new-task.sh        # crea carpeta de tarea
+│   ├── active-task.sh     # detecta tarea por rama git
+│   ├── art.sh             # extrae artículo del Constitution
+│   ├── section.sh         # extrae sección de cualquier MD
+│   ├── fetch.sh           # trae archivo de tarea activa
+│   ├── plan-step.sh       # extrae paso N del PLAN.md
+│   ├── grep-task.sh       # grep en archivos de la tarea
+│   ├── diff-task.sh       # diff de la rama vs base
+│   ├── files-touched.sh   # archivos tocados (deduplicado)
+│   ├── bootstrap-scan.sh  # snapshot del repo para /bootstrap
+│   ├── validate-consistency.sh # chequeo anti-drift
+│   ├── kb-query.sh        # consulta la browser-KB por sitio/apartado
+│   ├── log-file-change.sh # hook PostToolUse
+│   ├── session-start.sh   # hook SessionStart
+│   └── pre-commit-check.sh # hook PreToolUse
+
+browser/                  # Runtime de automatización web (copiado por carlex)
+├── browse.js             # CLI principal: --url, --script, --mode parallel...
+├── package.json          # playwright-extra, playwright-core, stealth, js-yaml
+├── lib/
+│   ├── anti-bot.js       # Stealth launch + webdriver patch
+│   ├── resource-blocker.js # Abort trackers/imágenes innecesarias
+│   ├── wait-strategy.js  # waitForSelector/NetworkIdle/Text con retry
+│   ├── session-manager.js # Cookies + localStorage por dominio
+│   ├── auth-flow.js      # Detecta login → abre visible → continua headless
+│   ├── security-guard.js # Clasifica acciones, bloquea sensibles
+│   ├── parallel-runner.js # Múltiples tabs simultáneas
+│   ├── dom-snapshot.js   # Captura DOM limpio para KB
+│   └── kb-writer.js      # Escribe KB: initSite/addTool/saveScript/markStale
+└── scripts/
+    ├── kb-init.js         # Inicializa ~/.claude/browser-kb/
+    ├── session-log.js     # CRUD de logs de sesión
+    └── whatsapp-auth.js   # Plantilla de auth interactiva (copiar/adaptar por sitio)
+
+~/.claude/browser-kb/     # Knowledge base global (generada en runtime, NO en repo)
+├── _index.yml            # Índice maestro de sitios conocidos
+├── _sessions/            # Logs de las últimas 50 sesiones
+├── _processes/           # Flujos multi-sitio documentados
+└── <dominio>/            # Ej: web.whatsapp.com/
+    ├── constitution.md   # Descripción + auth + navegación del sitio
+    ├── _index.yml        # Secciones + scripts registrados
+    ├── _sessions/        # cookies.json de la sesión persistente
+    └── <apartado>/       # Ej: chats/, inbox/, search/
+        ├── tools.md      # Selectores + herramientas documentadas
+        ├── dom-snap.html # DOM de referencia capturado
+        └── scripts/      # Scripts JS que funcionaron
 ```
 
 ---
@@ -169,6 +202,7 @@ bash .claude/scripts/files-touched.sh       # archivos tocados en la tarea
 
 | Comando            | Descripción                                                 |
 | ------------------ | ----------------------------------------------------------- |
+| `/bootstrap [nombre]` | Prepara el contexto inicial del proyecto tras `carlex init` |
 | `/learn <insight>` | Añade a KNOWLEDGE.md                                        |
 | `/ask <pregunta>`  | Responde sin crear tarea (usa scripts de contexto parcial)  |
 | `/worktree <slug>` | Crea worktree paralelo aislado (solo si el usuario lo pide) |
@@ -189,6 +223,12 @@ bash .claude/scripts/files-touched.sh       # archivos tocados en la tarea
 | -------- | ---------------------------------------- |
 | `/check` | type-check + lint + tests                |
 | `/phase` | Estado de la fase actual vs plan maestro |
+
+### Automatización web
+
+| Comando          | Descripción                                                                                   |
+| ---------------- | --------------------------------------------------------------------------------------------- |
+| `/web <petición>` | Navega la web con Playwright cuando los MCPs no pueden. Headless, con KB por sitio, guardrails de seguridad, paralelismo y auth interactiva si se requiere. |
 
 ---
 

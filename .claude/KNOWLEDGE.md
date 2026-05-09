@@ -6,6 +6,112 @@ Cada entrada debe tener: **Fecha · Contexto · Qué · Por qué importa**.
 
 ---
 
+## InsForge — SDK, API y documentación
+
+### 2026-04-19 · InsForge SDK · NO usar @supabase/supabase-js — tiene su propio SDK
+
+**Qué**: InsForge NO es Supabase. Aunque comparte conceptos similares (PostgreSQL, Auth, Storage), usa su **propio SDK** con rutas de API completamente diferentes. Usar `@supabase/supabase-js` con URLs de InsForge da 404 en todos los endpoints de auth.
+
+**SDK correcto**: `@insforge/sdk` — instalar con `pnpm add @insforge/sdk`
+
+**Documentación oficial**:
+- Índice completo: https://docs.insforge.dev/llms.txt
+- SDK TypeScript (auth): https://docs.insforge.dev/sdks/typescript/auth.md
+- SDK TypeScript (overview): https://docs.insforge.dev/sdks/typescript/overview.md
+- Auth API REST: https://docs.insforge.dev/api-reference/client/user-login.md
+- React guide: https://docs.insforge.dev/examples/framework-guides/react.md
+- Arquitectura auth: https://docs.insforge.dev/core-concepts/authentication/architecture.md
+
+**Inicialización correcta**:
+```typescript
+import { createClient } from '@insforge/sdk'
+
+const insforge = createClient({
+  baseUrl: 'https://xxxx.eu-central.insforge.app',
+  anonKey: 'your-anon-key',
+})
+```
+
+**Rutas API de auth** (InsForge vs Supabase):
+| Operación | Supabase (`/auth/v1/`) | InsForge (`/api/auth/`) |
+|---|---|---|
+| Login | `POST /token?grant_type=password` | `POST /sessions` |
+| Registro | `POST /signup` | `POST /users` |
+| Sesión actual | `GET /user` | `GET /sessions/current` |
+| OAuth iniciar | `GET /authorize` | `GET /oauth/:provider` |
+| Reset password | `POST /recover` | `POST /email/reset-password` |
+
+**Métodos del SDK** (diferencias clave vs supabase-js):
+```typescript
+// Login
+insforge.auth.signInWithPassword({ email, password })
+// → { data: { user, accessToken, csrfToken }, error }
+
+// Registro
+insforge.auth.signUp({ email, password, name, redirectTo })
+// → { data: { user, accessToken, requireEmailVerification? }, error }
+// IMPORTANTE: chequear data.requireEmailVerification === true (no data.session === null)
+
+// Sesión actual (en bootstrap — NO getSession())
+insforge.auth.getCurrentUser()
+// → { data: { user | null }, error }
+
+// OAuth (auto-redirect al proveedor)
+insforge.auth.signInWithOAuth({ provider: 'google', redirectTo: '...' })
+
+// Password reset — paso 1
+insforge.auth.sendResetPasswordEmail({ email, redirectTo })
+// paso 2 (con token de la URL de redirect)
+insforge.auth.resetPassword({ newPassword, otp: tokenFromUrl })
+
+// Cerrar sesión
+insforge.auth.signOut()
+```
+
+**Forma del objeto User** (InsForge):
+```typescript
+{
+  id: string,
+  email: string,
+  emailVerified: boolean,       // NO email_confirmed_at
+  providers: string[],
+  createdAt: string,
+  updatedAt: string,
+  profile: { name?: string, avatar_url?: string },  // NO user_metadata
+  metadata: Record<string, unknown>,                 // datos flexibles del admin
+}
+```
+
+**Cómo almacenar el rol de admin**:
+- El rol se guarda en `user.metadata.role` (columna `metadata` jsonb en `auth.users`)
+- SQL para promover a admin en InsForge:
+  ```sql
+  UPDATE auth.users
+  SET metadata = COALESCE(metadata, '{}'::jsonb) || '{"role": "admin"}'::jsonb
+  WHERE email = 'user@example.com';
+  ```
+- En el mapper: leer `(user.metadata?.role as string) ?? 'client'`
+- **NO** usar `app_metadata` ni `user_metadata` (conceptos de Supabase, no existen en InsForge)
+
+**Esquema real de `auth.users` en InsForge**:
+```
+id (uuid), email (text), password (text), email_verified (boolean),
+created_at, updated_at, profile (jsonb), metadata (jsonb),
+is_project_admin (boolean), is_anonymous (boolean)
+```
+
+**Flujo reset de contraseña** (InsForge, diferente a Supabase):
+- Supabase: redirige a `URL#type=recovery` (hash fragment)
+- InsForge: redirige a `URL?token=xxx` (query param — verificar formato exacto en docs)
+- La detección en AuthPage ya NO puede buscar `#type=recovery`
+
+**Google OAuth en InsForge**:
+- El Client ID vive en el dashboard de InsForge, NO en el `.env` del frontend
+- Usar `VITE_GOOGLE_OAUTH_ENABLED=true` en `.env` para mostrar/ocultar el botón
+- El SDK hace el redirect automáticamente sin necesidad del Client ID en frontend
+
+---
+
 ## Entorno y arranque
 
 ### 2026-04-19 · InsForge MCP · cómo conectarse a PRE vs PRO desde Claude Code
@@ -85,17 +191,92 @@ Cada entrada debe tener: **Fecha · Contexto · Qué · Por qué importa**.
 
 **GDPR**: Vercel Analytics no usa cookies ni almacena IPs completas. Cumple sin banner de cookies en España bajo el marco RGPD actual.
 
+### 2026-04-22 · Husky + pnpm · pnpm no encontrado en Git bash en Windows
+
+**Qué**: Los hooks de Husky (`.husky/pre-commit`, `.husky/commit-msg`) usan `pnpm run` / `pnpm exec`, pero en Windows el ejecutable de pnpm está instalado en `%LOCALAPPDATA%\pnpm\.tools\pnpm\<version>\bin\` — una ruta que Git bash no incluye en su PATH. El hook falla con `pnpm: command not found`.
+
+**Fix aplicado**: Cambiar `pnpm run` por `npm run` y `pnpm exec` por `npx` en ambos hooks. Los scripts de `package.json` funcionan igual con ambos gestores. `npm` siempre está en el PATH de Git bash.
+
+**Síntoma**: `husky - pre-commit script failed (code 127)` con `pnpm: command not found in PATH`.
+
+**Por qué importa**: El hook fallará siempre en Windows hasta que pnpm esté en el PATH de bash. `npm run` es la alternativa portátil.
+
 ## Errores conocidos pendientes
 
 _(vacío)_
 
 ## Workarounds
 
-_(vacío)_
+### 2026-04-27 · react-hooks/set-state-in-effect (v7) · setState en useEffect bloqueado
+
+**Qué**: `eslint-plugin-react-hooks` v7 añade la regla `react-hooks/set-state-in-effect` que bloquea el patrón `useEffect(() => setState(serverData), [serverData])` — el sync pattern clásico para inicializar local state desde server data.
+
+**Solución adoptada**: "pending edits overlay" — la state local solo guarda los cambios del usuario (`null` o partial), y el valor efectivo se calcula como `pendingValue ?? serverValue`. Esto elimina el useEffect por completo y no provoca renders extra.
+
+```typescript
+// En lugar de:
+const [localSchedule, setLocalSchedule] = useState<WeeklySchedule>(schedule)
+useEffect(() => setLocalSchedule(schedule), [schedule])  // ← bloqueado por lint v7
+
+// Usar:
+const [pendingSchedule, setPendingSchedule] = useState<WeeklySchedule | null>(null)
+const localSchedule = pendingSchedule ?? schedule  // null = "usar datos del servidor"
+// Para edits: setPendingSchedule(s => { const b = s ?? schedule; return {...b, [key]: val} })
+// Tras guardar: setPendingSchedule(null)
+```
+
+Para Record edits (servicios, barberos): `serviceEdits: Record<id, Partial<Service>>` + `services = serverData.map(s => ({...s, ...serviceEdits[s.id]}))`.
 
 ## Tips útiles
 
-_(vacío)_
+### 2026-04-26 · domain/booking · V8 no parsea meses en español con `new Date()`
+
+**Qué**: `new Date('24 Dic 2026')` y variantes como `new Date('Dic 24, 2026')` devuelven `NaN` en V8 (Node y Chromium). Solo reconoce abreviaciones en inglés (Jan, Feb, …).
+
+**Contexto**: Las fechas de cierres especiales (`MockClosure.date`) se almacenan como strings "DD Mes YYYY" con mes en español ("01 May 2026", "24 Dic 2026"). `getAvailableBarbersForDate` necesita comparar esas fechas con un `Date` objeto.
+
+**Solución implementada** (`src/domain/booking/index.ts`):
+```typescript
+const ES_MONTH: Record<string, number> = {
+  ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5,
+  jul: 6, ago: 7, sep: 8, oct: 9, nov: 10, dic: 11,
+}
+function parseClosureDate(str: string): Date | null {
+  const native = new Date(str)  // May/Jun/etc. ya funcionan
+  if (!isNaN(native.getTime())) return native
+  // Fallback para meses en español
+  const parts = str.trim().split(/\s+/)
+  if (parts.length >= 3) {
+    const monthIdx = ES_MONTH[parts[1].toLowerCase()]
+    if (monthIdx !== undefined) {
+      return new Date(Number(parts[2]), monthIdx, Number(parts[0]))
+    }
+  }
+  return null
+}
+```
+
+**Regla**: Nunca usar `new Date(closureString)` directamente — siempre pasar por `parseClosureDate`. Si en el futuro las fechas se migran a ISO 8601, esta función puede simplificarse.
+
+### 2026-04-27 · domain/booking · toISOString() da fecha UTC incorrecta en España
+
+**Qué**: `new Date().toISOString().slice(0,10)` en España (UTC+2) devuelve la fecha del día anterior a medianoche local. El campo `block_date` del dominio y el filtro de citas fallan comparando fechas UTC vs locales.
+
+**Fix**: siempre construir fechas ISO locales con:
+```typescript
+const iso = [
+  date.getFullYear(),
+  String(date.getMonth() + 1).padStart(2, '0'),
+  String(date.getDate()).padStart(2, '0'),
+].join('-')
+```
+**Regla**: NUNCA usar `date.toISOString().slice(0,10)` en ninguna comparación de fechas de agenda. Solo es correcto para campos de audit (created_at, etc.) donde UTC es intencionado.
+
+### 2026-04-27 · InsForge · eslint react-hooks/purity bloquea Date.now() en useMemo
+
+**Qué**: La regla `react-hooks/purity` (en el plugin v7) bloquea `Date.now()` dentro de callbacks de hooks (`useMemo`, `useCallback`). La solución `new Date().getTime()` pasa la regla porque solo nombra `Date.now` específicamente, no `new Date().getTime()`.
+
+**Workaround**: sustituir `Date.now()` → `new Date().getTime()` cuando se use dentro de hooks.
 
 ## Convenciones del proyecto
 
