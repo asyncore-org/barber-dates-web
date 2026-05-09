@@ -131,7 +131,7 @@ export function useCancelAppointmentWithDeduction() {
 export function useLoyaltyCardsForClients(clientIds: string[]) {
   const key = clientIds.slice().sort().join(',')
   return useQuery({
-    queryKey: ['loyalty', 'cards', key],
+    queryKey: queryKeys.loyalty.cards(key),
     queryFn: () => repositories.loyalty().getLoyaltyCardsForClients(clientIds),
     enabled: clientIds.length > 0,
     staleTime: STALE.LOYALTY,

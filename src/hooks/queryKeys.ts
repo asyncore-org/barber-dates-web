@@ -54,6 +54,7 @@ export const queryKeys = {
     all:      () => ['loyalty'] as const,
     byUser:   (userId: string) => ['loyalty', userId] as const,
     redeemed: (userId: string) => ['loyalty', userId, 'redeemed'] as const,
+    cards:    (key: string) => ['loyalty', 'cards', key] as const,
   },
 
   rewards: {
