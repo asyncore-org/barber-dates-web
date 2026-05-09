@@ -111,7 +111,7 @@ export default function BarberPage() {
       .flatMap(a => {
         const start = new Date(a.startTime)
         const end = new Date(a.endTime)
-        const dayDiff = Math.round((start.getTime() - weekStart.getTime()) / 86_400_000)
+        const dayDiff = Math.floor((start.getTime() - weekStart.getTime()) / 86_400_000)
         if (dayDiff < 0 || dayDiff > 6) return []
         const svc = services.find(s => s.id === a.serviceId)
         return [{
