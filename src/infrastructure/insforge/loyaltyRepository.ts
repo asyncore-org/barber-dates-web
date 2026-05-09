@@ -112,15 +112,17 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
     // Get authoritative cost from DB — never trust a client-supplied value
     const { data: rewardRow, error: rewardErr } = await insforgeClient.database
       .from('rewards')
-      .select('cost')
+      .select('cost, is_active')
       .eq('id', rewardId)
       .maybeSingle()
     if (rewardErr) throw rewardErr
     if (!rewardRow) throw new Error('Reward not found')
-    const cost = (rewardRow as { cost: number }).cost
+    const { cost, is_active } = rewardRow as { cost: number; is_active: boolean }
+    if (!is_active) throw new Error('Reward is not active')
 
     const card = await getCardByClientId(clientId)
     if (!card) throw new Error('No loyalty card found for client')
+    if (card.total_points < cost) throw new Error('Insufficient points')
 
     // Insert redeemed_rewards FIRST: unique constraint blocks duplicate redemptions
     // (one_time mode) before any points are deducted — safest ordering without a transaction.
@@ -129,7 +131,7 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
       .insert({ card_id: card.id, reward_id: rewardId })
     if (rrErr) throw rrErr
 
-    const newPoints = Math.max(0, card.total_points - cost)
+    const newPoints = card.total_points - cost
 
     const { error: updateErr } = await insforgeClient.database
       .from('loyalty_cards')
