@@ -38,7 +38,7 @@ export function LoyaltyProgressBar({ points, target, accentVar = '--led' }: Prop
           height: '100%',
           width: `${pct}%`,
           borderRadius: 2,
-          background: `linear-gradient(90deg, ${accent}99, ${accent})`,
+          background: `linear-gradient(90deg, color-mix(in srgb, ${accent} 60%, transparent), ${accent})`,
           boxShadow: `0 0 6px ${accent}`,
           transition: 'width 0.4s ease',
         }} />

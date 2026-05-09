@@ -76,7 +76,8 @@ export default function BarberPage() {
   const cancelWithDeduction = useCancelAppointmentWithDeduction()
 
   const currentBarber = useMemo(
-    () => barbers.find(b => b.email != null && user?.email != null && b.email === user.email) ?? null,
+    () => barbers.find(b => b.email != null && user?.email != null &&
+      b.email.toLowerCase().trim() === user.email.toLowerCase().trim()) ?? null,
     [barbers, user],
   )
 
@@ -521,6 +522,7 @@ export default function BarberPage() {
             clientId={profileClientId}
             clientName={name}
             onClose={() => setProfileClientId(null)}
+            hideMoney
           />
         )
       })()}

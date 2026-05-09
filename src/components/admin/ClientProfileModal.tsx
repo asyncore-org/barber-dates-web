@@ -10,6 +10,7 @@ interface Props {
   clientId: string
   clientName: string
   onClose: () => void
+  hideMoney?: boolean
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -30,7 +31,7 @@ function calcInitials(name: string): string {
   return name.trim().split(/\s+/).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '?'
 }
 
-export function ClientProfileModal({ clientId, clientName, onClose }: Props) {
+export function ClientProfileModal({ clientId, clientName, onClose, hideMoney = false }: Props) {
   const { data: profile } = useClientProfile(clientId)
   const { data: loyaltyCard } = useLoyaltyCard(clientId)
   const { data: loyaltyConfig } = useLoyaltyConfig()
@@ -40,18 +41,19 @@ export function ClientProfileModal({ clientId, clientName, onClose }: Props) {
   const { data: services = [] } = useAllServices()
 
   const currentYear = new Date().getFullYear()
+  const nowMs = new Date().getTime()
 
   const stats = useMemo(() => {
-    const done = appointments.filter(a => a.status === 'confirmed' || a.status === 'completed')
-    const yearVisits = appointments.filter(
-      a => new Date(a.startTime).getFullYear() === currentYear && a.status !== 'cancelled' && a.status !== 'no_show',
-    ).length
-    const totalSpent = done.reduce((sum, a) => {
+    const past = appointments.filter(a =>
+      (a.status === 'confirmed' || a.status === 'completed') && new Date(a.endTime).getTime() < nowMs,
+    )
+    const yearVisits = past.filter(a => new Date(a.startTime).getFullYear() === currentYear).length
+    const totalSpent = past.reduce((sum, a) => {
       const svc = services.find(s => s.id === a.serviceId)
       return sum + (svc?.price ?? 0)
     }, 0)
     return { yearVisits, totalSpent }
-  }, [appointments, services, currentYear])
+  }, [appointments, services, currentYear, nowMs])
 
   const recentAppts = useMemo(
     () => [...appointments].sort((a, b) => b.startTime.localeCompare(a.startTime)).slice(0, 5),
@@ -126,7 +128,7 @@ export function ClientProfileModal({ clientId, clientName, onClose }: Props) {
               {[
                 { label: 'Total visitas', value: loyaltyCard?.totalVisits ?? 0 },
                 { label: `Visitas ${currentYear}`, value: stats.yearVisits },
-                { label: 'Total gastado', value: `${stats.totalSpent.toFixed(0)}€` },
+                ...(!hideMoney ? [{ label: 'Total gastado', value: `${stats.totalSpent.toFixed(0)}€` }] : []),
                 { label: 'Premios canjeados', value: redeemedIds.length },
               ].map(({ label, value }) => (
                 <div key={label} style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 8, padding: '0.75rem' }}>

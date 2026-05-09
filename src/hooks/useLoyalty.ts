@@ -121,14 +121,14 @@ export function useCancelAppointmentWithDeduction() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, endTime, clientId }: { id: string; endTime: string; clientId: string }) => {
-      await repositories.appointments().cancel(id)
+      await repositories.appointments().updateStatus(id, 'no_show')
       if (new Date(endTime).getTime() < new Date().getTime()) {
         await repositories.loyalty().deductPointsForAppointment(id, clientId)
       }
     },
-    onSuccess: (_data, { clientId }) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.appointments.all() })
-      qc.invalidateQueries({ queryKey: queryKeys.loyalty.byUser(clientId) })
+      qc.invalidateQueries({ queryKey: queryKeys.loyalty.all() })
     },
   })
 }
