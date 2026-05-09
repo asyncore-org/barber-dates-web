@@ -22,6 +22,7 @@
 13. [Ejemplos completos de flujos reales](#13-ejemplos-completos-de-flujos-reales)
 14. [Errores comunes y cómo evitarlos](#14-errores-comunes-y-cómo-evitarlos)
 15. [FAQ](#15-faq)
+16. [Browser automation — el skill /web](#16-browser-automation--el-skill-web)
 
 ---
 
@@ -81,7 +82,7 @@ barber-dates-web/
     │   ├── spike.md
     │   └── review.md
     │
-    ├── commands/                ← Comandos slash (31 archivos)
+    ├── commands/                ← Comandos slash (32 archivos)
     │   │
     │   │  ─── Arranque de tareas ───
     │   ├── feature.md           ← /feature
@@ -110,6 +111,7 @@ barber-dates-web/
     │   ├── compact-task.md      ← /compact-task
     │   │
     │   │  ─── Contexto y aprendizaje ───
+    │   ├── bootstrap.md         ← /bootstrap
     │   ├── sync-context.md      ← /sync-context
     │   ├── learn.md             ← /learn
     │   ├── ask.md               ← /ask
@@ -144,7 +146,7 @@ barber-dates-web/
     │   │
     │   └── TASK-YYYYMMDD-HHmm-<tipo>-<slug>/   ← generado por new-task.sh
     │
-    └── scripts/                 ← Utilidades shell (15 archivos)
+    └── scripts/                 ← Utilidades shell (16 archivos)
         ├── new-task.sh          ← Crea carpeta de tarea desde template
         ├── active-task.sh       ← Detecta tarea activa por rama git
         ├── constitution-index.sh← Muestra índice ligero de artículos
@@ -155,6 +157,7 @@ barber-dates-web/
         ├── grep-task.sh         ← Grep en archivos de la tarea
         ├── diff-task.sh         ← Diff de la rama vs base
         ├── files-touched.sh     ← Lista archivos tocados (deduplicado)
+        ├── bootstrap-scan.sh    ← Snapshot rapido del repo para /bootstrap
         ├── sync-context.sh      ← Detecta artículos desactualizados
         ├── log-file-change.sh   ← Hook: loguea edits en files.md
         ├── context-watch.sh     ← Hook: avisa sobre archivos sensibles
@@ -525,6 +528,12 @@ Resume `LOG.md` cuando ha crecido mucho (>50 entradas). Genera un resumen de 30 
 
 ### Comandos de contexto y aprendizaje
 
+#### `/bootstrap [nombre-proyecto]`
+
+Prepara el contexto inicial del proyecto despues de `carlex init`.
+Analiza el repo + instrucciones del usuario y propone cambios en CLAUDE.md y los archivos de `.claude/`.
+No crea tarea ni toca `src/`.
+
 #### `/sync-context`
 
 Revisa si algún archivo de contexto ha quedado desactualizado. Cruza los archivos tocados en la tarea contra el Constitution y propone actualizaciones. Se ejecuta automáticamente en `/done`, pero puedes invocarlo en cualquier momento.
@@ -686,6 +695,7 @@ Los scripts permiten cargar **solo el fragmento relevante** en cada momento.
 | `grep-task.sh <pattern>`      | Grep en archivos de la tarea                                    | Para buscar algo específico sin leer todo                |
 | `diff-task.sh [--stat]`       | Diff de la rama vs base                                         | Con --stat: solo estadísticas. Sin: diff completo        |
 | `files-touched.sh`            | Lista de archivos tocados (deduplicado)                         | Para saber qué hay que revisar en el context sync        |
+| `bootstrap-scan.sh`           | Snapshot rapido del repo para /bootstrap                         | Solo al preparar el contexto inicial                     |
 | `sync-context.sh`             | Detecta artículos del Constitution posiblemente desactualizados | En `/done` (automático) o cuando lo pides                |
 
 ### Cómo los usa Claude
@@ -1183,6 +1193,119 @@ Sí, eres el dueño del proyecto. Solo recuerda: bump de versión, entrada en `D
 **¿Qué pasa si Claude propone un cambio al Constitution que no quiero?**
 
 Simplemente dices "no". Claude anota en el `LOG.md` de la tarea que el cambio fue considerado y rechazado, para tener trazabilidad.
+
+---
+
+---
+
+## 16. Browser automation — el skill `/web`
+
+### Qué es
+
+El skill `/web` permite a Claude navegar la web con Playwright cuando los MCPs disponibles no pueden resolver una tarea (login requerido, SPAs, contenido dinámico). Siempre opera headless. Aprende de cada visita y reutiliza ese conocimiento en visitas futuras.
+
+### Cómo activarlo
+
+```
+/web <descripción de lo que necesitas>
+```
+
+Ejemplos:
+- `/web dame el precio del vuelo Madrid-Barcelona para el 15 de junio en Iberia`
+- `/web entra en mi Gmail y dime cuántos correos no leídos tengo de Amazon`
+- `/web lee los últimos 5 mensajes del chat con "Meryxtu" en WhatsApp Web`
+
+Claude decide internamente si necesita el browser o si puede resolverlo con MCPs. Si usas "usa el browser" o "entra en", activa el skill directamente.
+
+### Flujo interno (lo que Claude hace sin que tengas que gestionarlo)
+
+1. **Consulta KB** — ¿ya tiene scripts para este sitio? Los reutiliza. Si no, los crea.
+2. **Clasifica la acción** — ¿es sensible? (enviar mensajes, eliminar, pagar, publicar) → pide confirmación explícita antes de ejecutar.
+3. **Lanza headless** — con stealth mode, bloqueando trackers y recursos innecesarios.
+4. **Auth automática** — si hay sesión guardada, la restaura. Si la sesión expiró o no existe, abre una ventana visible y te avisa:
+   ```
+   [AUTH REQUIRED] Por favor inicia sesión en <dominio> en la ventana del navegador.
+   Cuando estés dentro, escribe ENTER para continuar.
+   ```
+5. **Documenta** — crea/actualiza `~/.claude/browser-kb/<dominio>/` con constitution, selectores, scripts y DOM de referencia.
+6. **Cierra todo** — tabs, browser, log de sesión.
+
+### Acciones SIEMPRE bloqueadas sin confirmación explícita tuya
+
+- Enviar mensajes / correos
+- Eliminar recursos o cuentas
+- Hacer pagos o confirmar compras
+- Cambiar configuración de cuenta o contraseña
+- Publicar contenido (posts, tweets, comentarios)
+- Descargar datos masivos de terceros
+- Aceptar términos legales
+
+### Comandos de diagnóstico
+
+```bash
+# Ver qué sitios tiene documentados
+bash .claude/scripts/kb-query.sh --list
+
+# Ver herramientas disponibles para un sitio/apartado
+bash .claude/scripts/kb-query.sh web.whatsapp.com chats
+
+# Ver el índice de un sitio
+bash .claude/scripts/kb-query.sh gmail.com --index
+
+# Ver un script guardado
+bash .claude/scripts/kb-query.sh gmail.com inbox --script read-emails.js
+
+# Ver sesiones recientes
+node browser/scripts/session-log.js list
+```
+
+### Instalación y setup
+
+`carlex init` copia automáticamente `browser/` e instala las dependencias (`npm install`). Si lo instalaste antes de esta versión, actualiza con:
+
+```bash
+carlex upgrade --dest /ruta/a/tu-proyecto
+```
+
+Verifica que funciona:
+
+```bash
+node browser/browse.js --url https://example.com --output /tmp/test.json
+cat /tmp/test.json
+```
+
+Deberías ver un JSON con `title: "Example Domain"`.
+
+### Autenticar un sitio por primera vez
+
+Para sitios con login (WhatsApp, Gmail, etc.), usa el script de auth interactivo:
+
+```bash
+# WhatsApp Web (hay uno pre-construido)
+node browser/scripts/whatsapp-auth.js
+
+# Para cualquier otro sitio: adapta el script plantilla
+# o simplemente ejecuta /web y Claude abrirá la ventana cuando la necesite
+```
+
+### Estructura de la Knowledge Base
+
+```
+~/.claude/browser-kb/              ← global, no en el repo
+├── _index.yml                     ← todos los sitios conocidos
+├── _sessions/                     ← últimas 50 sesiones (logs de auditoría)
+├── _processes/                    ← flujos multi-sitio (ej: "buscar-precio-vuelo")
+└── web.whatsapp.com/
+    ├── constitution.md            ← qué es el sitio, cómo funciona
+    ├── _index.yml                 ← secciones + scripts registrados
+    ├── _sessions/cookies.json     ← sesión guardada
+    └── chats/
+        ├── tools.md               ← selectores documentados
+        ├── dom-snap.html          ← DOM de referencia
+        └── scripts/read-chats.js  ← script que funciona
+```
+
+La KB se genera automáticamente durante el uso normal. Si un selector deja de funcionar (el sitio cambió), Claude detecta el error, captura un nuevo DOM snapshot, actualiza los selectores y continúa.
 
 ---
 

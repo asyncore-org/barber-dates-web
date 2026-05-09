@@ -8,16 +8,6 @@ Cada entrada debe tener: **Fecha · Contexto · Qué · Por qué importa**.
 
 ## InsForge — SDK, API y documentación
 
-### 2026-05-04 · InsForge · Join embebido devuelve profiles como array, no como objeto
-
-**Qué**: Al hacer `.select('..., profiles(full_name)')` en InsForge (embedded join), el SDK infiere un tipo para `profiles` que no es directamente asignable a `{ full_name: string | null } | null`. TypeScript fuerza el doble cast `as unknown as RowType[]` si el tipo local no coincide.
-
-**Fix**: definir una interfaz intermedia `AppointmentRowRaw` con `profiles: Array<{ full_name: string | null }> | { full_name: string | null } | null` y normalizar con `profiles?.[0] ?? null` antes de pasar al mapper. Así se elimina el `unknown` cast.
-
-**Regla**: al añadir un join embebido en cualquier query InsForge, crear un tipo `*Raw` para el resultado del SDK y un `normalizeRow()` que lo convierte al tipo de dominio. Ver `src/infrastructure/insforge/appointmentRepository.ts → AppointmentRowRaw`.
-
-
-
 ### 2026-04-19 · InsForge SDK · NO usar @supabase/supabase-js — tiene su propio SDK
 
 **Qué**: InsForge NO es Supabase. Aunque comparte conceptos similares (PostgreSQL, Auth, Storage), usa su **propio SDK** con rutas de API completamente diferentes. Usar `@supabase/supabase-js` con URLs de InsForge da 404 en todos los endpoints de auth.
@@ -135,26 +125,6 @@ is_project_admin (boolean), is_anonymous (boolean)
 **Si las herramientas no aparecen**: los MCPs se cargan solo al inicio de sesión. Si se modificó `~/.claude/settings.json` durante la sesión, hay que reiniciar Claude Code para que tome efecto.
 
 **Para añadir un nuevo proyecto InsForge**: editar `~/.claude/settings.json` directamente — ver Art. 13 para el formato exacto.
-
-## InsForge — JOIN de tablas relacionadas
-
-### 2026-05-04 · InsForge SDK · JOIN syntax — usar nombre de tabla, no nombre del FK
-
-**Qué**: InsForge PostgREST usa la sintaxis `tabla_relacionada(columna)` en el SELECT para hacer JOINs. La sintaxis con nombre explícito de FK (`tabla!fk_name(col)`) puede fallar si el nombre real del FK en InsForge difiere del esperado.
-
-**Regla**: SIEMPRE usar `profiles(full_name)` (nombre de tabla), NUNCA `profiles!appointments_client_id_fkey(full_name)` (nombre de FK).
-
-```typescript
-// ✅ Correcto
-const SELECT = 'id, start_time, profiles(full_name)'
-
-// ❌ Rompe si el FK tiene nombre diferente en InsForge
-const SELECT = 'id, start_time, profiles!appointments_client_id_fkey(full_name)'
-```
-
-**Síntoma de error**: el campo `profiles` llega como `null` o el query falla silenciosamente.
-
----
 
 ## Gotchas del stack
 

@@ -101,7 +101,37 @@ Clasificar como **IGNORAR** si el item:
 
 **La duda va a ACTUAR**, no a IGNORAR — mejor revisar algo innecesario que perder un bug real.
 
-#### 4c. Si el item es ambiguo
+#### 4c. Verificación visual para ítems ACTUAR de CI (si aplica)
+
+Para fallos de CI clasificados como **ACTUAR** donde el síntoma es visual (componente roto, ruta que no renderiza, error en UI), intentar confirmar el fallo visualmente antes de proponer el `/change`:
+
+```bash
+# Solo si hay servidor corriendo (local o staging):
+curl -s --max-time 2 http://localhost:5173 -o /dev/null -w "%{http_code}"
+```
+
+Si el servidor responde → tomar snapshot de la ruta afectada:
+
+```bash
+node browser/browse.js \
+  --url http://localhost:5173<ruta-afectada> \
+  --action "captura el estado de la página, documenta errores visibles o de consola" \
+  --session localhost:5173 \
+  --section ci-verify \
+  --snapshot \
+  --output /tmp/ci-verify-<item>.json
+```
+
+Tras la ejecución, leer el snapshot para extraer el hallazgo:
+
+```bash
+bash .claude/scripts/kb-query.sh localhost:5173 ci-verify --dom | head -60
+```
+
+Incluir hallazgo visual en el TRIAGE como `**Evidencia visual**: <descripción de lo observado>`.
+Si el servidor no está disponible → omitir y anotarlo en el triage (`no disponible — servidor offline`).
+
+#### 4d. Si el item es ambiguo
 
 Clasificar como **REVISAR** con la pregunta concreta que el usuario debe resolver antes de decidir si implementar o no.
 
@@ -161,6 +191,7 @@ Guardar en `.claude/tasks/<TASK-ID>/PR-TRIAGE-<N>.md`:
 <fragmento de log — máximo 20 líneas>
 ```
 **Causa probable**: <diagnóstico>
+**Evidencia visual**: <descripción de lo observado en browser | no disponible — servidor offline>
 **Acción sugerida**: `/change <descripción concisa>`
 
 ---
