@@ -108,9 +108,26 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
     return ((data ?? []) as RedeemedRewardRow[]).map(r => r.reward_id)
   }
 
-  async redeemReward(clientId: string, rewardId: string, cost: number): Promise<void> {
+  async redeemReward(clientId: string, rewardId: string): Promise<void> {
+    // Get authoritative cost from DB — never trust a client-supplied value
+    const { data: rewardRow, error: rewardErr } = await insforgeClient.database
+      .from('rewards')
+      .select('cost')
+      .eq('id', rewardId)
+      .maybeSingle()
+    if (rewardErr) throw rewardErr
+    if (!rewardRow) throw new Error('Reward not found')
+    const cost = (rewardRow as { cost: number }).cost
+
     const card = await getCardByClientId(clientId)
     if (!card) throw new Error('No loyalty card found for client')
+
+    // Insert redeemed_rewards FIRST: unique constraint blocks duplicate redemptions
+    // (one_time mode) before any points are deducted — safest ordering without a transaction.
+    const { error: rrErr } = await insforgeClient.database
+      .from('redeemed_rewards')
+      .insert({ card_id: card.id, reward_id: rewardId })
+    if (rrErr) throw rrErr
 
     const newPoints = Math.max(0, card.total_points - cost)
 
@@ -124,11 +141,6 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
       .from('loyalty_transactions')
       .insert({ card_id: card.id, points: -cost, type: 'redeemed', description: 'Premio canjeado' })
     if (txErr) throw txErr
-
-    const { error: rrErr } = await insforgeClient.database
-      .from('redeemed_rewards')
-      .insert({ card_id: card.id, reward_id: rewardId })
-    if (rrErr) throw rrErr
   }
 
   async awardPointsForAppointment(appointmentId: string, clientId: string, serviceId: string): Promise<void> {
@@ -169,6 +181,16 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
   async deductPointsForAppointment(appointmentId: string, clientId: string): Promise<void> {
     const card = await getCardByClientId(clientId)
     if (!card) return
+
+    // Idempotency: skip if an adjustment for this appointment already exists
+    const { data: existingAdj } = await insforgeClient.database
+      .from('loyalty_transactions')
+      .select('id')
+      .eq('card_id', card.id)
+      .eq('appointment_id', appointmentId)
+      .eq('type', 'adjustment')
+      .maybeSingle()
+    if (existingAdj) return
 
     const { data: tx } = await insforgeClient.database
       .from('loyalty_transactions')

@@ -43,8 +43,8 @@ export function useRedeemedRewardIds(userId: string | undefined) {
 export function useRedeemReward() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ clientId, rewardId, cost }: { clientId: string; rewardId: string; cost: number }) =>
-      repositories.loyalty().redeemReward(clientId, rewardId, cost),
+    mutationFn: ({ clientId, rewardId }: { clientId: string; rewardId: string }) =>
+      repositories.loyalty().redeemReward(clientId, rewardId),
     onSuccess: (_data, { clientId }) => {
       qc.invalidateQueries({ queryKey: queryKeys.loyalty.redeemed(clientId) })
       qc.invalidateQueries({ queryKey: queryKeys.loyalty.byUser(clientId) })
@@ -98,15 +98,21 @@ export function useAutoAwardPoints(appointments: Appointment[]) {
 
     toAward.forEach(a => awarded.current.add(a.id))
 
-    void Promise.all(
-      toAward.map(a =>
-        repositories.loyalty().awardPointsForAppointment(a.id, a.clientId, a.serviceId),
-      ),
-    ).then(() => {
-      qc.invalidateQueries({ queryKey: queryKeys.loyalty.all() })
-    }).catch(() => {
-      toAward.forEach(a => awarded.current.delete(a.id))
-    })
+    // Sequential to avoid read-modify-write races when the same client has
+    // multiple past appointments awarded in the same session.
+    const runSequential = async () => {
+      for (const a of toAward) {
+        await repositories.loyalty().awardPointsForAppointment(a.id, a.clientId, a.serviceId)
+      }
+    }
+
+    void runSequential()
+      .then(() => {
+        qc.invalidateQueries({ queryKey: queryKeys.loyalty.all() })
+      })
+      .catch(() => {
+        toAward.forEach(a => awarded.current.delete(a.id))
+      })
   }, [appointments, qc])
 }
 

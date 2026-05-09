@@ -33,7 +33,7 @@ export interface ILoyaltyRepository {
   getActiveRewards(): Promise<Reward[]>
   getAllRewards(): Promise<Reward[]>
   getRedeemedRewardIds(clientId: string): Promise<string[]>
-  redeemReward(clientId: string, rewardId: string, cost: number): Promise<void>
+  redeemReward(clientId: string, rewardId: string): Promise<void>
   createReward(data: CreateRewardData): Promise<Reward>
   updateReward(id: string, data: UpdateRewardData): Promise<Reward>
   deleteReward(id: string): Promise<void>
