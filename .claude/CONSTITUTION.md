@@ -63,8 +63,9 @@ domain/ no importa NADA externo
 
 1. Un cliente solo puede tener **1 cita futura activa** (`status='confirmed'`) a la vez.
 2. Las citas se cancelan hasta **2 horas antes** (`CANCELLATION_LIMIT_HOURS = 2`).
-3. Los puntos de fidelización se otorgan al **COMPLETAR** la cita (no al reservar ni confirmar).
+3. Los puntos de fidelización se auto-otorgan de forma **idempotente** cuando `endTime < now` y `status='confirmed'` al abrir el dashboard (hook `useAutoAwardPoints`). Solo se registra una vez por cita (verificado en `loyalty_transactions`). Cancelar una cita pasada como `no_show` descuenta los puntos previamente otorgados (`useCancelAppointmentWithDeduction`).
 4. El admin puede bloquear días/horas específicos (`schedule_blocks`).
+4b. `rewardMode` (`'one_time' | 'repeatable'`) en `shop_config.loyalty` controla si un premio puede canjearse múltiples veces. En modo `'one_time'`, `canRedeem` bloquea si ya existe un `redeemed_rewards` para ese reward. En modo `'repeatable'`, no bloquea.
 5. Los servicios tienen duración fija que determina los slots disponibles.
 6. Sesión **cliente**: persistente indefinida.
 7. Sesión **admin**: máximo **15 días** desde el login (`ADMIN_SESSION_MAX_DAYS = 15`). Forzar logout si supera. Timestamp en localStorage (`admin_login_time`).
@@ -85,7 +86,9 @@ appointments      id, client_id→profiles, barber_id→barbers, service_id→se
 schedule_blocks   id, barber_id→barbers (NULL=todos), block_date, start_time, end_time, day_of_week, reason, is_recurring
 shop_config       id, key (unique), value(JSONB)
                   keys: shop_info, schedule, booking, loyalty, color_theme
-loyalty_cards     id, client_id→profiles (unique), total_points, total_visits
+                  loyalty value incluye: stampGoal (nº visitas para meta), rewardMode ('one_time'|'repeatable')
+loyalty_cards     id, client_id→profiles (unique), total_points, total_visits, created_at
+                  memberCode no es campo de BD — se deriva en mapper: id.slice(0,8).toUpperCase()
 loyalty_transactions  id, card_id→loyalty_cards, appointment_id→appointments, points, type, description
                   type: 'earned' | 'redeemed' | 'bonus' | 'adjustment'
 rewards           id, label, cost, is_active, sort_order
