@@ -24,6 +24,17 @@ export function useAllAppointments() {
   })
 }
 
+/** Barber view: returns only appointments assigned to this barber, polls every 30 s */
+export function useBarberAppointments(barberId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.appointments.byBarber(barberId ?? ''),
+    queryFn: () => repositories.appointments().getForBarber(barberId!),
+    enabled: !!barberId,
+    staleTime: STALE.MEDIUM,
+    refetchInterval: 30_000,
+  })
+}
+
 export function useCreateAppointment() {
   const qc = useQueryClient()
   return useMutation({

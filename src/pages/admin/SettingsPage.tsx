@@ -8,8 +8,8 @@ import { useAllServices, useCreateService, useUpdateService, useDeleteService, u
 import { useAllAppointments } from '@/hooks/useAppointments'
 import { useAllBarbers, useUpdateBarber, useDeleteBarber, useAddBarberByEmail } from '@/hooks/useBarbers'
 import { useWeeklySchedule, useScheduleBlocks, useMutateWeeklySchedule, useAddScheduleBlock, useDeleteScheduleBlock } from '@/hooks/useSchedule'
-import { useShopInfo, useBookingConfig, useMutateShopInfo, useMutateBookingConfig } from '@/hooks/useShopConfig'
-import { useAllRewards, useCreateReward, useUpdateReward, useDeleteReward } from '@/hooks/useLoyalty'
+import { useShopInfo, useBookingConfig, useLoyaltyConfig, useMutateShopInfo, useMutateBookingConfig } from '@/hooks/useShopConfig'
+import { useAllRewards, useCreateReward, useUpdateReward, useDeleteReward, useUpdateLoyaltyConfig } from '@/hooks/useLoyalty'
 import { DEFAULT_WEEKLY_SCHEDULE } from '@/domain/schedule'
 import type { WeeklySchedule, DayKey } from '@/domain/schedule'
 import type { Service } from '@/domain/service'
@@ -109,6 +109,7 @@ export default function SettingsPage() {
   const { data: shopInfo } = useShopInfo()
   const { data: bookingConfig } = useBookingConfig()
   const { data: rewardsData = [] } = useAllRewards()
+  const { data: loyaltyConfig } = useLoyaltyConfig()
 
   // ── Mutation hooks ──────────────────────────────────────────────────────────
   const { data: allAppointments = [] } = useAllAppointments()
@@ -125,9 +126,10 @@ export default function SettingsPage() {
   const deleteBlock      = useDeleteScheduleBlock()
   const mutateShopInfo   = useMutateShopInfo()
   const mutateBooking    = useMutateBookingConfig()
-  const createReward     = useCreateReward()
-  const updateRewardMut  = useUpdateReward()
-  const deleteReward     = useDeleteReward()
+  const createReward       = useCreateReward()
+  const updateRewardMut    = useUpdateReward()
+  const deleteReward       = useDeleteReward()
+  const updateLoyaltyConfig = useUpdateLoyaltyConfig()
 
   // ── Services local state ────────────────────────────────────────────────────
   const [serviceEdits, setServiceEdits] = useState<Record<string, Partial<Service>>>({})
@@ -936,6 +938,55 @@ export default function SettingsPage() {
           {/* === FIDELIZACIÓN === */}
           {section === 'fidelizacion' && (
             <div>
+              <SectionTitle>MODO DE CANJEO</SectionTitle>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                {(['one_time', 'repeatable'] as const).map(mode => {
+                  const active = (loyaltyConfig?.rewardMode ?? 'one_time') === mode
+                  return (
+                    <button
+                      key={mode}
+                      onClick={() => updateLoyaltyConfig.mutate({ rewardMode: mode })}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '0.75rem',
+                        padding: '0.75rem 1rem', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
+                        border: `1px solid ${active ? 'var(--led)' : 'var(--line)'}`,
+                        background: active ? 'color-mix(in srgb, var(--led) 10%, transparent)' : 'var(--bg-3)',
+                      }}
+                    >
+                      <div style={{
+                        width: 14, height: 14, borderRadius: '50%', flexShrink: 0,
+                        border: `2px solid ${active ? 'var(--led)' : 'var(--fg-3)'}`,
+                        background: active ? 'var(--led)' : 'transparent',
+                      }} />
+                      <div>
+                        <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', fontWeight: 600, color: active ? 'var(--fg-0)' : 'var(--fg-1)', marginBottom: 2 }}>
+                          {mode === 'one_time' ? 'Una sola vez por cliente' : 'Repetible (si acumula de nuevo)'}
+                        </div>
+                        <div style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--fg-3)' }}>
+                          {mode === 'one_time'
+                            ? 'Cada premio solo puede canjearse una vez, independientemente de los puntos.'
+                            : 'El cliente puede volver a canjear si acumula suficientes puntos de nuevo.'}
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+                {(loyaltyConfig?.rewardMode ?? 'one_time') === 'repeatable' && (
+                  <div style={{ marginTop: '0.5rem', padding: '0.875rem', borderRadius: 8, background: 'var(--bg-3)', border: '1px solid var(--gold)' }}>
+                    <div style={{ fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--gold)', fontWeight: 600, marginBottom: '0.5rem' }}>
+                      SQL requerido en InsForge
+                    </div>
+                    <div style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)', marginBottom: '0.5rem' }}>
+                      Para permitir múltiples canjeos del mismo premio, ejecuta esto en el SQL Editor de InsForge:
+                    </div>
+                    <pre style={{ margin: 0, padding: '0.5rem', background: 'var(--bg-1)', borderRadius: 6, fontSize: 11, color: 'var(--fg-1)', fontFamily: 'var(--font-mono, monospace)', overflowX: 'auto', whiteSpace: 'pre-wrap' }}>
+{`ALTER TABLE redeemed_rewards
+DROP CONSTRAINT IF EXISTS
+  redeemed_rewards_card_id_reward_id_key;`}
+                    </pre>
+                  </div>
+                )}
+              </div>
               <SectionTitle>RECOMPENSAS</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {rewardsData.map(r => (

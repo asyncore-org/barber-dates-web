@@ -5,6 +5,7 @@ export interface WeekAppt {
   startM: number
   durationMin: number
   client: string
+  clientId: string
   service: string   // display name (matches Service.name)
   barberId: string
   color: 'led' | 'brick' | 'gold'

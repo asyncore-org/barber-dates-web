@@ -37,4 +37,10 @@ export interface ILoyaltyRepository {
   createReward(data: CreateRewardData): Promise<Reward>
   updateReward(id: string, data: UpdateRewardData): Promise<Reward>
   deleteReward(id: string): Promise<void>
+  /** Idempotent: skips if points already awarded for this appointment. */
+  awardPointsForAppointment(appointmentId: string, clientId: string, serviceId: string): Promise<void>
+  /** Deducts points earned for an appointment (no-show cancel). No-op if no earned transaction exists. */
+  deductPointsForAppointment(appointmentId: string, clientId: string): Promise<void>
+  /** Bulk fetch loyalty cards for a set of client IDs. */
+  getLoyaltyCardsForClients(clientIds: string[]): Promise<Map<string, LoyaltyCard>>
 }

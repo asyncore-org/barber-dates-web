@@ -71,6 +71,18 @@ export class InsForgeProfileRepository {
     if (error) throw error
   }
 
+  async getClientById(id: string): Promise<{ fullName: string | null; phone: string | null; createdAt: string | null } | null> {
+    const { data, error } = await insforgeClient.database
+      .from('profiles')
+      .select('full_name, phone, created_at')
+      .eq('id', id)
+      .maybeSingle()
+    if (error) throw error
+    if (!data) return null
+    const row = data as { full_name: string | null; phone: string | null; created_at: string | null }
+    return { fullName: row.full_name, phone: row.phone, createdAt: row.created_at }
+  }
+
   async findByEmailFull(email: string): Promise<ProfileFull | null> {
     const { data, error } = await insforgeClient.database
       .from('profiles')

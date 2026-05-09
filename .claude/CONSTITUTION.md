@@ -2,7 +2,7 @@
 
 > **Este documento es la fuente de verdad inmutable.** Ningún agente debe modificarlo sin permiso explícito del usuario. Si detecta que algo ha cambiado en la realidad del código y el Constitution debería actualizarse, **avisa primero**, explica QUÉ cambia, QUÉ quedará y POR QUÉ, y espera confirmación.
 
-Versión: 1.2.0 · Última revisión: 2026-05-04
+Versión: 1.1.0 · Última revisión: 2026-04-17
 
 ---
 
@@ -68,7 +68,6 @@ domain/ no importa NADA externo
 5. Los servicios tienen duración fija que determina los slots disponibles.
 6. Sesión **cliente**: persistente indefinida.
 7. Sesión **admin**: máximo **15 días** desde el login (`ADMIN_SESSION_MAX_DAYS = 15`). Forzar logout si supera. Timestamp en localStorage (`admin_login_time`).
-8. Los servicios tienen **dos estados independientes**: `is_active` (desactivar: nadie puede pedir cita nueva, las existentes se completan) e `is_deleted` (soft-delete: oculto en todo — solo aplicable cuando el servicio ya no tiene citas activas). El admin puede desactivar/reactivar libremente; solo puede eliminar si `serviceHasActiveAppts === false`.
 
 ---
 
@@ -77,14 +76,12 @@ domain/ no importa NADA externo
 ```
 barbers           id, full_name, role, bio, avatar_url, phone, email, specialty_ids(JSONB), is_active
 profiles          id→auth.users, full_name, phone, avatar_url, role('client'|'admin')
-services          id, name, description, duration_minutes, price, loyalty_points, is_active, is_deleted, sort_order
-                  is_active=false → desactivado (admin ve; clientes no pueden reservar; citas activas se completan)
-                  is_deleted=true → soft-delete (oculto en todo; solo aplicar cuando no hay citas activas del servicio)
+services          id, name, description, duration_minutes, price, loyalty_points, is_active, sort_order
 appointments      id, client_id→profiles, barber_id→barbers, service_id→services, start_time, end_time, status, notes
                   status: 'confirmed' | 'completed' | 'cancelled' | 'no_show'
 schedule_blocks   id, barber_id→barbers (NULL=todos), block_date, start_time, end_time, day_of_week, reason, is_recurring
 shop_config       id, key (unique), value(JSONB)
-                  keys: shop_info, schedule, booking, loyalty, color_theme
+                  keys: shop_info, schedule, booking, loyalty
 loyalty_cards     id, client_id→profiles (unique), total_points, total_visits
 loyalty_transactions  id, card_id→loyalty_cards, appointment_id→appointments, points, type, description
                   type: 'earned' | 'redeemed' | 'bonus' | 'adjustment'
@@ -123,10 +120,11 @@ redeemed_rewards  id, card_id→loyalty_cards, reward_id→rewards, redeemed_at
 App carga
   └─ ¿Sesión activa?
        ├─ SÍ → admin? → < 15 días? → /admin/dashboard  (else signOut → /)
-       │     → client? → ¿tiene cita upcoming? → /appointments
-       │                                       → (sin cita) /calendar
+       │     → client? → /calendar
        └─ NO → /
 ```
+
+> El check de "cita upcoming" fue eliminado (dependía de mocks). El cliente siempre aterriza en `/calendar`; desde ahí puede navegar a `/appointments`.
 
 ---
 
@@ -208,34 +206,23 @@ Formato: `type(scope): descripción en inglés, presente imperativo`.
 
 ---
 
-## Art. 10 — Tokens de color (CSS vars — defaults no cambiar sin consenso)
+## Art. 10 — Paleta de colores (no cambiar sin consenso)
 
-Los colores se definen como CSS custom properties en `src/styles/globals.css`.
-Los 5 tokens de acento son configurables por el admin desde **Apariencia → SettingsPage** y se persisten en `shop_config → color_theme`. Se aplican sobreescribiendo las vars via `<style id="gio-palette-style">` inyectado antes de `createRoot`.
+| Token             | Valor     | Uso                                          |
+| ----------------- | --------- | -------------------------------------------- |
+| Primario (Dorado) | `#C8A44E` | Acentos, botones principales, iconos activos |
+| Hover dorado      | `#b8943e` | Hover botones dorados                        |
+| Fondo oscuro      | `#1A1A1A` | Tema oscuro                                  |
+| Fondo claro       | `#FAFAFA` | Tema claro                                   |
+| Texto primario    | `#111111` |                                              |
+| Texto secundario  | `#6B7280` |                                              |
+| Borde             | `#E5E7EB` |                                              |
+| Éxito             | `#10B981` | Cita confirmada                              |
+| Error             | `#EF4444` | Cancelación, errores                         |
+| Warning           | `#F59E0B` | Avisos                                       |
+| Superficie card   | `#FFFFFF` |                                              |
 
-### Tokens de acento (configurables por admin)
-
-| CSS Var         | Default dark | Default light | Uso                                |
-| --------------- | ------------ | ------------- | ---------------------------------- |
-| `--led`         | `#7b4fff`    | `#6235e0`     | Acento principal, botones activos  |
-| `--led-soft`    | `#a689ff`    | `#7b4fff`     | Hover, variante suave del acento   |
-| `--gold`        | `#c9a24a`    | `#a88030`     | Tono cálido, CTAs secundarios      |
-| `--brick`       | `#8b3a1f`    | `#9a4010`     | Acento secundario                  |
-| `--brick-warm`  | `#c06a3d`    | `#c06030`     | Variante cálida de brick           |
-| `--card-accent` | `var(--gold)` | `var(--gold)` | Acento LoyaltyCard (contexto dark) |
-
-### Tokens de estado y semánticos (no configurables)
-
-| CSS Var     | Uso              |
-| ----------- | ---------------- |
-| `--danger`  | Error, cancelación (`#c04040` dark / `#c03030` light) |
-| `--ok`      | Éxito, confirmado (`#6dbb6d`) |
-
-### Tipografía
-
-Inter (Google Fonts), `font-display: swap`, preconnect en `<head>`.
-
-**Los defaults en `globals.css` y las paletas predefinidas en `src/domain/colorTheme/index.ts` no se cambian sin consenso.**
+**Tipografía**: Inter (Google Fonts), `font-display: swap`, preconnect en `<head>`.
 
 ---
 

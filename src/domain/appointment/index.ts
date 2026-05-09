@@ -46,6 +46,7 @@ export interface UpdateAppointmentData {
 
 export interface IAppointmentRepository {
   getForClient(clientId: string): Promise<Appointment[]>
+  getForBarber(barberId: string): Promise<Appointment[]>
   getAll(): Promise<Appointment[]>
   create(data: CreateAppointmentData): Promise<Appointment>
   cancel(id: string): Promise<void>

@@ -10,6 +10,22 @@ Cierra una tarea: review + quality gates + **sincronización de contexto** + pro
 bash .claude/scripts/active-task.sh
 ```
 
+### 1b. Gate: verificar que /test pasó
+
+Antes de continuar, comprobar que existe `TEST.md` con veredicto `PASS`:
+
+```bash
+bash .claude/scripts/fetch.sh TEST.md
+```
+
+| Situación | Acción |
+|-----------|--------|
+| `TEST.md` existe y veredicto es `PASS` | Continuar |
+| `TEST.md` existe y veredicto es `FAIL` | **PARAR** — comunicar al usuario: *"TEST.md reporta FAIL. Corrige los fallos con /change antes de cerrar."* |
+| `TEST.md` no existe | **PARAR** — comunicar: *"Ejecuta /test antes de /done para verificar los flujos visualmente."* |
+
+No continuar hasta que este gate esté en verde.
+
 ### 2. Review de arquitectura y calidad
 
 Lanzar subagente de review siguiendo `.claude/workflows/review.md`.
@@ -115,6 +131,7 @@ Solo cuando los pasos 2–5 están completos:
 ```
 TASK-<id> lista para cerrar:
 
+✅ /test — PASS (X/X flujos)
 ✅ Review agent — sin bloqueos
 ✅ Quality gates — type-check + lint + tests
 ✅ Criterios — N/N

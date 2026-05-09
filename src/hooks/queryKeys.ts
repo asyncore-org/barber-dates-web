@@ -38,9 +38,10 @@ export const queryKeys = {
   },
 
   appointments: {
-    all:    () => ['appointments'] as const,
-    list:   (userId: string) => ['appointments', 'list', userId] as const,
-    byId:   (id: string) => ['appointments', id] as const,
+    all:      () => ['appointments'] as const,
+    list:     (userId: string) => ['appointments', 'list', userId] as const,
+    byId:     (id: string) => ['appointments', id] as const,
+    byBarber: (barberId: string) => ['appointments', 'barber', barberId] as const,
   },
 
   slots: {
@@ -53,6 +54,7 @@ export const queryKeys = {
     all:      () => ['loyalty'] as const,
     byUser:   (userId: string) => ['loyalty', userId] as const,
     redeemed: (userId: string) => ['loyalty', userId, 'redeemed'] as const,
+    cards:    (key: string) => ['loyalty', 'cards', key] as const,
   },
 
   rewards: {

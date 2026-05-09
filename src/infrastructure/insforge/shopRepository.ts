@@ -47,6 +47,11 @@ export class InsForgeShopRepository implements IShopRepository {
     await upsertConfigValue('booking', { ...current, ...config })
   }
 
+  async updateLoyaltyConfig(config: Partial<LoyaltyConfig>): Promise<void> {
+    const current = await this.getLoyaltyConfig()
+    await upsertConfigValue('loyalty', { ...current, ...config })
+  }
+
   getColorTheme(): Promise<ColorThemeConfig | null> {
     return getConfigValue<ColorThemeConfig>('color_theme')
   }
