@@ -206,16 +206,18 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
     const earnedPoints = (tx as TransactionRow).points
     const newPoints = Math.max(0, card.total_points - earnedPoints)
 
+    // Insert adjustment FIRST: acts as idempotency gate — if card update fails,
+    // the next retry finds this row and returns early instead of deducting twice.
+    const { error: txErr } = await insforgeClient.database
+      .from('loyalty_transactions')
+      .insert({ card_id: card.id, appointment_id: appointmentId, points: -earnedPoints, type: 'adjustment', description: 'Descuento por no-show' })
+    if (txErr) throw txErr
+
     const { error: updateErr } = await insforgeClient.database
       .from('loyalty_cards')
       .update({ total_points: newPoints, total_visits: Math.max(0, card.total_visits - 1) })
       .eq('id', card.id)
     if (updateErr) throw updateErr
-
-    const { error: txErr } = await insforgeClient.database
-      .from('loyalty_transactions')
-      .insert({ card_id: card.id, appointment_id: appointmentId, points: -earnedPoints, type: 'adjustment', description: 'Descuento por no-show' })
-    if (txErr) throw txErr
   }
 
   async getLoyaltyCardsForClients(clientIds: string[]): Promise<Map<string, LoyaltyCard>> {
