@@ -923,7 +923,7 @@ export default function SettingsPage() {
                 <button
                   onClick={handleToggleAllowBarber}
                   disabled={mutateBooking.isPending}
-                  style={{ width: 44, height: 26, borderRadius: 13, border: 'none', cursor: mutateBooking.isPending ? 'default' : 'pointer', flexShrink: 0, background: allowBarberChoice ? 'var(--led)' : 'var(--bg-4)', position: 'relative', transition: 'background 0.2s', boxShadow: allowBarberChoice ? 'var(--glow-led)' : 'none', opacity: mutateBooking.isPending ? 0.6 : 1 }}
+                  style={{ width: 44, height: 26, borderRadius: 13, border: 'none', cursor: mutateBooking.isPending ? 'default' : 'pointer', flexShrink: 0, background: allowBarberChoice ? 'var(--led)' : 'var(--bg-4)', position: 'relative', transition: 'background 0.2s', boxShadow: 'none', opacity: mutateBooking.isPending ? 0.6 : 1 }}
                   aria-label="Toggle allow barber choice"
                 >
                   <span style={{ position: 'absolute', top: 3, left: allowBarberChoice ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', display: 'block', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />

@@ -21,7 +21,7 @@ export function ServiceCard({ service, selected, onClick, disabled = false }: Se
         border: selected ? '1px solid var(--led-soft)' : '1px solid var(--line)',
         background: disabled ? 'var(--bg-2)' : selected ? 'rgba(123,79,255,0.08)' : 'var(--bg-3)',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        boxShadow: selected && !disabled ? 'var(--glow-led)' : 'none',
+        boxShadow: 'none',
         transition: 'all 0.15s',
         display: 'flex',
         alignItems: 'center',

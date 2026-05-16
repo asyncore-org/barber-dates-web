@@ -36,7 +36,7 @@ export function useRedeemedRewardIds(userId: string | undefined) {
     queryKey: queryKeys.loyalty.redeemed(userId ?? ''),
     queryFn: () => repositories.loyalty().getRedeemedRewardIds(userId!),
     enabled: !!userId,
-    staleTime: STALE.LOYALTY,
+    staleTime: 0, // always fetch fresh so auto-reset fires immediately
   })
 }
 
@@ -98,8 +98,6 @@ export function useAutoAwardPoints(appointments: Appointment[]) {
 
     toAward.forEach(a => awarded.current.add(a.id))
 
-    // Sequential to avoid read-modify-write races when the same client has
-    // multiple past appointments awarded in the same session.
     const runSequential = async () => {
       for (const a of toAward) {
         await repositories.loyalty().awardPointsForAppointment(a.id, a.clientId, a.serviceId)
@@ -150,5 +148,107 @@ export function useUpdateLoyaltyConfig() {
     mutationFn: (config: Partial<LoyaltyConfig>) =>
       repositories.shop().updateLoyaltyConfig(config),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.shop.loyalty() }),
+  })
+}
+
+/** Returns the loyalty points status for a specific appointment. */
+export function useLoyaltyStatusForAppointment(
+  appointmentId: string | undefined,
+  clientId: string | undefined,
+) {
+  return useQuery({
+    queryKey: ['loyalty', 'appt-status', appointmentId ?? '', clientId ?? ''],
+    queryFn: () => repositories.loyalty().getLoyaltyStatusForAppointment(appointmentId!, clientId!),
+    enabled: !!appointmentId && !!clientId,
+    staleTime: STALE.LOYALTY,
+  })
+}
+
+/** Admin explicit award for an appointment — bypasses service config, auto-creates card. */
+export function useAdminAwardPoints() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ appointmentId, clientId, points }: { appointmentId: string; clientId: string; points: number }) =>
+      repositories.loyalty().adminAwardForAppointment(appointmentId, clientId, points),
+    onSuccess: (_d, { clientId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.loyalty.all() })
+      qc.invalidateQueries({ queryKey: queryKeys.loyalty.byUser(clientId) })
+      qc.invalidateQueries({ queryKey: ['loyalty', 'appt-status'] })
+    },
+  })
+}
+
+/** Fetch service loyalty_points to show as default in admin modal. */
+export function useServiceLoyaltyPoints(serviceId: string | undefined) {
+  return useQuery({
+    queryKey: ['service', 'loyalty-points', serviceId ?? ''],
+    queryFn: () => repositories.loyalty().getServiceLoyaltyPoints(serviceId!),
+    enabled: !!serviceId,
+    staleTime: STALE.LONG,
+  })
+}
+
+/** Revokes points for an appointment (admin no-show). */
+export function useAdminRevokePoints() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ appointmentId, clientId }: { appointmentId: string; clientId: string }) =>
+      repositories.loyalty().deductPointsForAppointment(appointmentId, clientId),
+    onSuccess: (_d, { clientId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.loyalty.all() })
+      qc.invalidateQueries({ queryKey: queryKeys.loyalty.byUser(clientId) })
+      qc.invalidateQueries({ queryKey: ['loyalty', 'appt-status'] })
+    },
+  })
+}
+
+/** Undoes a revocation — restores awarded points. */
+export function useAdminUndoRevoke() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ appointmentId, clientId }: { appointmentId: string; clientId: string }) =>
+      repositories.loyalty().undoRevokePoints(appointmentId, clientId),
+    onSuccess: (_d, { clientId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.loyalty.all() })
+      qc.invalidateQueries({ queryKey: queryKeys.loyalty.byUser(clientId) })
+      qc.invalidateQueries({ queryKey: ['loyalty', 'appt-status'] })
+    },
+  })
+}
+
+/** Undoes an award — removes points as if never granted. */
+export function useAdminUndoAward() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ appointmentId, clientId }: { appointmentId: string; clientId: string }) =>
+      repositories.loyalty().undoAwardPoints(appointmentId, clientId),
+    onSuccess: (_d, { clientId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.loyalty.all() })
+      qc.invalidateQueries({ queryKey: queryKeys.loyalty.byUser(clientId) })
+      qc.invalidateQueries({ queryKey: ['loyalty', 'appt-status'] })
+    },
+  })
+}
+
+/** Admin manual points adjustment (add or subtract). */
+export function useManualAdjustPoints() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ clientId, points, description }: { clientId: string; points: number; description: string }) =>
+      repositories.loyalty().manualAdjustPoints(clientId, points, description),
+    onSuccess: (_d, { clientId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.loyalty.all() })
+      qc.invalidateQueries({ queryKey: queryKeys.loyalty.byUser(clientId) })
+    },
+  })
+}
+
+/** Recent loyalty transactions for a client (used in admin panels). */
+export function useRecentTransactions(clientId: string | undefined, limit = 8) {
+  return useQuery({
+    queryKey: ['loyalty', 'transactions', clientId ?? '', limit],
+    queryFn: () => repositories.loyalty().getRecentTransactions(clientId!, limit),
+    enabled: !!clientId,
+    staleTime: STALE.LOYALTY,
   })
 }
