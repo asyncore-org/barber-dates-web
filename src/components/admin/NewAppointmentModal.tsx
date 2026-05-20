@@ -238,7 +238,7 @@ export function NewAppointmentModal({ onClose, onConfirm, schedule, errorMessage
             fontSize: 15,
             letterSpacing: '0.06em',
             cursor: canConfirm ? 'pointer' : 'default',
-            boxShadow: canConfirm ? 'var(--glow-led)' : 'none',
+            boxShadow: 'none',
             transition: 'all 0.15s',
           }}
         >

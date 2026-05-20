@@ -1,11 +1,10 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
 import { getMaxBookingDate, getAvailableBarbersForDate, getBarbersAvailableForSlot } from '@/domain/booking'
 import { DEFAULT_WEEKLY_SCHEDULE, type DayKey } from '@/domain/schedule'
 import { MonthCalendar, TimeSlots, generateScheduleSlots } from '@/components/calendar'
-import { ServiceCard } from '@/components/appointments'
 import { Modal } from '@/components/ui'
 import { useAuth } from '@/hooks'
 import { useServices } from '@/hooks/useServices'
@@ -15,23 +14,128 @@ import { useClientAppointments, useAllAppointments, useCreateAppointment } from 
 import type { Service } from '@/domain/service'
 import type { Barber } from '@/domain/barber'
 
-function fmt(date: Date) {
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function fmtLong(date: Date) {
   return date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
 }
+function fmtHeader(date: Date) {
+  return date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()
+}
+function getInitials(name: string) {
+  return name.split(' ').map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2)
+}
+const JS_TO_DAY: Record<number, DayKey> = { 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat', 0: 'sun' }
 
-function getInitials(fullName: string): string {
-  return fullName
-    .split(' ')
-    .map(w => w[0] ?? '')
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
+// ── Step badge ────────────────────────────────────────────────────────────────
+
+function StepBadge({ step, label }: { step: string; label: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.45rem' }}>
+      <span style={{
+        fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 700,
+        color: 'var(--gold)', letterSpacing: '0.14em', textTransform: 'uppercase',
+      }}>
+        {step}
+      </span>
+      <span style={{ color: 'var(--fg-4)', fontSize: 9, lineHeight: 1 }}>·</span>
+      <span style={{
+        fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-3)',
+        letterSpacing: '0.12em', textTransform: 'uppercase',
+      }}>
+        {label}
+      </span>
+    </div>
+  )
 }
 
-const CARD = 'bg-[var(--bg-2)] border border-[var(--line)] rounded-xl p-4 md:p-5'
-const SECTION_LABEL = 'font-[var(--font-display)] text-[13px] tracking-widest text-[var(--fg-3)] mb-3.5'
+// ── Service row ───────────────────────────────────────────────────────────────
 
-const JS_TO_DAY: Record<number, DayKey> = { 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat', 0: 'sun' }
+function ServiceRow({ service, selected, onClick }: { service: Service; selected: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: '0.875rem',
+        width: '100%', padding: '0.875rem 1rem', borderRadius: 10,
+        border: selected ? '1.5px solid var(--gold)' : '1px solid var(--line)',
+        background: selected ? 'rgba(201,162,74,0.07)' : 'var(--bg-3)',
+        cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left',
+      }}
+    >
+      <div style={{
+        width: 20, height: 20, borderRadius: 5, flexShrink: 0,
+        border: selected ? '2px solid var(--gold)' : '1.5px solid var(--line)',
+        background: selected ? 'var(--gold)' : 'transparent',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'all 0.15s',
+      }}>
+        {selected && (
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+            <path d="M2 6l3 3 5-5" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 600, color: 'var(--fg-0)' }}>
+          {service.name}
+        </div>
+        <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-3)', marginTop: 1 }}>
+          {service.durationMinutes} min
+        </div>
+      </div>
+      <div style={{
+        fontFamily: 'var(--font-display)', fontSize: 18,
+        color: selected ? 'var(--gold)' : 'var(--fg-1)',
+        letterSpacing: '0.02em', transition: 'color 0.15s', flexShrink: 0,
+      }}>
+        {service.price}€
+      </div>
+    </button>
+  )
+}
+
+// ── Barber card ───────────────────────────────────────────────────────────────
+
+function BarberCard({ barber, selected, onClick }: {
+  barber: Barber | null; selected: boolean; onClick: () => void
+}) {
+  const isAny = barber === null
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: '0.75rem',
+        padding: '0.75rem 1rem', borderRadius: 10, flex: '1 1 auto',
+        border: selected ? '1.5px solid var(--gold)' : '1px solid var(--line)',
+        background: selected ? 'rgba(201,162,74,0.07)' : 'var(--bg-3)',
+        cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left',
+      }}
+    >
+      <div style={{
+        width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+        background: selected ? 'var(--gold)' : isAny ? 'var(--bg-4)' : 'rgba(123,79,255,0.2)',
+        border: selected ? 'none' : '1.5px solid var(--line)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: isAny ? 15 : 13, fontWeight: 700,
+        color: selected ? '#000' : isAny ? 'var(--fg-2)' : 'var(--led-soft)',
+        transition: 'all 0.15s',
+      }}>
+        {isAny ? '✦' : getInitials(barber.fullName)}
+      </div>
+      <div>
+        <div style={{ fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 600, color: selected ? 'var(--gold)' : 'var(--fg-0)' }}>
+          {isAny ? 'Cualquier barbero' : barber.fullName}
+        </div>
+        <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-3)', marginTop: 1 }}>
+          {isAny ? 'Sin preferencia' : (barber as Barber & { specialty?: string }).specialty ?? ''}
+        </div>
+      </div>
+    </button>
+  )
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function CalendarPage() {
   const navigate = useNavigate()
@@ -48,15 +152,54 @@ export default function CalendarPage() {
   const { data: allAppointments = [] } = useAllAppointments()
   const createAppointment = useCreateAppointment()
 
-  const [month, setMonth] = useState(today.getMonth())
-  const [year, setYear] = useState(today.getFullYear())
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
+  const [month, setMonth]   = useState(today.getMonth())
+  const [year, setYear]     = useState(today.getFullYear())
+  const [selectedDate, setSelectedDate]   = useState<Date | null>(null)
+  const [showSlots, setShowSlots]         = useState(false)
+  const [selectedSlot, setSelectedSlot]   = useState<string | null>(null)
   const [selectedService, setSelectedService] = useState<Service | null>(null)
-  const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null)
-  const [confirmOpen, setConfirmOpen] = useState(false)
-  const [bookingError, setBookingError] = useState<string | null>(null)
-  const [bookingBlocked, setBookingBlocked] = useState(false)
+  const [selectedBarber, setSelectedBarber]   = useState<Barber | null>(null)
+  const [confirmOpen, setConfirmOpen]         = useState(false)
+  const [bookingError, setBookingError]       = useState<string | null>(null)
+  const [bookingBlocked, setBookingBlocked]   = useState(false)
+
+  // One ref per layout container — querySelector scopes lookup to the correct DOM tree
+  const leftPanelRef  = useRef<HTMLDivElement>(null)
+  const mobileWrapRef = useRef<HTMLDivElement>(null)
+
+  // Scroll to a named section. Desktop: scrolls within the left panel container.
+  // Mobile: scrollIntoView on the element inside the mobile wrapper.
+  // Using querySelector per-container avoids the shared-ref problem when leftContent
+  // is rendered in both desktop and mobile (Tailwind hidden != unmounted).
+  const scrollTo = useCallback((id: string) => {
+    setTimeout(() => {
+      const isDesktop = window.innerWidth >= 1024
+      if (isDesktop) {
+        const container = leftPanelRef.current
+        if (!container) return
+        const el = container.querySelector(`[data-scroll="${id}"]`) as HTMLElement | null
+        if (!el) return
+        const cRect = container.getBoundingClientRect()
+        const eRect = el.getBoundingClientRect()
+        container.scrollTo({ top: Math.max(0, eRect.top - cRect.top + container.scrollTop - 8), behavior: 'smooth' })
+      } else {
+        const el = mobileWrapRef.current?.querySelector(`[data-scroll="${id}"]`) as HTMLElement | null
+        el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }, 240)
+  }, [])
+
+  const scrollToTop = useCallback(() => {
+    setTimeout(() => {
+      if (window.innerWidth >= 1024) {
+        leftPanelRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+    }, 80)
+  }, [])
+
+  // ── Computed ────────────────────────────────────────────────────────────────
 
   const { fromTime, toTime } = useMemo(() => {
     if (!selectedDate) return { fromTime: '10:00', toTime: '19:00' }
@@ -65,407 +208,447 @@ export default function CalendarPage() {
     return { fromTime: day.from || '10:00', toTime: day.to || '19:00' }
   }, [selectedDate, schedule])
 
-  // While schedule is loading, show all active barbers unfiltered to avoid empty flicker
   const availableBarbers = useMemo<Barber[]>(() => {
     if (loadingSchedule || !selectedDate) return allBarbers.filter(b => b.isActive)
     return getAvailableBarbersForDate(selectedDate, schedule, blocks, allBarbers)
   }, [selectedDate, allBarbers, schedule, blocks, loadingSchedule])
 
-  // Slots blocked because all available barbers (or just the selected one) are on break
+  const allSlots = useMemo(() => generateScheduleSlots(fromTime, toTime), [fromTime, toTime])
+
   const breakBlockedSlots = useMemo<string[]>(() => {
     if (!selectedService) return []
-    const barbersToCheck = selectedBarber ? [selectedBarber] : availableBarbers
-    return generateScheduleSlots(fromTime, toTime).filter(slot =>
-      getBarbersAvailableForSlot(slot, selectedService.durationMinutes, barbersToCheck).length === 0,
-    )
-  }, [selectedService, selectedBarber, availableBarbers, fromTime, toTime])
+    const check = selectedBarber ? [selectedBarber] : availableBarbers
+    return allSlots.filter(s => getBarbersAvailableForSlot(s, selectedService.durationMinutes, check).length === 0)
+  }, [selectedService, selectedBarber, availableBarbers, allSlots])
 
-  // Slots blocked because the barber(s) already have a confirmed appointment overlapping the slot
   const appointmentBlockedSlots = useMemo<string[]>(() => {
-    if (!selectedDate || allAppointments.length === 0) return []
-    const barbersToCheck = selectedBarber
-      ? [selectedBarber.id]
-      : availableBarbers.map(b => b.id)
+    if (!selectedDate || !allAppointments.length) return []
+    const check = selectedBarber ? [selectedBarber.id] : availableBarbers.map(b => b.id)
     const dateStr = selectedDate.toISOString().slice(0, 10)
     const dayAppts = allAppointments.filter(a =>
-      a.status === 'confirmed' &&
-      barbersToCheck.includes(a.barberId) &&
+      a.status === 'confirmed' && check.includes(a.barberId) &&
       new Date(a.startTime).toISOString().slice(0, 10) === dateStr,
     )
-    if (dayAppts.length === 0) return []
-    return generateScheduleSlots(fromTime, toTime).filter(slot => {
+    if (!dayAppts.length) return []
+    return allSlots.filter(slot => {
       const [h, m] = slot.split(':').map(Number)
-      const slotStart = new Date(selectedDate)
-      slotStart.setHours(h, m, 0, 0)
-      const slotEnd = new Date(slotStart.getTime() + 30 * 60_000)
-      return dayAppts.some(a => new Date(a.startTime) < slotEnd && new Date(a.endTime) > slotStart)
+      const s = new Date(selectedDate); s.setHours(h, m, 0, 0)
+      const e = new Date(s.getTime() + 30 * 60_000)
+      return dayAppts.some(a => new Date(a.startTime) < e && new Date(a.endTime) > s)
     })
-  }, [selectedDate, allAppointments, selectedBarber, availableBarbers, fromTime, toTime])
+  }, [selectedDate, allAppointments, selectedBarber, availableBarbers, allSlots])
 
-  const takenSlots = useMemo<string[]>(
-    () => [...new Set([...breakBlockedSlots, ...appointmentBlockedSlots])],
-    [breakBlockedSlots, appointmentBlockedSlots],
+  // If today is selected, mark past time slots as taken (can't book in the past)
+  const pastSlots = useMemo<string[]>(() => {
+    if (!selectedDate) return []
+    const sel = selectedDate
+    const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0)
+    const selMidnight = new Date(sel); selMidnight.setHours(0, 0, 0, 0)
+    if (selMidnight.getTime() !== todayMidnight.getTime()) return []
+    const nowH = today.getHours()
+    const nowM = today.getMinutes()
+    return allSlots.filter(slot => {
+      const [h, m] = slot.split(':').map(Number)
+      return h < nowH || (h === nowH && m <= nowM)
+    })
+  }, [selectedDate, allSlots, today])
+
+  const takenSlots = useMemo(
+    () => [...new Set([...breakBlockedSlots, ...appointmentBlockedSlots, ...pastSlots])],
+    [breakBlockedSlots, appointmentBlockedSlots, pastSlots],
+  )
+  const freeCount = useMemo(
+    () => allSlots.filter(s => !takenSlots.includes(s)).length,
+    [allSlots, takenSlots],
   )
 
-  // Services that can't be picked because their duration would overlap with an existing barber appointment
-  const unavailableServiceIds = useMemo<Set<string>>(() => {
-    if (!selectedDate || !selectedSlot || !selectedBarber) return new Set()
-    const [h, m] = selectedSlot.split(':').map(Number)
-    const slotStart = new Date(selectedDate)
-    slotStart.setHours(h, m, 0, 0)
-    const dateStr = selectedDate.toISOString().slice(0, 10)
-    const barberAppts = allAppointments.filter(a =>
-      a.status === 'confirmed' &&
-      a.barberId === selectedBarber.id &&
-      new Date(a.startTime).toISOString().slice(0, 10) === dateStr,
-    )
-    const ids = new Set<string>()
-    for (const service of services) {
-      const slotEnd = new Date(slotStart.getTime() + service.durationMinutes * 60_000)
-      const overlaps = barberAppts.some(a =>
-        new Date(a.startTime) < slotEnd && new Date(a.endTime) > slotStart,
-      )
-      if (overlaps) ids.add(service.id)
-    }
-    return ids
-  }, [selectedDate, selectedSlot, selectedBarber, allAppointments, services])
+  const hasActiveAppt = useMemo(
+    () => myAppointments.some(a => a.status === 'confirmed' && new Date(a.startTime) > new Date()),
+    [myAppointments],
+  )
+  const busyDays = useMemo(() =>
+    myAppointments.filter(a => a.status !== 'cancelled' && a.status !== 'no_show')
+      .filter(a => { const d = new Date(a.startTime); return d.getFullYear() === year && d.getMonth() === month })
+      .map(a => new Date(a.startTime).getDate()),
+    [myAppointments, year, month])
 
-  // True if client already has a future confirmed appointment
-  const hasActiveAppt = useMemo(() => {
-    const now = new Date()
-    return myAppointments.some(a => a.status === 'confirmed' && new Date(a.startTime) > now)
-  }, [myAppointments])
-
-  const busyDays = useMemo<number[]>(() => {
-    return myAppointments
-      .filter(a => a.status !== 'cancelled' && a.status !== 'no_show')
-      .filter(a => {
-        const d = new Date(a.startTime)
-        return d.getFullYear() === year && d.getMonth() === month
-      })
-      .map(a => new Date(a.startTime).getDate())
-  }, [myAppointments, year, month])
-
-  // Day-of-week numbers (0=Mon … 6=Sun ISO) that are fully closed per the weekly schedule
-  const closedDayOfWeeks = useMemo<number[]>(() => {
-    const DOW_MAP: Record<DayKey, number> = { mon: 0, tue: 1, wed: 2, thu: 3, fri: 4, sat: 5, sun: 6 }
+  const closedDayOfWeeks = useMemo(() => {
+    const M: Record<DayKey, number> = { mon: 0, tue: 1, wed: 2, thu: 3, fri: 4, sat: 5, sun: 6 }
     return (Object.entries(schedule) as [DayKey, { open: boolean }][])
-      .filter(([, day]) => !day.open)
-      .map(([key]) => DOW_MAP[key])
+      .filter(([, d]) => !d.open).map(([k]) => M[k])
   }, [schedule])
 
-  // 'YYYY-MM-DD' dates with a partial schedule_block (has specific start_time, not an all-day block)
-  const partialDates = useMemo<string[]>(() => {
-    return blocks
-      .filter(b => b.blockDate !== null && b.startTime !== null && !b.isRecurring)
-      .map(b => b.blockDate!)
-  }, [blocks])
+  const partialDates = useMemo(() =>
+    blocks.filter(b => b.blockDate !== null && b.startTime !== null && !b.isRecurring).map(b => b.blockDate!),
+    [blocks])
 
-  const handleMonthChange = (m: number, y: number) => {
-    setMonth(m)
-    setYear(y)
-  }
+  const canConfirm = !!(selectedDate && selectedSlot && selectedService && !createAppointment.isPending)
+  const serviceStep = allowBarberChoice ? 'Paso 4' : 'Paso 3'
+
+  // ── Handlers ────────────────────────────────────────────────────────────────
 
   const handleDateSelect = (d: Date) => {
     if (d > maxDate) return
-    const dayOfWeek = (d.getDay() + 6) % 7
-    if (closedDayOfWeeks.includes(dayOfWeek)) return
+    if (closedDayOfWeeks.includes((d.getDay() + 6) % 7)) return
+    if (selectedDate && d.toDateString() === selectedDate.toDateString()) {
+      const willHide = showSlots
+      setShowSlots(prev => !prev)
+      if (willHide) scrollToTop()
+      return
+    }
     setSelectedDate(d)
     setSelectedSlot(null)
+    setShowSlots(true)
     setBookingBlocked(hasActiveAppt)
-    if (selectedBarber) {
-      const stillAvailable = getAvailableBarbersForDate(d, schedule, blocks, allBarbers)
-        .some(b => b.id === selectedBarber.id)
-      if (!stillAvailable) setSelectedBarber(null)
-    }
+    if (selectedBarber && !getAvailableBarbersForDate(d, schedule, blocks, allBarbers).some(b => b.id === selectedBarber.id))
+      setSelectedBarber(null)
+    scrollTo('slots')
   }
 
-  const canConfirm = selectedDate && selectedSlot && selectedService && !createAppointment.isPending
+  const handleSlotSelect = (slot: string) => {
+    setSelectedSlot(slot)
+    scrollTo(allowBarberChoice ? 'barber' : 'service')
+  }
+
+  const handleBarberSelect = (b: Barber | null) => { setSelectedBarber(b); scrollTo('service') }
+
+  const handleServiceSelect = (s: Service) => {
+    const isDeselect = selectedService?.id === s.id
+    setSelectedService(isDeselect ? null : s)
+    if (!isDeselect) scrollTo('summary')
+  }
 
   const handleConfirm = () => {
     if (!selectedDate || !selectedSlot || !selectedService || !user) return
     setBookingError(null)
-
-    const [slotH, slotM] = selectedSlot.split(':').map(Number)
-    const start = new Date(selectedDate)
-    start.setHours(slotH, slotM, 0, 0)
+    const [h, m] = selectedSlot.split(':').map(Number)
+    const start = new Date(selectedDate); start.setHours(h, m, 0, 0)
     const end = new Date(start.getTime() + selectedService.durationMinutes * 60_000)
-
     const barberId = selectedBarber?.id ?? availableBarbers[0]?.id ?? ''
-
     createAppointment.mutate(
-      {
-        clientId: user.id,
-        barberId,
-        serviceId: selectedService.id,
-        startTime: start.toISOString(),
-        endTime: end.toISOString(),
-      },
+      { clientId: user.id, barberId, serviceId: selectedService.id, startTime: start.toISOString(), endTime: end.toISOString() },
       {
         onSuccess: () => {
           setConfirmOpen(false)
-          setSelectedDate(null)
-          setSelectedSlot(null)
-          setSelectedService(null)
-          setSelectedBarber(null)
+          setSelectedDate(null); setSelectedSlot(null); setSelectedService(null); setSelectedBarber(null)
+          setShowSlots(false)
           navigate('/appointments', { replace: true })
         },
-        onError: () => {
-          setBookingError('No se pudo guardar la cita. Inténtalo de nuevo.')
-        },
+        onError: () => setBookingError('No se pudo guardar la cita. Inténtalo de nuevo.'),
       },
     )
   }
 
-  return (
-    <>
-      <Helmet>
-        <title>Pedir cita — {shopName}</title>
-      </Helmet>
+  // ── LEFT column content ──────────────────────────────────────────────────────
+  // Rendered in both desktop and mobile — no React refs inside (use data-scroll instead)
+  // so the same ref object isn't accidentally attached to the hidden DOM node.
 
-      <div className="grid grid-cols-1 md:grid-cols-[1.4fr_0.9fr] gap-4 md:gap-6 items-start">
-        {/* Left column */}
-        <div className="flex flex-col gap-4">
-          {/* Calendar card */}
-          <div className={CARD}>
-            <div className={SECTION_LABEL}>SELECCIONAR FECHA</div>
-            <MonthCalendar
-              selected={selectedDate}
-              onSelect={handleDateSelect}
-              month={month}
-              year={year}
-              onMonthChange={handleMonthChange}
-              maxDate={maxDate}
-              closedDayOfWeeks={closedDayOfWeeks}
-              partialDates={partialDates}
-              busyDays={busyDays}
-            />
-          </div>
+  const leftContent = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
-          {/* Time slots — only shown when there are available barbers */}
-          {selectedDate && availableBarbers.length === 0 && (
-            <div className={CARD}>
-              <div style={{ color: 'var(--fg-2)', fontSize: 13, fontFamily: 'var(--font-ui)', padding: '0.5rem 0' }}>
-                No hay barberos disponibles para este día.
+      {/* Step 1 — Fecha */}
+      <div>
+        <StepBadge step="Paso 1" label="Fecha" />
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(26px, 2.8vw, 38px)', letterSpacing: '0.04em', color: 'var(--fg-0)', lineHeight: 1, margin: 0 }}>
+          SELECCIONA UNA FECHA
+        </h1>
+      </div>
+
+      <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 14, padding: '0.875rem', maxWidth: 520 }}>
+        <MonthCalendar
+          selected={selectedDate}
+          onSelect={handleDateSelect}
+          month={month} year={year}
+          onMonthChange={(m, y) => { setMonth(m); setYear(y) }}
+          maxDate={maxDate}
+          closedDayOfWeeks={closedDayOfWeeks}
+          partialDates={partialDates}
+          busyDays={busyDays}
+        />
+      </div>
+
+      {/* Step 2 — Horario (only when a date is selected and slots visible) */}
+      {selectedDate && showSlots && (
+        <div data-scroll="slots">
+          <StepBadge step="Paso 2" label="Horario" />
+          {bookingBlocked ? (
+            <p style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', lineHeight: 1.6, marginTop: 4 }}>
+              Ya tienes una cita activa. Reprograma desde{' '}
+              <button onClick={() => navigate('/appointments')}
+                style={{ background: 'none', border: 'none', padding: 0, color: 'var(--gold)', cursor: 'pointer', fontFamily: 'var(--font-ui)', fontSize: 13 }}>
+                Mis Citas
+              </button>.
+            </p>
+          ) : availableBarbers.length === 0 ? (
+            <p style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', marginTop: 4 }}>
+              No hay barberos disponibles este día.
+            </p>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginTop: 6, marginBottom: '0.75rem' }}>
+                <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', color: 'var(--fg-1)', textTransform: 'uppercase' }}>
+                  {fmtHeader(selectedDate)}
+                </span>
+                <span style={{
+                  padding: '0.15rem 0.5rem', borderRadius: 20,
+                  background: 'rgba(201,162,74,0.1)', border: '1px solid rgba(201,162,74,0.25)',
+                  fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 600, color: 'var(--gold)',
+                }}>
+                  {freeCount} disponibles
+                </span>
               </div>
-            </div>
-          )}
-          {selectedDate && availableBarbers.length > 0 && (
-            <div className={CARD}>
-              {bookingBlocked ? (
-                <div style={{ padding: '0.25rem 0' }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', marginBottom: 6 }}>
-                    Ya tienes una cita reservada
-                  </div>
-                  <div style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', lineHeight: 1.6 }}>
-                    Para cambiar el horario, reprograma tu cita desde{' '}
-                    <button
-                      onClick={() => navigate('/appointments')}
-                      style={{ background: 'none', border: 'none', padding: 0, color: 'var(--led-soft)', cursor: 'pointer', fontFamily: 'var(--font-ui)', fontSize: 13 }}
-                    >
-                      Mis Citas
-                    </button>
-                    .
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className={SECTION_LABEL}>
-                    HORA — {fmt(selectedDate).toUpperCase()}
-                  </div>
-                  <TimeSlots
-                    selected={selectedSlot}
-                    onSelect={setSelectedSlot}
-                    taken={takenSlots}
-                    fromTime={fromTime}
-                    toTime={toTime}
-                  />
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Barbero — hidden when allowBarberChoice is disabled */}
-          {allowBarberChoice && (
-            <div className={CARD}>
-              <div className={SECTION_LABEL}>BARBERO</div>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => setSelectedBarber(null)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '0.5rem',
-                    padding: '0.6rem 1rem', borderRadius: 8, minHeight: 44,
-                    border: selectedBarber === null ? '1px solid var(--led-soft)' : '1px solid var(--line)',
-                    background: selectedBarber === null ? 'rgba(123,79,255,0.1)' : 'var(--bg-3)',
-                    color: selectedBarber === null ? 'var(--fg-0)' : 'var(--fg-1)',
-                    cursor: 'pointer', fontSize: 13, fontFamily: 'var(--font-ui)',
-                    transition: 'all 0.12s',
-                  }}
-                >
-                  <div style={{
-                    width: 28, height: 28, borderRadius: '50%',
-                    background: selectedBarber === null ? 'var(--led)' : 'var(--bg-4)',
-                    display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', fontSize: 13, color: selectedBarber === null ? '#fff' : 'var(--fg-2)',
-                  }}>
-                    ✦
-                  </div>
-                  Cualquier barbero
-                </button>
-
-                {availableBarbers.map(b => (
-                  <button
-                    key={b.id}
-                    onClick={() => setSelectedBarber(b)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: '0.5rem',
-                      padding: '0.6rem 1rem', borderRadius: 8, minHeight: 44,
-                      border: selectedBarber?.id === b.id ? '1px solid var(--led-soft)' : '1px solid var(--line)',
-                      background: selectedBarber?.id === b.id ? 'rgba(123,79,255,0.1)' : 'var(--bg-3)',
-                      color: selectedBarber?.id === b.id ? 'var(--fg-0)' : 'var(--fg-1)',
-                      cursor: 'pointer', fontSize: 13, fontFamily: 'var(--font-ui)',
-                      transition: 'all 0.12s',
-                    }}
-                  >
-                    <div style={{
-                      width: 28, height: 28, borderRadius: '50%',
-                      background: 'var(--bg-4)', display: 'flex', alignItems: 'center',
-                      justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--fg-1)',
-                    }}>
-                      {getInitials(b.fullName)}
-                    </div>
-                    {b.fullName}
-                  </button>
-                ))}
-              </div>
-            </div>
+              <TimeSlots
+                selected={selectedSlot}
+                onSelect={handleSlotSelect}
+                taken={takenSlots}
+                fromTime={fromTime}
+                toTime={toTime}
+              />
+            </>
           )}
         </div>
+      )}
 
-        {/* Right column */}
-        <div className="flex flex-col gap-4">
-          {/* Services */}
-          <div className={CARD}>
-            <div className={SECTION_LABEL}>SERVICIO</div>
-            {loadingServices ? (
-              <div style={{ color: 'var(--fg-3)', fontSize: 13, fontFamily: 'var(--font-ui)', padding: '0.5rem 0' }}>
-                Cargando servicios…
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {services.map(s => (
-                  <ServiceCard
-                    key={s.id}
-                    service={s}
-                    selected={selectedService?.id === s.id}
-                    onClick={() => setSelectedService(s)}
-                    disabled={unavailableServiceIds.has(s.id)}
-                  />
-                ))}
-              </div>
-            )}
+      {/* Hint: date selected but slots hidden */}
+      {selectedDate && !showSlots && (
+        <button
+          onClick={() => { setShowSlots(true); scrollTo('slots') }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '0.5rem',
+            background: 'none', border: '1px dashed var(--line)', borderRadius: 10,
+            padding: '0.75rem 1rem', cursor: 'pointer', color: 'var(--fg-3)',
+            fontFamily: 'var(--font-ui)', fontSize: 13,
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+          </svg>
+          Ver horarios — {fmtLong(selectedDate)}
+        </button>
+      )}
+
+      {/* Step 3 — Barbero (only after date + slot) */}
+      {allowBarberChoice && selectedDate && selectedSlot && (
+        <div data-scroll="barber">
+          <StepBadge step="Paso 3" label="Barbero" />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: 6 }}>
+            {availableBarbers.map(b => (
+              <BarberCard key={b.id} barber={b} selected={selectedBarber?.id === b.id}
+                onClick={() => handleBarberSelect(b)} />
+            ))}
+            <BarberCard barber={null} selected={selectedBarber === null}
+              onClick={() => handleBarberSelect(null)} />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  // ── Summary card (shared between desktop and mobile) ─────────────────────────
+  // Always renders all rows so height stays stable (no layout jump when service is selected).
+
+  const summaryCard = (
+    <div data-scroll="summary" style={{
+      background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 14,
+      padding: '1rem 1.125rem', display: 'flex', flexDirection: 'column', gap: '0.75rem',
+    }}>
+      <p style={{ fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 700, letterSpacing: '0.18em', color: 'var(--gold)', margin: 0 }}>
+        RESUMEN
+      </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: 20 }}>
+        <span style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: selectedDate ? 'var(--fg-0)' : 'var(--fg-4)', fontWeight: selectedDate ? 500 : 400 }}>
+          {selectedDate
+            ? `${fmtLong(selectedDate)}${selectedSlot ? ' · ' + selectedSlot : ''}`
+            : 'Sin fecha seleccionada'}
+        </span>
+        {selectedDate && selectedSlot && (
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginLeft: 8 }}>
+            <path d="M20 6L9 17l-5-5" />
+          </svg>
+        )}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: 20 }}>
+        <span style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: selectedService ? 'var(--fg-0)' : 'var(--fg-4)' }}>
+          {selectedService
+            ? <>{selectedService.name}<span style={{ color: 'var(--fg-3)' }}>{selectedBarber ? ` · ${selectedBarber.fullName}` : ' · Cualquier barbero'}</span></>
+            : 'Sin servicio seleccionado'}
+        </span>
+        {selectedService && (
+          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--fg-1)', fontWeight: 500, flexShrink: 0, marginLeft: 8 }}>
+            {selectedService.price}€
+          </span>
+        )}
+      </div>
+      <div style={{ height: 1, background: 'var(--line)' }} />
+      {/* Price — same structure always, color/content changes */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+        <div>
+          <p style={{ fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 600, letterSpacing: '0.14em', color: 'var(--fg-3)', marginBottom: '0.2rem', textTransform: 'uppercase' }}>
+            {selectedService ? `Total · ${selectedService.durationMinutes} min` : 'Total'}
+          </p>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 3vw, 40px)', color: selectedService ? 'var(--gold)' : 'var(--fg-4)', lineHeight: 1, transition: 'color 0.2s' }}>
+            {selectedService ? `${selectedService.price}€` : '—'}
+          </span>
+        </div>
+        <span style={{
+          padding: '0.2rem 0.625rem', borderRadius: 20, flexShrink: 0,
+          background: selectedService ? 'rgba(201,162,74,0.1)' : 'var(--bg-3)',
+          border: `1px solid ${selectedService ? 'rgba(201,162,74,0.25)' : 'var(--line)'}`,
+          fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600,
+          color: selectedService ? 'var(--gold)' : 'var(--fg-4)', transition: 'all 0.2s',
+        }}>
+          {selectedService ? `+ ${selectedService.loyaltyPoints} pts` : '— pts'}
+        </span>
+      </div>
+      <button
+        disabled={!canConfirm}
+        onClick={() => setConfirmOpen(true)}
+        style={{
+          width: '100%', padding: '0.875rem', borderRadius: 10, border: 'none',
+          background: canConfirm ? 'var(--gold)' : 'var(--bg-4)',
+          color: canConfirm ? '#000' : 'var(--fg-3)',
+          fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 700,
+          cursor: canConfirm ? 'pointer' : 'default',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+          transition: 'all 0.2s', boxShadow: canConfirm ? '0 4px 20px rgba(201,162,74,0.25)' : 'none',
+        }}
+      >
+        Confirmar reserva
+        {canConfirm && (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+        )}
+      </button>
+    </div>
+  )
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+
+  return (
+    <>
+      <Helmet><title>Pedir cita — {shopName}</title></Helmet>
+
+      {/* ── DESKTOP ──────────────────────────────────────────────────────────
+          Two equal columns. Height is exactly the available content area:
+            100dvh - topbar(57px) - main padding-top(24px) - main padding-bottom(24px)
+          = calc(100dvh - 105px)  → no page scroll ever.
+          Left panel scrolls internally. Right panel is a static flex column.   */}
+      <div
+        className="hidden lg:grid"
+        style={{
+          gridTemplateColumns: '1fr 1fr',
+          columnGap: '3rem',
+          height: 'calc(100dvh - 105px)',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Left — scrolls inside the panel */}
+        <div
+          ref={leftPanelRef}
+          style={{ overflowY: 'auto', paddingBottom: '1.5rem', scrollbarWidth: 'none' }}
+          className="[&::-webkit-scrollbar]:hidden"
+        >
+          {leftContent}
+        </div>
+
+        {/* Right — flex column, never scrolls externally */}
+        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', paddingBottom: '1rem' }}>
+          {/* Header — pinned */}
+          <div style={{ flexShrink: 0, paddingBottom: '1rem' }}>
+            <StepBadge step={serviceStep} label="Servicio" />
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(26px, 2.8vw, 38px)', letterSpacing: '0.04em', color: 'var(--fg-0)', lineHeight: 1, margin: 0 }}>
+              ELIGE TU SERVICIO
+            </h2>
           </div>
 
-          {/* Summary */}
-          <div className={CARD}>
-            <div className={SECTION_LABEL}>RESUMEN</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-              {[
-                { label: 'Fecha',   value: selectedDate ? fmt(selectedDate) : '—' },
-                { label: 'Hora',    value: selectedSlot ?? '—' },
-                { label: 'Servicio', value: selectedService?.name ?? '—' },
-                { label: 'Barbero', value: selectedBarber?.fullName ?? 'Cualquier barbero' },
-                { label: 'Precio',  value: selectedService ? `${selectedService.price}€` : '—' },
-              ].map(({ label, value }) => (
-                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 12, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>{label}</span>
-                  <span style={{ fontSize: 13, color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontWeight: 500 }}>{value}</span>
-                </div>
+          {/* Service list — grows to fill remaining space, scrolls internally if needed */}
+          <div
+            data-scroll="service"
+            style={{ flex: '1 1 0', overflowY: 'auto', scrollbarWidth: 'none', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}
+            className="[&::-webkit-scrollbar]:hidden"
+          >
+            {loadingServices
+              ? <p style={{ fontSize: 13, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}>Cargando servicios…</p>
+              : services.map(s => (
+                <ServiceRow key={s.id} service={s}
+                  selected={selectedService?.id === s.id}
+                  onClick={() => handleServiceSelect(s)} />
               ))}
+          </div>
 
-              {selectedService && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.375rem', borderTop: '1px solid var(--line)' }}>
-                  <span style={{ fontSize: 12, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>Ganarás</span>
-                  <span style={{ fontSize: 13, color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontWeight: 600 }}>
-                    ★ {selectedService.loyaltyPoints} pts
-                  </span>
-                </div>
-              )}
-            </div>
-            <button
-              disabled={!canConfirm}
-              onClick={() => setConfirmOpen(true)}
-              style={{
-                width: '100%', padding: '0.875rem',
-                borderRadius: 8, border: 'none',
-                background: canConfirm ? 'var(--led)' : 'var(--bg-4)',
-                color: canConfirm ? '#fff' : 'var(--fg-3)',
-                fontFamily: 'var(--font-display)', fontSize: 16,
-                letterSpacing: '0.08em', cursor: canConfirm ? 'pointer' : 'default',
-                boxShadow: canConfirm ? 'var(--glow-led)' : 'none',
-                transition: 'all 0.15s',
-              }}
-            >
-              CONFIRMAR CITA
-            </button>
+          {/* Summary — always pinned at bottom */}
+          <div style={{ flexShrink: 0, paddingTop: '0.875rem' }}>
+            {summaryCard}
           </div>
         </div>
       </div>
 
-      {confirmOpen && <Modal
-        onClose={() => setConfirmOpen(false)}
-        title="Confirmar cita"
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
-          {[
-            { label: 'Fecha',    value: selectedDate ? fmt(selectedDate) : '' },
-            { label: 'Hora',     value: selectedSlot ?? '' },
-            { label: 'Servicio', value: selectedService?.name ?? '' },
-            { label: 'Barbero',  value: selectedBarber?.fullName ?? 'Cualquier barbero' },
-            { label: 'Duración', value: selectedService ? `${selectedService.durationMinutes} min` : '' },
-            { label: 'Precio',   value: selectedService ? `${selectedService.price}€` : '' },
-          ].map(({ label, value }) => (
-            <div key={label} style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>{label}</span>
-              <span style={{ fontSize: 13, color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontWeight: 500 }}>{value}</span>
-            </div>
-          ))}
-        </div>
-        {bookingError && (
-          <div style={{ color: 'var(--err)', fontSize: 13, fontFamily: 'var(--font-ui)', marginBottom: '0.75rem', textAlign: 'center' }}>
-            {bookingError}
+      {/* ── MOBILE — stacked, page scrolls naturally ────────────────────── */}
+      <div ref={mobileWrapRef} className="flex flex-col gap-10 lg:hidden" style={{ paddingBottom: '5rem' }}>
+        {leftContent}
+        <div style={{ height: 1, background: 'var(--line)' }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div>
+            <StepBadge step={serviceStep} label="Servicio" />
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(26px, 2.8vw, 38px)', letterSpacing: '0.04em', color: 'var(--fg-0)', lineHeight: 1, margin: 0 }}>
+              ELIGE TU SERVICIO
+            </h2>
           </div>
-        )}
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button
-            onClick={() => setConfirmOpen(false)}
-            disabled={createAppointment.isPending}
-            style={{
-              flex: 1, padding: '0.75rem', borderRadius: 8,
-              border: '1px solid var(--line)', background: 'transparent',
-              color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', cursor: 'pointer',
-              minHeight: 44, opacity: createAppointment.isPending ? 0.5 : 1,
-            }}
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={createAppointment.isPending}
-            style={{
-              flex: 1, padding: '0.75rem', borderRadius: 8,
-              border: 'none', background: 'var(--led)', color: '#fff',
-              fontFamily: 'var(--font-ui)', fontWeight: 600,
-              cursor: createAppointment.isPending ? 'default' : 'pointer',
-              boxShadow: createAppointment.isPending ? 'none' : 'var(--glow-led)',
-              opacity: createAppointment.isPending ? 0.7 : 1,
-              minHeight: 44,
-            }}
-          >
-            {createAppointment.isPending ? 'Guardando…' : 'Confirmar'}
-          </button>
+          <div data-scroll="service" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {loadingServices
+              ? <p style={{ fontSize: 13, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}>Cargando servicios…</p>
+              : services.map(s => (
+                <ServiceRow key={s.id} service={s}
+                  selected={selectedService?.id === s.id}
+                  onClick={() => handleServiceSelect(s)} />
+              ))}
+          </div>
+          {summaryCard}
         </div>
-      </Modal>}
+      </div>
+
+      {/* ── Confirmation modal ───────────────────────────────────────────── */}
+      {confirmOpen && (
+        <Modal onClose={() => setConfirmOpen(false)} title="Confirmar reserva">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+            {[
+              { label: 'Fecha',    value: selectedDate ? fmtLong(selectedDate) : '' },
+              { label: 'Hora',     value: selectedSlot ?? '' },
+              { label: 'Servicio', value: selectedService?.name ?? '' },
+              { label: 'Barbero',  value: selectedBarber?.fullName ?? 'Cualquier barbero' },
+              { label: 'Duración', value: selectedService ? `${selectedService.durationMinutes} min` : '' },
+              { label: 'Precio',   value: selectedService ? `${selectedService.price}€` : '' },
+            ].map(({ label, value }) => (
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>{label}</span>
+                <span style={{ fontSize: 13, color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontWeight: 500 }}>{value}</span>
+              </div>
+            ))}
+            {selectedService && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid var(--line)' }}>
+                <span style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>Ganarás</span>
+                <span style={{ fontSize: 13, color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontWeight: 600 }}>★ {selectedService.loyaltyPoints} pts</span>
+              </div>
+            )}
+          </div>
+          {bookingError && (
+            <p style={{ color: 'var(--danger)', fontSize: 13, fontFamily: 'var(--font-ui)', marginBottom: '0.75rem', textAlign: 'center' }}>
+              {bookingError}
+            </p>
+          )}
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button onClick={() => setConfirmOpen(false)} disabled={createAppointment.isPending}
+              style={{ flex: 1, padding: '0.75rem', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', cursor: 'pointer', minHeight: 44, opacity: createAppointment.isPending ? 0.5 : 1 }}>
+              Cancelar
+            </button>
+            <button onClick={handleConfirm} disabled={createAppointment.isPending}
+              style={{ flex: 1, padding: '0.75rem', borderRadius: 8, border: 'none', background: 'var(--gold)', color: '#000', fontFamily: 'var(--font-ui)', fontWeight: 700, cursor: createAppointment.isPending ? 'default' : 'pointer', opacity: createAppointment.isPending ? 0.7 : 1, minHeight: 44, boxShadow: '0 4px 16px rgba(201,162,74,0.3)' }}>
+              {createAppointment.isPending ? 'Guardando…' : 'Confirmar'}
+            </button>
+          </div>
+        </Modal>
+      )}
     </>
   )
 }

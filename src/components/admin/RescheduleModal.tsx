@@ -34,19 +34,26 @@ export function RescheduleModal({ appt, weekStart, schedule, onClose, onConfirm 
   const activeServices = services.filter(s => s.isActive)
   const activeBarbers = barbers.filter(b => b.isActive)
 
+  const today = new Date()
   const initialDate = new Date(weekStart)
   initialDate.setDate(initialDate.getDate() + appt.day)
+  // If appointment is in the past, reset to today for rescheduling
+  const startDate = initialDate < today ? null : initialDate
+  const startMonth = startDate ? startDate.getMonth() : today.getMonth()
+  const startYear = startDate ? startDate.getFullYear() : today.getFullYear()
 
-  const initialSlot = `${appt.startH.toString().padStart(2, '0')}:${appt.startM.toString().padStart(2, '0')}`
+  const initialSlot = startDate
+    ? `${appt.startH.toString().padStart(2, '0')}:${appt.startM.toString().padStart(2, '0')}`
+    : null
 
   const [serviceId, setServiceId] = useState<string>(
     () => activeServices.find(s => s.name === appt.service)?.id ?? activeServices[0]?.id ?? ''
   )
   const [barberId, setBarberId] = useState(appt.barberId)
-  const [date, setDate] = useState<Date | null>(initialDate)
+  const [date, setDate] = useState<Date | null>(startDate)
   const [slot, setSlot] = useState<string | null>(initialSlot)
-  const [month, setMonth] = useState(initialDate.getMonth())
-  const [year, setYear] = useState(initialDate.getFullYear())
+  const [month, setMonth] = useState(startMonth)
+  const [year, setYear] = useState(startYear)
 
   const selectedService = activeServices.find(s => s.id === serviceId)
   const selectedBarber = activeBarbers.find(b => b.id === barberId)
@@ -157,6 +164,7 @@ export function RescheduleModal({ appt, weekStart, schedule, onClose, onConfirm 
             month={month}
             year={year}
             onMonthChange={(m, y) => { setMonth(m); setYear(y) }}
+            minDate={new Date()}
           />
         </div>
 
@@ -213,7 +221,7 @@ export function RescheduleModal({ appt, weekStart, schedule, onClose, onConfirm 
             fontSize: 15,
             letterSpacing: '0.06em',
             cursor: canConfirm ? 'pointer' : 'default',
-            boxShadow: canConfirm ? 'var(--glow-led)' : 'none',
+            boxShadow: 'none',
             transition: 'all 0.15s',
           }}
         >

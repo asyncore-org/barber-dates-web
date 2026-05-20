@@ -7,6 +7,7 @@ interface MonthCalendarProps {
   year: number
   onMonthChange: (month: number, year: number) => void
   busyDays?: number[]
+  minDate?: Date
   maxDate?: Date
   /** Day-of-week numbers (0=Mon … 6=Sun, ISO) that are fully closed. Rendered as disabled + line-through. */
   closedDayOfWeeks?: number[]
@@ -31,18 +32,22 @@ const MONTH_NAMES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
 
-export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, busyDays = [], maxDate, closedDayOfWeeks = [], partialDates = [] }: MonthCalendarProps) {
+export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, busyDays = [], minDate, maxDate, closedDayOfWeeks = [], partialDates = [] }: MonthCalendarProps) {
   const today = new Date()
   const todayNorm = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const minNorm = minDate ? new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate()) : null
   const maxNorm = maxDate ? new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate()) : null
 
   const days = getMonthDays(year, month)
 
+  const isAtMinMonth = minNorm
+    ? (year < minNorm.getFullYear() || (year === minNorm.getFullYear() && month <= minNorm.getMonth()))
+    : (month === today.getMonth() && year === today.getFullYear())
   const isAtCurrentMonth = month === today.getMonth() && year === today.getFullYear()
   const isNextMonthBeyondMax = maxNorm ? new Date(year, month + 1, 1) > maxNorm : false
 
   const prev = () => {
-    if (isAtCurrentMonth) return
+    if (isAtMinMonth) return
     if (month === 0) onMonthChange(11, year - 1)
     else onMonthChange(month - 1, year)
   }
@@ -61,7 +66,7 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
           <button
             onClick={prev}
-            disabled={isAtCurrentMonth}
+            disabled={isAtMinMonth}
             className="cal-nav-btn"
           >
             <Icon name="chevronL" size={14} />
@@ -79,7 +84,7 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
         </div>
         <button
           onClick={goToday}
-          disabled={isAtCurrentMonth}
+          disabled={isAtCurrentMonth && !minNorm}
           className="cal-nav-btn"
           style={{ width: 'auto', padding: '0 0.875rem', fontSize: 12, fontFamily: 'var(--font-ui)' }}
         >
@@ -99,7 +104,7 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
         {days.map(({ day, current }, i) => {
           if (!current) return <div key={`e${i}`} />
           const date = new Date(year, month, day)
-          const isPast = date < todayNorm
+          const isPast = minNorm ? date < minNorm : date < todayNorm
           const isBeyondMax = maxNorm ? date > maxNorm : false
           // 0=Mon … 6=Sun (ISO convention matching closedDayOfWeeks)
           const dayOfWeek = (date.getDay() + 6) % 7
@@ -139,11 +144,11 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
                     ? 'rgba(123,79,255,0.08)'
                     : 'transparent',
                 color: isDisabled ? 'var(--fg-3)' : isSelected ? '#fff' : 'var(--fg-0)',
-                fontSize: 13,
+                fontSize: 12,
                 fontFamily: 'var(--font-ui)',
                 fontWeight: isToday || isSelected ? 600 : 400,
                 cursor: isDisabled ? 'not-allowed' : 'pointer',
-                boxShadow: isSelected ? 'var(--glow-led)' : 'none',
+                boxShadow: 'none',
                 opacity: isDisabled ? (isClosed ? 0.4 : isBeyondMax ? 0.2 : 0.35) : 1,
                 textDecoration: isClosed ? 'line-through' : 'none',
                 transition: 'all 0.12s',
