@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useShopContext } from '@/context/ShopContext'
 import { getMaxBookingDate } from '@/domain/booking'
 import { canCancelAppointment } from '@/domain/appointment'
+import type { Appointment } from '@/domain/appointment'
 import { DEFAULT_WEEKLY_SCHEDULE, type DayKey } from '@/domain/schedule'
 import { LoyaltyCard } from '@/components/loyalty'
 import { Modal, ConfirmDialog } from '@/components/ui'
@@ -21,6 +22,8 @@ import { useWeeklySchedule } from '@/hooks/useSchedule'
 import { useLoyaltyCard, useRewards, useRedeemedRewardIds, useRedeemReward } from '@/hooks/useLoyalty'
 import { useLoyaltyConfig } from '@/hooks/useShopConfig'
 import type { Reward } from '@/domain/loyalty'
+import type { Service } from '@/domain/service'
+import type { Barber } from '@/domain/barber'
 
 const JS_TO_DAY: Record<number, DayKey> = { 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat', 0: 'sun' }
 
@@ -36,6 +39,195 @@ function fmtHistoryDate(iso: string) {
 
 const CARD = 'bg-[var(--bg-2)] border border-[var(--line)] rounded-xl p-4 md:p-5'
 const SECTION_LABEL = 'font-[var(--font-display)] text-[13px] tracking-widest text-[var(--fg-3)] mb-3.5'
+
+// ── AppointmentHistory ────────────────────────────────────────────────────────
+
+type HistoryFilter = 'all' | 'completed' | 'cancelled'
+
+function AppointmentHistory({ appointments, services, barbers }: {
+  appointments: Appointment[]
+  services: Service[]
+  barbers: Barber[]
+}) {
+  const [open,         setOpen]         = useState(false)
+  const [loaded,       setLoaded]       = useState(false)
+  const [filterStatus, setFilterStatus] = useState<HistoryFilter>('all')
+  const [filterFrom,   setFilterFrom]   = useState('')
+  const [filterTo,     setFilterTo]     = useState('')
+
+  const history = useMemo(() =>
+    appointments
+      .filter(a => a.status === 'completed')
+      .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()),
+    [appointments],
+  )
+
+  const cancelled = useMemo(() =>
+    appointments
+      .filter(a => a.status === 'cancelled')
+      .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()),
+    [appointments],
+  )
+
+  const filtered = useMemo(() => {
+    const base =
+      filterStatus === 'completed' ? history :
+      filterStatus === 'cancelled' ? cancelled :
+      [...history, ...cancelled].sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+
+    return base
+      .filter(a => !filterFrom || a.startTime >= filterFrom)
+      .filter(a => !filterTo   || a.startTime <= filterTo + 'T23:59:59')
+      .slice(0, 50)
+  }, [history, cancelled, filterStatus, filterFrom, filterTo])
+
+  const total = history.length + cancelled.length
+
+  return (
+    <div className={CARD} style={{ padding: 0, overflow: 'hidden' }}>
+      {/* Header / toggle */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0.9rem 1.25rem', background: 'none', border: 'none', cursor: 'pointer',
+        }}
+      >
+        <div className={SECTION_LABEL} style={{ marginBottom: 0 }}>HISTORIAL</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {loaded && total > 0 && (
+            <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}>
+              {total} cita{total !== 1 ? 's' : ''}
+            </span>
+          )}
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="var(--fg-3)" strokeWidth="1.5"
+            style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}>
+            <path d="M2 4l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      </button>
+
+      {open && (
+        <div style={{ borderTop: '1px solid var(--line)' }}>
+          {!loaded ? (
+            /* ── Prompt to load ── */
+            <div style={{ padding: '1.5rem 1.25rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+              <p style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--fg-3)', margin: 0, textAlign: 'center' }}>
+                El historial no se carga automáticamente.
+              </p>
+              <button
+                onClick={() => setLoaded(true)}
+                style={{
+                  padding: '0.5rem 1.5rem', minHeight: 40, borderRadius: 8,
+                  border: '1px solid var(--line)', background: 'var(--bg-3)',
+                  color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer',
+                }}
+              >Solicitar historial</button>
+            </div>
+          ) : (
+            <>
+              {/* ── Filters ── */}
+              <div style={{ padding: '0.5rem 1rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid var(--line)', background: 'var(--bg-3)' }}>
+                {(['all', 'completed', 'cancelled'] as const).map(s => (
+                  <button
+                    key={s}
+                    onClick={() => setFilterStatus(s)}
+                    style={{
+                      padding: '0.2rem 0.6rem', borderRadius: 20, border: 'none', cursor: 'pointer',
+                      fontSize: 11, fontFamily: 'var(--font-ui)',
+                      background: filterStatus === s ? 'var(--gold)' : 'var(--bg-4)',
+                      color: filterStatus === s ? '#000' : 'var(--fg-2)',
+                    }}
+                  >
+                    {s === 'all' ? 'Todas' : s === 'completed' ? 'Completadas' : 'Canceladas'}
+                  </button>
+                ))}
+                <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)}
+                  title="Desde"
+                  style={{ background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.2rem 0.4rem', color: 'var(--fg-1)', fontSize: 11, fontFamily: 'var(--font-ui)', outline: 'none', minWidth: 0 }} />
+                <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)}
+                  title="Hasta"
+                  style={{ background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.2rem 0.4rem', color: 'var(--fg-1)', fontSize: 11, fontFamily: 'var(--font-ui)', outline: 'none', minWidth: 0 }} />
+                {(filterFrom || filterTo || filterStatus !== 'all') && (
+                  <button onClick={() => { setFilterStatus('all'); setFilterFrom(''); setFilterTo('') }}
+                    style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-ui)', padding: '0 4px' }}>
+                    Limpiar
+                  </button>
+                )}
+              </div>
+
+              {/* ── List ── */}
+              <div style={{ overflowY: 'auto', maxHeight: 420 }}>
+                {filtered.length === 0 ? (
+                  <div style={{ padding: '1.5rem 1.25rem', color: 'var(--fg-3)', fontSize: 13, fontFamily: 'var(--font-ui)' }}>
+                    Sin resultados
+                  </div>
+                ) : (
+                  filtered.map((h, i) => {
+                    const svc       = services.find(s => s.id === h.serviceId)
+                    const brb       = barbers.find(b => b.id === h.barberId)
+                    const cancelled = h.status === 'cancelled'
+                    return (
+                      <div key={h.id} style={{
+                        display: 'flex', alignItems: 'center', gap: '0.875rem',
+                        padding: '0.875rem 1.25rem',
+                        borderBottom: i < filtered.length - 1 ? '1px solid var(--line)' : undefined,
+                        opacity: cancelled ? 0.55 : 1,
+                      }}>
+                        <div style={{
+                          width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+                          background: cancelled ? 'rgba(192,64,64,0.08)' : 'rgba(201,162,74,0.1)',
+                          border: `1.5px solid ${cancelled ? 'rgba(192,64,64,0.2)' : 'rgba(201,162,74,0.25)'}`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          {cancelled ? (
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M18 6L6 18M6 6l12 12" />
+                            </svg>
+                          ) : (
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M20 6L9 17l-5-5" />
+                            </svg>
+                          )}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 600, color: 'var(--fg-0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {svc?.name ?? '—'}
+                          </div>
+                          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-3)', marginTop: 2 }}>
+                            {fmtHistoryDate(h.startTime)}{brb ? ` · ${brb.fullName}` : ''}
+                          </div>
+                        </div>
+                        {cancelled ? (
+                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--danger)', border: '1px solid rgba(192,64,64,0.3)', borderRadius: 4, padding: '0.15rem 0.4rem', flexShrink: 0 }}>
+                            cancelada
+                          </span>
+                        ) : (
+                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, color: 'var(--fg-0)', letterSpacing: '0.02em' }}>
+                              {svc ? `${svc.price}€` : '—'}
+                            </div>
+                            {svc && (
+                              <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--gold)', marginTop: 1 }}>
+                                +{svc.loyaltyPoints} pts
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── AppointmentsPage ──────────────────────────────────────────────────────────
 
 export default function AppointmentsPage() {
   const navigate = useNavigate()
@@ -67,21 +259,6 @@ export default function AppointmentsPage() {
       .filter(a => a.status === 'confirmed' && new Date(a.startTime).getTime() >= nowMs)
       .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
   }, [appointments])
-
-  const history = useMemo(() =>
-    appointments
-      .filter(a => a.status === 'completed')
-      .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()),
-    [appointments],
-  )
-
-  const recentCancelled = useMemo(() =>
-    appointments
-      .filter(a => a.status === 'cancelled')
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 3),
-    [appointments],
-  )
 
   const next        = upcoming[0] ?? null
   const nextService = next ? services.find(s => s.id === next.serviceId) ?? null : null
@@ -330,112 +507,6 @@ export default function AppointmentsPage() {
     />
   )
 
-  const renderHistorial = (fill = false) => (
-    <div className={CARD} style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', ...(fill ? { flex: 1, minHeight: 0 } : {}) }}>
-      <div style={{ padding: '1rem 1.25rem 0.75rem', borderBottom: history.length > 0 || recentCancelled.length > 0 ? '1px solid var(--line)' : undefined, flexShrink: 0 }}>
-        <div className={SECTION_LABEL} style={{ marginBottom: 0 }}>HISTORIAL</div>
-      </div>
-
-      {history.length === 0 && recentCancelled.length === 0 ? (
-        <div style={{ padding: '1.5rem 1.25rem', color: 'var(--fg-3)', fontSize: 13, fontFamily: 'var(--font-ui)' }}>
-          Aún no tienes citas anteriores
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-
-          {/* Completed */}
-          {history.map((h, i) => {
-            const svc = services.find(s => s.id === h.serviceId)
-            const brb = barbers.find(b => b.id === h.barberId)
-            return (
-              <div key={h.id} style={{
-                display: 'flex', alignItems: 'center', gap: '0.875rem',
-                padding: '0.875rem 1.25rem',
-                borderBottom: (i < history.length - 1 || recentCancelled.length > 0)
-                  ? '1px solid var(--line)' : undefined,
-              }}>
-                <div style={{
-                  width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-                  background: 'rgba(201,162,74,0.1)', border: '1.5px solid rgba(201,162,74,0.25)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20 6L9 17l-5-5" />
-                  </svg>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 600, color: 'var(--fg-0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {svc?.name ?? '—'}
-                  </div>
-                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-3)', marginTop: 2 }}>
-                    {fmtHistoryDate(h.startTime)}{brb ? ` · ${brb.fullName}` : ''}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, color: 'var(--fg-0)', letterSpacing: '0.02em' }}>
-                    {svc ? `${svc.price}€` : '—'}
-                  </div>
-                  {svc && (
-                    <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--gold)', marginTop: 1 }}>
-                      +{svc.loyaltyPoints} pts
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-
-          {/* Cancelled sub-header */}
-          {recentCancelled.length > 0 && history.length > 0 && (
-            <div style={{ padding: '0.5rem 1.25rem', background: 'var(--bg-3)', flexShrink: 0 }}>
-              <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-4)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                Canceladas
-              </span>
-            </div>
-          )}
-
-          {/* Cancelled */}
-          {recentCancelled.map((c, i) => {
-            const svc = services.find(s => s.id === c.serviceId)
-            const brb = barbers.find(b => b.id === c.barberId)
-            return (
-              <div key={c.id} style={{
-                display: 'flex', alignItems: 'center', gap: '0.875rem',
-                padding: '0.75rem 1.25rem', opacity: 0.5,
-                borderBottom: i < recentCancelled.length - 1 ? '1px solid var(--line)' : undefined,
-              }}>
-                <div style={{
-                  width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-                  background: 'rgba(192,64,64,0.08)', border: '1.5px solid rgba(192,64,64,0.2)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 6L6 18M6 6l12 12" />
-                  </svg>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 500, color: 'var(--fg-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {svc?.name ?? '—'}
-                  </div>
-                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-3)', marginTop: 2 }}>
-                    {fmtHistoryDate(c.startTime)}{brb ? ` · ${brb.fullName}` : ''}
-                  </div>
-                </div>
-                <span style={{
-                  fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--danger)',
-                  border: '1px solid rgba(192,64,64,0.3)', borderRadius: 4,
-                  padding: '0.15rem 0.4rem', flexShrink: 0,
-                }}>
-                  cancelada
-                </span>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
@@ -460,10 +531,10 @@ export default function AppointmentsPage() {
           overflow: 'hidden',
         }}
       >
-        {/* Left: proxima (shrink) + historial (fills remaining) */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflow: 'hidden', minHeight: 0 }}>
+        {/* Left: proxima (shrink) + historial */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflow: 'auto', minHeight: 0 }}>
           <div style={{ flexShrink: 0 }}>{proximaSection}</div>
-          {renderHistorial(true)}
+          <AppointmentHistory appointments={appointments} services={services} barbers={barbers} />
         </div>
 
         {/* Right: loyalty card fills full column height */}
@@ -476,7 +547,7 @@ export default function AppointmentsPage() {
       <div className="flex flex-col gap-4 lg:hidden" style={{ paddingBottom: '5rem' }}>
         {proximaSection}
         {loyaltySectionMobile}
-        {renderHistorial()}
+        <AppointmentHistory appointments={appointments} services={services} barbers={barbers} />
       </div>
 
       {/* ── Cancel confirmation ── */}
