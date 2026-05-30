@@ -14,12 +14,31 @@ export interface BookingConfig {
   bufferMinutes: number
 }
 
+export interface LoyaltyTierReward {
+  id: string
+  label: string
+  cost: number
+}
+
+export interface LoyaltyTierConfig {
+  id: string
+  name: string
+  color: string
+  minPoints: number
+  rewards: LoyaltyTierReward[]
+}
+
 export interface LoyaltyConfig {
   pointsPerEuro: number
   stampGoal: number
   enabled: boolean
-  /** Whether a reward can be redeemed once per client or repeatedly when points allow. */
   rewardMode: 'one_time' | 'repeatable'
+  /** Active card modality. */
+  mode: 'tiers' | 'simple'
+  /** Tier definitions for mode === 'tiers'. Stored as JSON in app_config. */
+  tiers: LoyaltyTierConfig[]
+  /** Max points cap for mode === 'simple'. */
+  maxPoints: number
 }
 
 export const DEFAULT_BOOKING_CONFIG: BookingConfig = {
