@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
+import type { LoyaltyTierConfig } from '@/domain/shop'
 
 interface Reward {
   id?: string
@@ -21,6 +22,12 @@ interface LoyaltyCardProps {
   compact?: boolean
   createdAt?: string
   completedCycles?: number
+  /** Tier definitions from admin config. Falls back to hardcoded TIERS if absent. */
+  configTiers?: LoyaltyTierConfig[]
+  /** Active card modality. Falls back to 'tiers' if absent. */
+  loyaltyMode?: 'tiers' | 'simple'
+  /** Max points cap for mode 'simple'. */
+  maxPoints?: number
 }
 
 // ── Tier system ───────────────────────────────────────────────────────────────
@@ -53,14 +60,11 @@ const TIERS: TierDef[] = [
   { label: 'LEYENDA',  min: 2000, primary: '#b88c28', accent: '#d4a840', c1: '#060402', bg: 'rgba(184,140,40,0.12)'  },
 ]
 
-const TIER_MAX = TIERS[TIERS.length - 1].min
-
-
-function getTier(points: number): TierDef {
-  for (let i = TIERS.length - 1; i >= 0; i--) {
-    if (points >= TIERS[i].min) return TIERS[i]
+function getTierFrom(tiers: TierDef[], points: number): TierDef {
+  for (let i = tiers.length - 1; i >= 0; i--) {
+    if (points >= tiers[i].min) return tiers[i]
   }
-  return TIERS[0]
+  return tiers[0]
 }
 
 function hexToRgba(hex: string, a: number): string {
@@ -68,6 +72,31 @@ function hexToRgba(hex: string, a: number): string {
   const g = parseInt(hex.slice(3, 5), 16)
   const b = parseInt(hex.slice(5, 7), 16)
   return `rgba(${r},${g},${b},${a})`
+}
+
+function lightenHex(hex: string, factor = 1.4): string {
+  const r = Math.min(255, Math.round(parseInt(hex.slice(1, 3), 16) * factor))
+  const g = Math.min(255, Math.round(parseInt(hex.slice(3, 5), 16) * factor))
+  const b = Math.min(255, Math.round(parseInt(hex.slice(5, 7), 16) * factor))
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')
+}
+
+function darkenHex(hex: string, factor = 0.08): string {
+  const r = Math.round(parseInt(hex.slice(1, 3), 16) * factor)
+  const g = Math.round(parseInt(hex.slice(3, 5), 16) * factor)
+  const b = Math.round(parseInt(hex.slice(5, 7), 16) * factor)
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')
+}
+
+function configTierToTierDef(t: LoyaltyTierConfig): TierDef {
+  return {
+    label: t.name,
+    min: t.minPoints,
+    primary: t.color,
+    accent: lightenHex(t.color),
+    c1: darkenHex(t.color),
+    bg: hexToRgba(t.color, 0.15),
+  }
 }
 
 // ── Animations ────────────────────────────────────────────────────────────────
@@ -105,19 +134,33 @@ export function LoyaltyCard({
   compact = false,
   createdAt,
   completedCycles = 0,
+  configTiers,
+  loyaltyMode = 'tiers',
+  maxPoints = 500,
 }: LoyaltyCardProps) {
-  const sm   = compact
-  const tier = getTier(points)
+  const sm = compact
+  const isSimple = loyaltyMode === 'simple'
 
-  // Tier progression (progress bar)
-  const tierPct   = Math.min(Math.round((points / TIER_MAX) * 100), 100)
-  const nextTier  = TIERS.find(t => t.min > points)
-  const ptsToNext = nextTier ? nextTier.min - points : 0
+  // Derive active tiers: config tiers (converted) or hardcoded fallback
+  const activeTiers: TierDef[] = (configTiers && configTiers.length > 0)
+    ? [...configTiers].sort((a, b) => a.minPoints - b.minPoints).map(configTierToTierDef)
+    : TIERS
+  const activeTierMax = activeTiers[activeTiers.length - 1].min
+
+  const tier = getTierFrom(activeTiers, points)
+
+  // Tier progression (progress bar) — tiers mode
+  const tierPct      = Math.min(Math.round((points / activeTierMax) * 100), 100)
+  const nextTier     = activeTiers.find(t => t.min > points)
+  const ptsToNext    = nextTier ? nextTier.min - points : 0
+
+  // Simple mode progress
+  const simplePct    = Math.min(Math.round((points / Math.max(maxPoints, 1)) * 100), 100)
 
   // Only show marks for tiers not yet reached
-  const futureTierMarks = TIERS
+  const futureTierMarks = activeTiers
     .filter(t => t.min > points)
-    .map(t => ({ r: t.min / TIER_MAX, label: t.label }))
+    .map(t => ({ r: t.min / activeTierMax, label: t.label }))
 
   // Cycle cost multiplier
   const cycleMult = Math.pow(2, completedCycles)
@@ -242,6 +285,66 @@ export function LoyaltyCard({
     </div>
   )
 
+  // ── Chart: Simple mode (points / maxPoints) ─────────────────────────────────
+
+  const simpleProgressChart = (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.625rem', marginBottom: sm ? 12 : 18 }}>
+        <div className="lc7-pts" style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: sm ? 48 : 64,
+          lineHeight: 1, letterSpacing: '-0.03em', color: '#fff',
+        }}>
+          {points.toLocaleString('es-ES')}
+        </div>
+        <div style={{
+          fontFamily: 'var(--font-ui)', fontSize: sm ? 9 : 10,
+          letterSpacing: '0.32em', textTransform: 'uppercase',
+          color: hexToRgba(tier.accent, 0.85), paddingBottom: 4,
+        }}>PUNTOS</div>
+      </div>
+
+      <div style={{ position: 'relative' }}>
+        <div style={{
+          height: 12, borderRadius: 6,
+          background: 'rgba(255,255,255,0.07)',
+          overflow: 'hidden', position: 'relative',
+        }}>
+          <div style={{
+            position: 'absolute', top: 0, left: 0, bottom: 0,
+            width: `${simplePct}%`, borderRadius: 6,
+            background: `linear-gradient(90deg, ${tier.c1} 0%, ${tier.primary} 55%, ${tier.accent} 100%)`,
+            transition: 'width 1.4s cubic-bezier(0.4,0,0.2,1) 0.22s',
+            boxShadow: `0 0 18px ${hexToRgba(tier.primary, 0.55)}`,
+          }} />
+        </div>
+        {simplePct > 2 && simplePct < 100 && (
+          <div style={{
+            position: 'absolute', top: 6, left: `${simplePct}%`,
+            width: 18, height: 18, borderRadius: '50%', background: '#fff',
+            transform: 'translate(-50%, -50%)',
+            boxShadow: `0 0 0 4px ${hexToRgba(tier.primary, 0.3)}, 0 0 22px ${tier.primary}`, zIndex: 2,
+          }} />
+        )}
+      </div>
+
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        marginTop: sm ? 10 : 14, fontFamily: 'var(--font-ui)', fontSize: sm ? 10 : 11,
+        borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: sm ? 8 : 10,
+      }}>
+        <span style={{ color: 'rgba(255,255,255,0.55)', letterSpacing: '0.04em' }}>
+          {stamps} {stamps === 1 ? 'visita' : 'visitas'}
+        </span>
+        <span style={{ color: hexToRgba(tier.accent, 0.75), fontWeight: 500 }}>
+          {simplePct >= 100
+            ? '✓ Máximo alcanzado'
+            : `${(maxPoints - points).toLocaleString('es-ES')} pts para el máximo`}
+        </span>
+      </div>
+    </div>
+  )
+
   const fixed: React.CSSProperties = fill ? { flexShrink: 0 } : {}
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -318,7 +421,7 @@ export function LoyaltyCard({
             fontFamily: 'var(--font-ui)',
             fontSize: sm ? 10 : 11, fontWeight: 700,
             letterSpacing: '0.18em', color: tier.accent,
-          }}>{tier.label}</span>
+          }}>{isSimple ? 'PUNTOS' : tier.label}</span>
         </div>
       </div>
 
@@ -329,7 +432,7 @@ export function LoyaltyCard({
         paddingTop: sm ? '0.5rem' : '0.75rem',
         paddingBottom: sm ? '1rem' : '1.25rem',
       }}>
-        {progressChart}
+        {isSimple ? simpleProgressChart : progressChart}
       </div>
 
       {/* ── Rewards ── */}
@@ -462,20 +565,36 @@ export function LoyaltyCard({
         </div>
 
         <div style={{ flexShrink: 0, textAlign: 'right' }}>
-          <div style={{
-            fontFamily: 'var(--font-ui)', fontSize: 7.5,
-            letterSpacing: '0.14em', textTransform: 'uppercase',
-            color: 'rgba(255,255,255,0.35)', marginBottom: 4,
-          }}>Nivel</div>
-          <div style={{
-            fontFamily: 'var(--font-ui)', fontSize: sm ? 11 : 13, fontWeight: 700,
-            letterSpacing: '0.18em', color: tier.accent,
-          }}>{tier.label}</div>
-          {ptsToNext > 0 && (
-            <div style={{
-              fontFamily: 'var(--font-ui)', fontSize: 7,
-              color: 'rgba(255,255,255,0.35)', letterSpacing: '0.06em', marginTop: 3,
-            }}>{ptsToNext.toLocaleString('es-ES')} pts</div>
+          {isSimple ? (
+            <>
+              <div style={{
+                fontFamily: 'var(--font-ui)', fontSize: 7.5,
+                letterSpacing: '0.14em', textTransform: 'uppercase',
+                color: 'rgba(255,255,255,0.35)', marginBottom: 4,
+              }}>Máximo</div>
+              <div style={{
+                fontFamily: 'var(--font-ui)', fontSize: sm ? 11 : 13, fontWeight: 700,
+                letterSpacing: '0.18em', color: tier.accent,
+              }}>{maxPoints.toLocaleString('es-ES')} pts</div>
+            </>
+          ) : (
+            <>
+              <div style={{
+                fontFamily: 'var(--font-ui)', fontSize: 7.5,
+                letterSpacing: '0.14em', textTransform: 'uppercase',
+                color: 'rgba(255,255,255,0.35)', marginBottom: 4,
+              }}>Nivel</div>
+              <div style={{
+                fontFamily: 'var(--font-ui)', fontSize: sm ? 11 : 13, fontWeight: 700,
+                letterSpacing: '0.18em', color: tier.accent,
+              }}>{tier.label}</div>
+              {ptsToNext > 0 && (
+                <div style={{
+                  fontFamily: 'var(--font-ui)', fontSize: 7,
+                  color: 'rgba(255,255,255,0.35)', letterSpacing: '0.06em', marginTop: 3,
+                }}>{ptsToNext.toLocaleString('es-ES')} pts</div>
+              )}
+            </>
           )}
         </div>
       </div>

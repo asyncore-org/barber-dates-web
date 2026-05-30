@@ -306,6 +306,9 @@ export default function AppointmentsPage() {
       redeemPending={redeemMutation.isPending}
       createdAt={loyaltyCard?.createdAt}
       completedCycles={loyaltyCard?.completedCycles}
+      loyaltyMode={loyaltyConfig?.mode}
+      configTiers={loyaltyConfig?.tiers}
+      maxPoints={loyaltyConfig?.maxPoints}
       fill
     />
   )
@@ -321,6 +324,9 @@ export default function AppointmentsPage() {
       redeemPending={redeemMutation.isPending}
       createdAt={loyaltyCard?.createdAt}
       completedCycles={loyaltyCard?.completedCycles}
+      loyaltyMode={loyaltyConfig?.mode}
+      configTiers={loyaltyConfig?.tiers}
+      maxPoints={loyaltyConfig?.maxPoints}
     />
   )
 
