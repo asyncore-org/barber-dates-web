@@ -239,9 +239,10 @@ export function LoyaltyCard({
         ))}
         {tierPct > 2 && tierPct < 100 && (
           <>
-            {/* Floating current-tier label above the nod */}
+            {/* Floating current-tier label above the nod — clamped to stay inside bar */}
             <div style={{
-              position: 'absolute', bottom: 18, left: `${tierPct}%`,
+              position: 'absolute', bottom: 18,
+              left: `clamp(2%, ${tierPct}%, 96%)`,
               transform: 'translateX(-50%)',
               fontFamily: 'var(--font-ui)', fontSize: 7, letterSpacing: '0.12em',
               color: tier.accent, whiteSpace: 'nowrap', fontWeight: 700,
@@ -261,24 +262,28 @@ export function LoyaltyCard({
         )}
       </div>
 
-      {/* Labels: only next tier (accent) + max tier (faint). No overlap. */}
+      {/* Labels: next tier (accent) + max tier (faint). No overlap. */}
       <div style={{ position: 'relative', height: 18, marginTop: 6 }}>
-        {futureTierMarks.length > 0 && (
+        {/* Next tier label — only if it's not also the max (single future tier) */}
+        {futureTierMarks.length > 1 && (
           <span style={{
             position: 'absolute',
-            left: `${futureTierMarks[0].r * 100}%`,
+            left: `${Math.min(futureTierMarks[0].r * 100, 88)}%`,
             transform: 'translateX(-50%)',
             fontFamily: 'var(--font-ui)', fontSize: 7.5, letterSpacing: '0.08em',
-            color: hexToRgba(tier.accent, 0.8), whiteSpace: 'nowrap', fontWeight: 600,
+            color: hexToRgba(tier.accent, 0.85), whiteSpace: 'nowrap', fontWeight: 700,
           }}>
             {futureTierMarks[0].label}
           </span>
         )}
-        {futureTierMarks.length > 1 && (
+        {/* Max tier — always pinned to the right */}
+        {futureTierMarks.length >= 1 && (
           <span style={{
             position: 'absolute', right: 0,
             fontFamily: 'var(--font-ui)', fontSize: 7.5, letterSpacing: '0.08em',
-            color: 'rgba(255,255,255,0.28)', whiteSpace: 'nowrap',
+            color: futureTierMarks.length === 1 ? hexToRgba(tier.accent, 0.85) : 'rgba(255,255,255,0.28)',
+            whiteSpace: 'nowrap',
+            fontWeight: futureTierMarks.length === 1 ? 700 : 400,
           }}>
             {futureTierMarks[futureTierMarks.length - 1].label}
           </span>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useNavigate } from 'react-router-dom'
 import { useShopContext } from '@/context/ShopContext'
@@ -40,20 +40,43 @@ function fmtHistoryDate(iso: string) {
 const CARD = 'bg-[var(--bg-2)] border border-[var(--line)] rounded-xl p-4 md:p-5'
 const SECTION_LABEL = 'font-[var(--font-display)] text-[13px] tracking-widest text-[var(--fg-3)] mb-3.5'
 
+// ── sessionStorage cache utilities ────────────────────────────────────────────
+
+const CACHE_VERSION = 'v1'
+const CACHE_TTL_MS  = 10 * 60 * 1000 // 10 min
+
+function apptCacheKey(uid: string) { return `appts_${CACHE_VERSION}_${uid}` }
+
+function readApptCache(uid: string): Appointment[] | undefined {
+  try {
+    const raw = sessionStorage.getItem(apptCacheKey(uid))
+    if (!raw) return undefined
+    const { data, ts } = JSON.parse(raw) as { data: Appointment[]; ts: number }
+    return Date.now() - ts < CACHE_TTL_MS ? data : undefined
+  } catch { return undefined }
+}
+
+function writeApptCache(uid: string, data: Appointment[]) {
+  try { sessionStorage.setItem(apptCacheKey(uid), JSON.stringify({ data, ts: Date.now() })) }
+  catch { /* sessionStorage full or blocked */ }
+}
+
 // ── AppointmentHistory ────────────────────────────────────────────────────────
 
 type HistoryFilter = 'all' | 'completed' | 'cancelled'
 
-function AppointmentHistory({ appointments, services, barbers }: {
+function AppointmentHistory({ appointments, services, barbers, fill }: {
   appointments: Appointment[]
   services: Service[]
   barbers: Barber[]
+  fill?: boolean
 }) {
-  const [open,         setOpen]         = useState(false)
-  const [loaded,       setLoaded]       = useState(false)
-  const [filterStatus, setFilterStatus] = useState<HistoryFilter>('all')
-  const [filterFrom,   setFilterFrom]   = useState('')
-  const [filterTo,     setFilterTo]     = useState('')
+  const [open,          setOpen]          = useState(false)
+  const [loaded,        setLoaded]        = useState(false)
+  const [filterStatus,  setFilterStatus]  = useState<HistoryFilter>('all')
+  const [filterFrom,    setFilterFrom]    = useState('')
+  const [filterTo,      setFilterTo]      = useState('')
+  const [filterService, setFilterService] = useState('')
 
   const history = useMemo(() =>
     appointments
@@ -69,6 +92,17 @@ function AppointmentHistory({ appointments, services, barbers }: {
     [appointments],
   )
 
+  // Unique service names present in the history for the dropdown
+  const availableServices = useMemo(() => {
+    const names = new Set<string>()
+    ;[...history, ...cancelled].forEach(a => {
+      const name = services.find(s => s.id === a.serviceId)?.name
+      if (name) names.add(name)
+    })
+    return Array.from(names).sort()
+  }, [history, cancelled, services])
+
+  // All filters applied client-side — no DB calls
   const filtered = useMemo(() => {
     const base =
       filterStatus === 'completed' ? history :
@@ -76,21 +110,29 @@ function AppointmentHistory({ appointments, services, barbers }: {
       [...history, ...cancelled].sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
 
     return base
-      .filter(a => !filterFrom || a.startTime >= filterFrom)
-      .filter(a => !filterTo   || a.startTime <= filterTo + 'T23:59:59')
+      .filter(a => !filterFrom    || a.startTime >= filterFrom)
+      .filter(a => !filterTo      || a.startTime <= filterTo + 'T23:59:59')
+      .filter(a => !filterService || services.find(s => s.id === a.serviceId)?.name === filterService)
       .slice(0, 50)
-  }, [history, cancelled, filterStatus, filterFrom, filterTo])
+  }, [history, cancelled, filterStatus, filterFrom, filterTo, filterService, services])
 
   const total = history.length + cancelled.length
+  const hasActiveFilter = filterFrom || filterTo || filterStatus !== 'all' || filterService
+  const clearFilters = () => { setFilterStatus('all'); setFilterFrom(''); setFilterTo(''); setFilterService('') }
+
+  const cardStyle: React.CSSProperties = fill
+    ? { padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }
+    : { padding: 0, overflow: 'hidden' }
 
   return (
-    <div className={CARD} style={{ padding: 0, overflow: 'hidden' }}>
-      {/* Header / toggle */}
+    <div className={CARD} style={cardStyle}>
+      {/* ── Header / accordion toggle ── */}
       <button
         onClick={() => setOpen(o => !o)}
         style={{
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '1rem 1.5rem', background: 'none', border: 'none', cursor: 'pointer',
+          flexShrink: 0,
         }}
       >
         <div className={SECTION_LABEL} style={{ marginBottom: 0 }}>HISTORIAL</div>
@@ -103,10 +145,10 @@ function AppointmentHistory({ appointments, services, barbers }: {
           <div style={{
             width: 22, height: 22, borderRadius: '50%', border: '1px solid var(--line)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: open ? 'var(--bg-3)' : 'transparent', transition: 'all 0.15s',
+            background: open ? 'var(--bg-3)' : 'transparent', transition: 'all 0.15s', flexShrink: 0,
           }}>
             <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="var(--fg-3)" strokeWidth="1.5"
-              style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}>
+              style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
               <path d="M2 4l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
@@ -114,73 +156,86 @@ function AppointmentHistory({ appointments, services, barbers }: {
       </button>
 
       {open && (
-        <div style={{ borderTop: '1px solid var(--line)' }}>
+        <div style={{ borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', flex: fill ? 1 : undefined, minHeight: 0 }}>
           {!loaded ? (
-            /* ── Prompt to load ── */
-            <div style={{ padding: '2rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--fg-4)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 8v4l3 3" /><circle cx="12" cy="12" r="9" />
-              </svg>
-              <p style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--fg-3)', margin: 0, textAlign: 'center', lineHeight: 1.5 }}>
-                El historial se carga bajo demanda<br />para no ralentizar la página.
-              </p>
+            /* ── Load prompt — clean, no technical explanation ── */
+            <div style={{ padding: '2.5rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
+              <div style={{
+                width: 44, height: 44, borderRadius: '50%',
+                background: 'var(--bg-3)', border: '1px solid var(--line)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 8v4l3 3" /><circle cx="12" cy="12" r="9" />
+                </svg>
+              </div>
               <button
                 onClick={() => setLoaded(true)}
                 style={{
-                  padding: '0.6rem 1.75rem', minHeight: 42, borderRadius: 8,
+                  padding: '0.65rem 2rem', minHeight: 44, borderRadius: 8,
                   border: '1px solid var(--line)', background: 'var(--bg-3)',
                   color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13,
                   fontWeight: 600, cursor: 'pointer', letterSpacing: '0.02em',
                 }}
-              >Solicitar historial</button>
+              >Ver historial de citas</button>
             </div>
           ) : (
             <>
               {/* ── Filters ── */}
-              <div style={{ padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--line)', background: 'var(--bg-3)', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                {/* Segmented control */}
+              <div style={{ padding: '0.875rem 1.25rem', borderBottom: '1px solid var(--line)', background: 'var(--bg-3)', display: 'flex', flexDirection: 'column', gap: '0.625rem', flexShrink: 0 }}>
+                {/* Segmented control: status */}
                 <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: 3, gap: 2 }}>
                   {(['all', 'completed', 'cancelled'] as const).map(s => (
-                    <button
-                      key={s}
-                      onClick={() => setFilterStatus(s)}
-                      style={{
-                        flex: 1, padding: '0.35rem 0', borderRadius: 6, border: 'none', cursor: 'pointer',
-                        fontSize: 12, fontFamily: 'var(--font-ui)', fontWeight: filterStatus === s ? 600 : 400,
-                        background: filterStatus === s ? 'var(--bg-2)' : 'transparent',
-                        color: filterStatus === s ? 'var(--gold)' : 'var(--fg-3)',
-                        transition: 'all 0.12s',
-                        boxShadow: filterStatus === s ? '0 1px 4px rgba(0,0,0,0.35)' : 'none',
-                      }}
-                    >
+                    <button key={s} onClick={() => setFilterStatus(s)} style={{
+                      flex: 1, padding: '0.375rem 0', borderRadius: 6, border: 'none', cursor: 'pointer',
+                      fontSize: 12, fontFamily: 'var(--font-ui)', fontWeight: filterStatus === s ? 600 : 400,
+                      background: filterStatus === s ? 'var(--bg-2)' : 'transparent',
+                      color: filterStatus === s ? 'var(--gold)' : 'var(--fg-3)',
+                      transition: 'all 0.12s',
+                      boxShadow: filterStatus === s ? '0 1px 4px rgba(0,0,0,0.35)' : 'none',
+                    }}>
                       {s === 'all' ? 'Todas' : s === 'completed' ? 'Completadas' : 'Canceladas'}
                     </button>
                   ))}
                 </div>
 
-                {/* Date range + clear */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--fg-4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                    <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
-                  </svg>
-                  <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} title="Desde"
-                    style={{ flex: 1, minWidth: 0, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.3rem 0.5rem', color: filterFrom ? 'var(--fg-1)' : 'var(--fg-4)', fontSize: 12, fontFamily: 'var(--font-ui)', outline: 'none' }} />
-                  <span style={{ fontSize: 11, color: 'var(--fg-4)', flexShrink: 0 }}>–</span>
-                  <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} title="Hasta"
-                    style={{ flex: 1, minWidth: 0, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.3rem 0.5rem', color: filterTo ? 'var(--fg-1)' : 'var(--fg-4)', fontSize: 12, fontFamily: 'var(--font-ui)', outline: 'none' }} />
-                  <button
-                    onClick={() => { setFilterStatus('all'); setFilterFrom(''); setFilterTo('') }}
-                    title="Limpiar filtros"
+                {/* Row: service select + date range + clear */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {/* Service dropdown */}
+                  <select
+                    value={filterService}
+                    onChange={e => setFilterService(e.target.value)}
                     style={{
-                      flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      width: 28, height: 28, borderRadius: 6, border: '1px solid transparent',
-                      background: (filterFrom || filterTo || filterStatus !== 'all') ? 'rgba(192,64,64,0.1)' : 'transparent',
-                      color: (filterFrom || filterTo || filterStatus !== 'all') ? 'var(--danger)' : 'var(--fg-4)',
-                      cursor: (filterFrom || filterTo || filterStatus !== 'all') ? 'pointer' : 'default',
-                      opacity: (filterFrom || filterTo || filterStatus !== 'all') ? 1 : 0.3,
-                      transition: 'all 0.12s',
+                      flex: '1 1 120px', minWidth: 0, background: 'var(--bg-4)', border: '1px solid var(--line)',
+                      borderRadius: 6, padding: '0.3rem 0.5rem', color: filterService ? 'var(--fg-1)' : 'var(--fg-4)',
+                      fontSize: 12, fontFamily: 'var(--font-ui)', outline: 'none', cursor: 'pointer',
                     }}
                   >
+                    <option value="">Servicio</option>
+                    {availableServices.map(name => <option key={name} value={name}>{name}</option>)}
+                  </select>
+
+                  {/* Date range */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: '2 1 200px', minWidth: 0 }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--fg-4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                      <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+                    </svg>
+                    <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} title="Desde"
+                      style={{ flex: 1, minWidth: 0, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.3rem 0.4rem', color: filterFrom ? 'var(--fg-1)' : 'var(--fg-4)', fontSize: 11, fontFamily: 'var(--font-ui)', outline: 'none' }} />
+                    <span style={{ fontSize: 10, color: 'var(--fg-4)', flexShrink: 0 }}>–</span>
+                    <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} title="Hasta"
+                      style={{ flex: 1, minWidth: 0, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.3rem 0.4rem', color: filterTo ? 'var(--fg-1)' : 'var(--fg-4)', fontSize: 11, fontFamily: 'var(--font-ui)', outline: 'none' }} />
+                  </div>
+
+                  {/* Clear button */}
+                  <button onClick={clearFilters} title="Limpiar filtros" style={{
+                    flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 28, height: 28, borderRadius: 6, border: '1px solid transparent',
+                    background: hasActiveFilter ? 'rgba(192,64,64,0.1)' : 'transparent',
+                    color: hasActiveFilter ? 'var(--danger)' : 'var(--fg-4)',
+                    cursor: hasActiveFilter ? 'pointer' : 'default',
+                    opacity: hasActiveFilter ? 1 : 0.3, transition: 'all 0.12s',
+                  }}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                       <path d="M18 6L6 18M6 6l12 12" />
                     </svg>
@@ -189,54 +244,50 @@ function AppointmentHistory({ appointments, services, barbers }: {
               </div>
 
               {/* ── List ── */}
-              <div style={{ overflowY: 'auto', maxHeight: 420 }}>
+              <div style={{ overflowY: 'auto', flex: fill ? 1 : undefined, maxHeight: fill ? undefined : 420 }}>
                 {filtered.length === 0 ? (
                   <div style={{ padding: '2rem 1.5rem', color: 'var(--fg-3)', fontSize: 13, fontFamily: 'var(--font-ui)', textAlign: 'center' }}>
                     Sin resultados para estos filtros
                   </div>
                 ) : (
                   filtered.map((h, i) => {
-                    const svc       = services.find(s => s.id === h.serviceId)
-                    const brb       = barbers.find(b => b.id === h.barberId)
-                    const cancelled = h.status === 'cancelled'
+                    const svc      = services.find(s => s.id === h.serviceId)
+                    const brb      = barbers.find(b => b.id === h.barberId)
+                    const isCancld = h.status === 'cancelled'
                     return (
                       <div key={h.id} style={{
                         display: 'flex', alignItems: 'center', gap: '1rem',
-                        padding: '1rem 1.5rem',
+                        padding: '0.875rem 1.5rem',
                         borderBottom: i < filtered.length - 1 ? '1px solid var(--line)' : undefined,
-                        opacity: cancelled ? 0.5 : 1,
+                        opacity: isCancld ? 0.5 : 1,
                       }}>
                         <div style={{
-                          width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-                          background: cancelled ? 'rgba(192,64,64,0.08)' : 'rgba(201,162,74,0.1)',
-                          border: `1.5px solid ${cancelled ? 'rgba(192,64,64,0.2)' : 'rgba(201,162,74,0.25)'}`,
+                          width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                          background: isCancld ? 'rgba(192,64,64,0.08)' : 'rgba(201,162,74,0.1)',
+                          border: `1.5px solid ${isCancld ? 'rgba(192,64,64,0.2)' : 'rgba(201,162,74,0.25)'}`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
-                          {cancelled ? (
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M18 6L6 18M6 6l12 12" />
-                            </svg>
+                          {isCancld ? (
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
                           ) : (
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M20 6L9 17l-5-5" />
-                            </svg>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
                           )}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 600, color: 'var(--fg-0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {svc?.name ?? '—'}
                           </div>
-                          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-3)', marginTop: 2 }}>
+                          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-3)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {fmtHistoryDate(h.startTime)}{brb ? ` · ${brb.fullName}` : ''}
                           </div>
                         </div>
-                        {cancelled ? (
-                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--danger)', border: '1px solid rgba(192,64,64,0.3)', borderRadius: 4, padding: '0.15rem 0.4rem', flexShrink: 0 }}>
+                        {isCancld ? (
+                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--danger)', border: '1px solid rgba(192,64,64,0.3)', borderRadius: 4, padding: '0.2rem 0.5rem', flexShrink: 0, whiteSpace: 'nowrap' }}>
                             cancelada
                           </span>
                         ) : (
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, color: 'var(--fg-0)', letterSpacing: '0.02em' }}>
+                            <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--fg-0)', letterSpacing: '0.02em' }}>
                               {svc ? `${svc.price}€` : '—'}
                             </div>
                             {svc && (
@@ -267,8 +318,10 @@ export default function AppointmentsPage() {
   const maxDate = getMaxBookingDate(maxAdvanceDays)
   const user = useAuthStore(s => s.user)
 
-  // Data hooks
-  const { data: appointments = [] }  = useClientAppointments(user?.id)
+  // Data hooks — sessionStorage initialData prevents a DB round-trip on page reload
+  const { data: appointments = [] }  = useClientAppointments(user?.id, {
+    initialData: user?.id ? readApptCache(user.id) : undefined,
+  })
   const { data: allAppointments = [] } = useAllAppointments()
   const { data: services = [] }      = useServices()
   const { data: barbers = [] }       = useBarbers()
@@ -282,6 +335,11 @@ export default function AppointmentsPage() {
   const cancelMutation   = useCancelAppointment()
   const updateMutation   = useUpdateAppointment()
   const redeemMutation   = useRedeemReward()
+
+  // Persist appointments to sessionStorage so page reload skips the DB round-trip
+  useEffect(() => {
+    if (user?.id && appointments.length > 0) writeApptCache(user.id, appointments)
+  }, [appointments, user?.id])
 
   // ── Derived lists ────────────────────────────────────────────────────────────
 
@@ -557,16 +615,16 @@ export default function AppointmentsPage() {
       <div
         className="hidden lg:grid"
         style={{
-          gridTemplateColumns: '1fr 1fr',
-          columnGap: '1rem',
+          gridTemplateColumns: '1fr 0.85fr',
+          columnGap: '2rem',
           height: 'calc(100dvh - 105px)',
           overflow: 'hidden',
         }}
       >
-        {/* Left: proxima (shrink) + historial */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflow: 'auto', minHeight: 0 }}>
+        {/* Left: proxima (shrink) + historial (fills remaining, aligns with loyalty card) */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflow: 'hidden', minHeight: 0 }}>
           <div style={{ flexShrink: 0 }}>{proximaSection}</div>
-          <AppointmentHistory appointments={appointments} services={services} barbers={barbers} />
+          <AppointmentHistory appointments={appointments} services={services} barbers={barbers} fill />
         </div>
 
         {/* Right: loyalty card fills full column height */}
