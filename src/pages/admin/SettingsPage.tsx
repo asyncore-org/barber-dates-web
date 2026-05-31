@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, type CSSProperties } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { ConfirmDialog, Modal } from '@/components/ui'
 import { MonthCalendar } from '@/components/calendar'
@@ -8,7 +8,7 @@ import { useAllServices, useCreateService, useUpdateService, useDeleteService, u
 import { useAllAppointments } from '@/hooks/useAppointments'
 import { useAllBarbers, useUpdateBarber, useDeleteBarber, useAddBarberByEmail } from '@/hooks/useBarbers'
 import { useWeeklySchedule, useScheduleBlocks, useMutateWeeklySchedule, useAddScheduleBlock, useDeleteScheduleBlock } from '@/hooks/useSchedule'
-import { useShopInfo, useBookingConfig, useLoyaltyConfig, useMutateShopInfo, useMutateBookingConfig, DEFAULT_LOYALTY_TIERS } from '@/hooks/useShopConfig'
+import { useShopInfo, useBookingConfig, useLoyaltyConfig, useMutateShopInfo, useMutateBookingConfig, useUploadLogo, DEFAULT_LOYALTY_TIERS } from '@/hooks/useShopConfig'
 import { useAllRewards, useCreateReward, useUpdateReward, useDeleteReward, useUpdateLoyaltyConfig } from '@/hooks/useLoyalty'
 import { DEFAULT_WEEKLY_SCHEDULE } from '@/domain/schedule'
 import type { WeeklySchedule, DayKey } from '@/domain/schedule'
@@ -164,16 +164,55 @@ export default function SettingsPage() {
   const [closureBarberIds, setClosureBarberIds] = useState<string[]>([])
 
   // ── Shop info local state ───────────────────────────────────────────────────
-  type ShopFields = { name: string; phone: string; email: string; instagram: string; address: string; description: string }
+  type ShopFields = { name: string; phone: string; email: string; instagram: string; address: string; description: string; opening_hours: string }
   const [shopEdits, setShopEdits] = useState<Partial<ShopFields>>({})
   const localShop: ShopFields = {
-    name:        shopEdits.name        ?? shopInfo?.name        ?? '',
-    phone:       shopEdits.phone       ?? shopInfo?.phone       ?? '',
-    email:       shopEdits.email       ?? shopInfo?.email       ?? '',
-    instagram:   shopEdits.instagram   ?? shopInfo?.instagram   ?? '',
-    address:     shopEdits.address     ?? shopInfo?.address     ?? '',
-    description: shopEdits.description ?? shopInfo?.description ?? '',
+    name:          shopEdits.name          ?? shopInfo?.name          ?? '',
+    phone:         shopEdits.phone         ?? shopInfo?.phone         ?? '',
+    email:         shopEdits.email         ?? shopInfo?.email         ?? '',
+    instagram:     shopEdits.instagram     ?? shopInfo?.instagram     ?? '',
+    address:       shopEdits.address       ?? shopInfo?.address       ?? '',
+    description:   shopEdits.description   ?? shopInfo?.description   ?? '',
+    opening_hours: shopEdits.opening_hours ?? shopInfo?.opening_hours ?? '',
   }
+
+  // ── Logo upload state ───────────────────────────────────────────────────────
+  const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null)
+  const [logoPreviewUrl, setLogoPreviewUrl]   = useState<string | null>(null)
+  const [logoError, setLogoError]             = useState<string | null>(null)
+  const logoInputRef = useRef<HTMLInputElement>(null)
+  const uploadLogo   = useUploadLogo()
+
+  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) { setLogoError('La imagen no puede superar 2 MB'); return }
+    setLogoError(null)
+    setPendingLogoFile(file)
+    if (logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl)
+    setLogoPreviewUrl(URL.createObjectURL(file))
+  }
+
+  const handleUploadLogo = () => {
+    if (!pendingLogoFile) return
+    setLogoError(null)
+    uploadLogo.mutate(pendingLogoFile, {
+      onSuccess: () => {
+        setPendingLogoFile(null)
+        if (logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl)
+        setLogoPreviewUrl(null)
+        if (logoInputRef.current) logoInputRef.current.value = ''
+      },
+      onError: (e) => setLogoError(e instanceof Error ? e.message : 'Error al subir el logo'),
+    })
+  }
+
+  const handleRemoveLogo = () => {
+    mutateShopInfo.mutate({ logo_url: undefined }, {
+      onError: () => setLogoError('No se pudo eliminar el logo'),
+    })
+  }
+
   const [pendingMaxDays, setPendingMaxDays] = useState<string | null>(null)
   const localMaxDays = pendingMaxDays ?? String(bookingConfig?.maxAdvanceDays ?? 14)
 
@@ -1251,6 +1290,7 @@ export default function SettingsPage() {
                   { key: 'email' as const, label: 'Email' },
                   { key: 'instagram' as const, label: 'Instagram' },
                   { key: 'address' as const, label: 'Dirección' },
+                  { key: 'opening_hours' as const, label: 'Horario' },
                 ]).map(({ key, label }) => (
                   <div key={key} className="flex flex-col gap-1 md:grid md:grid-cols-[160px_1fr] md:items-center md:gap-3">
                     <label style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>{label}</label>
@@ -1268,6 +1308,73 @@ export default function SettingsPage() {
               {sectionError.barberia && (
                 <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', marginTop: 6, marginBottom: 0 }}>{sectionError.barberia}</p>
               )}
+
+              {/* ── Logo de la barbería ── */}
+              <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--line)' }}>
+                <p style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)', marginBottom: '0.75rem' }}>Logo de la barbería</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ width: 72, height: 72, clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)', background: 'var(--bg-3)', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {(logoPreviewUrl ?? shopInfo?.logo_url) ? (
+                      <img src={logoPreviewUrl ?? shopInfo?.logo_url} alt="Logo preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                      </svg>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button onClick={() => logoInputRef.current?.click()} style={{ fontSize: 12, fontFamily: 'var(--font-ui)', padding: '0.4rem 0.8rem', borderRadius: 6, background: 'var(--bg-3)', border: '1px solid var(--line)', color: 'var(--fg-0)', cursor: 'pointer' }}>
+                        {pendingLogoFile ? 'Cambiar selección' : 'Seleccionar imagen'}
+                      </button>
+                      {pendingLogoFile && (
+                        <button onClick={handleUploadLogo} disabled={uploadLogo.isPending} style={{ fontSize: 12, fontFamily: 'var(--font-ui)', padding: '0.4rem 0.8rem', borderRadius: 6, background: 'var(--gold)', border: 'none', color: '#000', cursor: uploadLogo.isPending ? 'not-allowed' : 'pointer', opacity: uploadLogo.isPending ? 0.7 : 1 }}>
+                          {uploadLogo.isPending ? 'Subiendo…' : 'Guardar logo'}
+                        </button>
+                      )}
+                      {shopInfo?.logo_url && !pendingLogoFile && (
+                        <button onClick={handleRemoveLogo} style={{ fontSize: 12, fontFamily: 'var(--font-ui)', padding: '0.4rem 0.8rem', borderRadius: 6, background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', cursor: 'pointer' }}>
+                          Eliminar logo
+                        </button>
+                      )}
+                    </div>
+                    <p style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', margin: 0 }}>PNG, JPG o WEBP · máximo 2 MB</p>
+                    {pendingLogoFile && <p style={{ fontSize: 11, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', margin: 0 }}>Seleccionado: {pendingLogoFile.name}</p>}
+                  </div>
+                </div>
+                {logoError && <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', marginTop: 8, marginBottom: 0 }}>{logoError}</p>}
+                <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/webp" aria-label="Subir imagen de logo de la barbería" style={{ display: 'none' }} onChange={handleLogoFileChange} />
+              </div>
+
+              {/* ── Forma del logo ── */}
+              <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--line)' }}>
+                <p style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)', marginBottom: '0.75rem' }}>Forma del logo</p>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  {([
+                    { shape: 'hexagon'   as const, label: 'Hexágono',   style: { clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' } as CSSProperties },
+                    { shape: 'circle'    as const, label: 'Círculo',    style: { borderRadius: '50%' } as CSSProperties },
+                    { shape: 'square'    as const, label: 'Cuadrado',   style: { borderRadius: 0 } as CSSProperties },
+                    { shape: 'rounded'   as const, label: 'Redondeado', style: { borderRadius: 8 } as CSSProperties },
+                    { shape: 'pentagon'  as const, label: 'Pentágono',  style: { clipPath: 'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)' } as CSSProperties },
+                    { shape: 'rectangle' as const, label: 'Rectángulo', style: { borderRadius: 4, width: 56, height: 36 } as CSSProperties },
+                  ]).map(({ shape, label, style }) => {
+                    const active = (shopInfo?.logo_shape ?? 'hexagon') === shape
+                    return (
+                      <button key={shape} onClick={() => mutateShopInfo.mutate({ logo_shape: shape })} title={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', cursor: 'pointer', padding: '6px 4px' }}>
+                        <div style={{
+                          width: 44, height: 44, background: active ? 'var(--bg-3)' : 'var(--bg-4)',
+                          border: `2px solid ${active ? 'var(--gold)' : 'var(--line)'}`,
+                          overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          transition: 'border-color 0.15s', ...style,
+                        }}>
+                          {shopInfo?.logo_url && <img src={shopInfo.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                        </div>
+                        <span style={{ fontSize: 10, fontFamily: 'var(--font-ui)', color: active ? 'var(--gold)' : 'var(--fg-3)' }}>{label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
           )}
 

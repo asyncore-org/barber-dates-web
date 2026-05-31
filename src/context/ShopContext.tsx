@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react'
 import { useShopInfo, useBookingConfig } from '@/hooks/useShopConfig'
 import { useApplyColorTheme } from '@/hooks/useColorTheme'
-import type { ShopInfo } from '@/domain/shop'
+import type { ShopInfo, LogoShape } from '@/domain/shop'
 import { DEFAULT_BOOKING_CONFIG } from '@/domain/shop'
 
 const DEFAULT_SHOP_INFO: ShopInfo = {
@@ -20,6 +20,9 @@ interface ShopContextValue {
   instagram: string
   address: string
   description: string
+  openingHours?: string
+  logoUrl?: string
+  logoShape?: LogoShape
   maxAdvanceDays: number
   allowBarberChoice: boolean
   slotIntervalMinutes: number
@@ -46,6 +49,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     instagram: info.instagram,
     address: info.address,
     description: info.description,
+    openingHours: info.opening_hours,
+    logoUrl: info.logo_url,
+    logoShape: info.logo_shape,
     maxAdvanceDays: booking.maxAdvanceDays,
     allowBarberChoice: booking.allowBarberChoice,
     slotIntervalMinutes: booking.slotIntervalMinutes,

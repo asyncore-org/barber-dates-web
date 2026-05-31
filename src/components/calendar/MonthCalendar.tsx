@@ -71,7 +71,7 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
           >
             <Icon name="chevronL" size={14} />
           </button>
-          <span style={{ fontFamily: 'var(--font-display)', fontSize: 17, color: 'var(--fg-0)', letterSpacing: '0.06em', minWidth: 160, textAlign: 'center' }}>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: 'var(--fg-0)', letterSpacing: '0.06em', minWidth: 180, textAlign: 'center' }}>
             {MONTH_NAMES[month]} {year}
           </span>
           <button
@@ -92,15 +92,15 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 3 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 5, marginBottom: 5 }}>
         {DAYS.map(d => (
-          <div key={d} style={{ textAlign: 'center', fontSize: 10, color: 'var(--fg-3)', fontWeight: 700, fontFamily: 'var(--font-ui)', padding: '0.3rem 0', letterSpacing: '0.05em' }}>
+          <div key={d} style={{ textAlign: 'center', fontSize: 10, color: 'var(--fg-3)', fontWeight: 700, fontFamily: 'var(--font-ui)', padding: '0.4rem 0', letterSpacing: '0.06em' }}>
             {d}
           </div>
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 5 }}>
         {days.map(({ day, current }, i) => {
           if (!current) return <div key={`e${i}`} />
           const date = new Date(year, month, day)
@@ -128,25 +128,25 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
               data-today={isToday || undefined}
               style={{
                 position: 'relative',
-                aspectRatio: '1',
+                height: 38,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                borderRadius: 8,
+                borderRadius: 10,
                 border: isSelected
-                  ? '1px solid var(--led)'
+                  ? '1.5px solid var(--gold)'
                   : isToday
-                    ? '1px solid rgba(123,79,255,0.5)'
+                    ? '1px solid rgba(201,162,74,0.55)'
                     : '1px solid transparent',
                 background: isSelected
-                  ? 'var(--led)'
+                  ? 'var(--gold)'
                   : isToday
-                    ? 'rgba(123,79,255,0.08)'
+                    ? 'rgba(201,162,74,0.08)'
                     : 'transparent',
-                color: isDisabled ? 'var(--fg-3)' : isSelected ? '#fff' : 'var(--fg-0)',
-                fontSize: 12,
+                color: isDisabled ? 'var(--fg-3)' : isSelected ? '#000' : 'var(--fg-0)',
+                fontSize: 14,
                 fontFamily: 'var(--font-ui)',
-                fontWeight: isToday || isSelected ? 600 : 400,
+                fontWeight: isToday || isSelected ? 700 : 400,
                 cursor: isDisabled ? 'not-allowed' : 'pointer',
                 boxShadow: 'none',
                 opacity: isDisabled ? (isClosed ? 0.4 : isBeyondMax ? 0.2 : 0.35) : 1,

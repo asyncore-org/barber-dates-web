@@ -52,18 +52,16 @@ function AppleLogo({ size = 20, color = 'currentColor' }: { size?: number; color
   )
 }
 
-// ── Shared data ───────────────────────────────────────────────────────────────
-
-const shopInfoItems = [
-  { Icon: IconMapPin, text: 'Calle Gran Via 12, Barcelona', href: 'https://www.google.com/maps/search/?api=1&query=Calle+Gran+Via+12+Barcelona' },
-  { Icon: IconClock,  text: 'Lun – Sáb · 09:00 – 20:00',  href: undefined },
-  { Icon: IconPhone,  text: '+34 931 234 567',              href: 'tel:+34931234567' },
-]
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function AuthPage() {
-  const { name: shopName } = useShopContext()
+  const { name: shopName, phone, address, openingHours } = useShopContext()
+
+  const shopInfoItems = [
+    address     ? { Icon: IconMapPin, text: address,      href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` } : null,
+    openingHours? { Icon: IconClock,  text: openingHours, href: undefined }                                  : null,
+    phone       ? { Icon: IconPhone,  text: phone,        href: `tel:${phone.replace(/\s+/g, '')}` }         : null,
+  ].filter((item): item is NonNullable<typeof item> => item !== null)
   const { user, signInWithGoogle } = useAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState<'google' | 'apple' | null>(null)

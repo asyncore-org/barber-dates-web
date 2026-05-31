@@ -1,3 +1,5 @@
+export type LogoShape = 'hexagon' | 'circle' | 'square' | 'rounded' | 'pentagon' | 'rectangle'
+
 export interface ShopInfo {
   name: string
   phone: string
@@ -5,6 +7,9 @@ export interface ShopInfo {
   instagram: string
   address: string
   description: string
+  opening_hours?: string
+  logo_url?: string
+  logo_shape?: LogoShape
 }
 
 export interface BookingConfig {
@@ -59,4 +64,5 @@ export interface IShopRepository {
   updateBookingConfig(config: Partial<BookingConfig>): Promise<void>
   updateLoyaltyConfig(config: Partial<LoyaltyConfig>): Promise<void>
   updateColorTheme(config: ColorThemeConfig): Promise<void>
+  uploadLogo(file: File): Promise<string>
 }

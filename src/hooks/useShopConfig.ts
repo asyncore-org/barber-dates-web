@@ -71,3 +71,11 @@ export function useMutateBookingConfig() {
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.shop.booking() }),
   })
 }
+
+export function useUploadLogo() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (file: File) => repositories.shop().uploadLogo(file),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.shop.info() }),
+  })
+}
