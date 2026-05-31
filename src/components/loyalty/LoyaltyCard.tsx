@@ -433,7 +433,7 @@ export function LoyaltyCard({
           }}>LOYALTY CLUB</div>
         </div>
 
-        <div className="lc7-badge" style={{
+        <div style={{
           display: 'flex', alignItems: 'center', gap: 5,
           padding: sm ? '4px 10px' : '5px 13px', borderRadius: 20,
           background: tier.bg, border: `1px solid ${hexToRgba(tier.primary, 0.35)}`,
