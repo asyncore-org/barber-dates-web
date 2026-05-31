@@ -550,7 +550,7 @@ export default function CalendarPage() {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     padding: '0.875rem 0',
                   }}>
-                    <span style={{ fontFamily: 'var(--font-display)', fontSize: 44, color: 'var(--gold)', lineHeight: 1, letterSpacing: '0.02em' }}>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: 44, color: 'var(--fg-0)', lineHeight: 1, letterSpacing: '0.02em' }}>
                       {dateDay}
                     </span>
                   </div>
@@ -655,10 +655,10 @@ export default function CalendarPage() {
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
                 <div style={{
                   width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-                  background: 'rgba(201,162,74,0.12)', border: '1px solid rgba(201,162,74,0.3)',
+                  background: 'var(--bg-3)', border: '1px solid var(--line)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--fg-2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" />
                   </svg>
                 </div>
@@ -699,51 +699,61 @@ export default function CalendarPage() {
         </div>
 
         {/* ── Footer ── */}
-        <div style={{ flexShrink: 0, padding: `0.875rem ${p} 1.5rem`, borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <div>
-            <p style={{
-              fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 600, letterSpacing: '0.14em',
-              color: 'var(--fg-3)', marginBottom: '0.25rem', textTransform: 'uppercase',
-            }}>
-              Total
-            </p>
+        <div style={{ flexShrink: 0, padding: `0.875rem ${p} 1.5rem`, borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+          {/* Total row: label izquierda · precio derecha */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+            <div>
+              <p style={{
+                fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 600, letterSpacing: '0.14em',
+                color: 'var(--fg-4)', marginBottom: '0.2rem', textTransform: 'uppercase',
+              }}>
+                Total
+              </p>
+              {selectedService && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="rgba(201,162,74,0.7)" stroke="none">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                  <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-3)', letterSpacing: '0.01em' }}>
+                    Ganarás <span style={{ color: 'var(--gold)', fontWeight: 600 }}>+{selectedService.loyaltyPoints} pts</span>
+                  </span>
+                </div>
+              )}
+            </div>
             <span style={{
               fontFamily: 'var(--font-display)', fontSize: 'clamp(30px, 3vw, 42px)',
               color: selectedService ? 'var(--gold)' : 'var(--fg-4)', lineHeight: 1, transition: 'color 0.2s',
             }}>
               {selectedService ? `${selectedService.price}€` : '—'}
             </span>
-            {selectedService && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 7 }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="var(--gold)" stroke="none">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                </svg>
-                <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'rgba(201,162,74,0.75)', letterSpacing: '0.02em' }}>
-                  Ganarás <strong style={{ color: 'var(--gold)' }}>+{selectedService.loyaltyPoints} pts</strong> de fidelidad
-                </span>
-              </div>
-            )}
           </div>
-          <button
-            disabled={!canConfirm}
-            onClick={() => setConfirmOpen(true)}
-            style={{
-              width: '100%', padding: '0.9rem', borderRadius: 10, border: 'none',
-              background: canConfirm ? 'var(--gold)' : 'var(--bg-4)',
-              color: canConfirm ? '#000' : 'var(--fg-3)',
-              fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 700,
-              cursor: canConfirm ? 'pointer' : 'default',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-              transition: 'all 0.2s',
-            }}
-          >
-            Confirmar reserva
-            {canConfirm && (
+
+          {/* Botón solo visible cuando todo está completo */}
+          {canConfirm ? (
+            <button
+              onClick={() => setConfirmOpen(true)}
+              style={{
+                width: '100%', padding: '0.9rem', borderRadius: 10, border: 'none',
+                background: 'var(--gold)', color: '#000',
+                fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                transition: 'opacity 0.2s',
+              }}
+            >
+              Confirmar reserva
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
-            )}
-          </button>
+            </button>
+          ) : (
+            <p style={{
+              fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-4)',
+              textAlign: 'center', margin: 0, letterSpacing: '0.03em',
+            }}>
+              Completa todos los pasos para reservar
+            </p>
+          )}
         </div>
       </div>
     )
