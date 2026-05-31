@@ -501,10 +501,10 @@ export default function CalendarPage() {
 
   const summaryCard = (fullHeight: boolean) => {
     const p = fullHeight ? '1.5rem' : '1.25rem'
-    const stepLabels = allowBarberChoice ? ['Fecha', 'Hora', 'Barbero', 'Servicio'] : ['Fecha', 'Hora', 'Servicio']
     const stepDone = allowBarberChoice
       ? [!!selectedDate, !!selectedSlot, !!selectedSlot, !!selectedService]
       : [!!selectedDate, !!selectedSlot, !!selectedService]
+    const progressPct = (stepDone.filter(Boolean).length / stepDone.length) * 100
     const dateDay = selectedDate?.getDate()
     const dateDayName = selectedDate?.toLocaleDateString('es-ES', { weekday: 'long' }).toUpperCase()
     const dateMonthYear = selectedDate?.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase()
@@ -517,47 +517,18 @@ export default function CalendarPage() {
         ...(fullHeight ? { height: '100%', overflow: 'hidden' } : {}),
       }}>
 
-        {/* ── Header: label + progress stepper ── */}
+        {/* ── Header: label + barra de progreso ── */}
         <div style={{ padding: `1.1rem ${p} 1rem`, borderBottom: '1px solid var(--line)', flexShrink: 0 }}>
-          <p style={{ fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 700, letterSpacing: '0.18em', color: 'var(--gold)', margin: '0 0 0.8rem' }}>
+          <p style={{ fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 700, letterSpacing: '0.18em', color: 'var(--gold)', margin: '0 0 0.75rem' }}>
             RESUMEN
           </p>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            {stepLabels.map((label, i) => (
-              <div key={label} style={{ display: 'flex', alignItems: 'center', flex: i < stepLabels.length - 1 ? 1 : 'none' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                  <div style={{
-                    width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
-                    background: stepDone[i] ? 'var(--gold)' : 'var(--bg-4)',
-                    border: `1.5px solid ${stepDone[i] ? 'var(--gold)' : 'var(--line)'}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.25s',
-                  }}>
-                    {stepDone[i] ? (
-                      <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
-                        <path d="M2 6l3 3 5-5" stroke="#000" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    ) : (
-                      <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--fg-4)' }} />
-                    )}
-                  </div>
-                  <span style={{
-                    fontFamily: 'var(--font-ui)', fontSize: 8, fontWeight: 600, letterSpacing: '0.08em',
-                    color: stepDone[i] ? 'var(--fg-2)' : 'var(--fg-4)', textTransform: 'uppercase',
-                    transition: 'color 0.25s',
-                  }}>
-                    {label}
-                  </span>
-                </div>
-                {i < stepLabels.length - 1 && (
-                  <div style={{
-                    flex: 1, height: 1, margin: '0 4px', marginBottom: 14,
-                    background: stepDone[i] ? 'rgba(201,162,74,0.4)' : 'var(--line)',
-                    transition: 'background 0.25s',
-                  }} />
-                )}
-              </div>
-            ))}
+          <div style={{ height: 3, borderRadius: 2, background: 'var(--bg-4)', overflow: 'hidden' }}>
+            <div style={{
+              height: '100%', borderRadius: 2,
+              background: 'linear-gradient(90deg, rgba(201,162,74,0.7), var(--gold))',
+              width: `${progressPct}%`,
+              transition: 'width 0.35s ease',
+            }} />
           </div>
         </div>
 
@@ -687,26 +658,19 @@ export default function CalendarPage() {
                   background: 'rgba(201,162,74,0.12)', border: '1px solid rgba(201,162,74,0.3)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><line x1="20" y1="4" x2="8.12" y2="15.88" /><line x1="14.47" y1="14.48" x2="20" y2="20" /><line x1="8.12" y1="8.12" x2="12" y2="12" />
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" />
                   </svg>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', color: 'var(--fg-3)', textTransform: 'uppercase', marginBottom: 3 }}>
                     Servicio
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                    <div>
-                      <div style={{ fontFamily: 'var(--font-ui)', fontSize: 14, color: 'var(--fg-0)', fontWeight: 600, lineHeight: 1.3 }}>
-                        {selectedService.name}
-                      </div>
-                      <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-3)', marginTop: 3 }}>
-                        {selectedService.durationMinutes} min
-                      </div>
-                    </div>
-                    <span style={{ fontFamily: 'var(--font-display)', fontSize: 26, color: 'var(--gold)', letterSpacing: '0.02em', lineHeight: 1, flexShrink: 0 }}>
-                      {selectedService.price}€
-                    </span>
+                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 14, color: 'var(--fg-0)', fontWeight: 600, lineHeight: 1.3 }}>
+                    {selectedService.name}
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-3)', marginTop: 3 }}>
+                    {selectedService.durationMinutes} min
                   </div>
                 </div>
               </div>
@@ -717,8 +681,8 @@ export default function CalendarPage() {
                   background: 'var(--bg-4)', border: '1px dashed var(--line)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--fg-4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><line x1="20" y1="4" x2="8.12" y2="15.88" /><line x1="14.47" y1="14.48" x2="20" y2="20" /><line x1="8.12" y1="8.12" x2="12" y2="12" />
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--fg-4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" />
                   </svg>
                 </div>
                 <div>
@@ -734,54 +698,31 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        {/* ── Perforated separator ── */}
-        <div style={{
-          height: 12, flexShrink: 0,
-          background: 'radial-gradient(circle at 50% 0%, var(--bg-0) 6px, transparent 6px)',
-          backgroundSize: '18px 12px',
-          backgroundRepeat: 'repeat-x',
-          borderTop: '1px solid var(--line)',
-        }} />
-
         {/* ── Footer ── */}
-        <div style={{ flexShrink: 0, padding: `0.75rem ${p} 1.5rem`, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 }}>
-            <div>
-              <p style={{
-                fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 600, letterSpacing: '0.14em',
-                color: 'var(--fg-3)', marginBottom: '0.25rem', textTransform: 'uppercase',
-              }}>
-                {selectedService ? `Total · ${selectedService.durationMinutes} min` : 'Total'}
-              </p>
-              <span style={{
-                fontFamily: 'var(--font-display)', fontSize: 'clamp(30px, 3vw, 42px)',
-                color: selectedService ? 'var(--gold)' : 'var(--fg-4)', lineHeight: 1, transition: 'color 0.2s',
-              }}>
-                {selectedService ? `${selectedService.price}€` : '—'}
-              </span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, paddingBottom: 4 }}>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                padding: '0.3rem 0.625rem', borderRadius: 20,
-                background: selectedService ? 'rgba(201,162,74,0.12)' : 'var(--bg-4)',
-                border: `1px solid ${selectedService ? 'rgba(201,162,74,0.3)' : 'var(--line)'}`,
-                transition: 'all 0.2s',
-              }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill={selectedService ? 'var(--gold)' : 'var(--fg-4)'} stroke="none" style={{ transition: 'fill 0.2s' }}>
+        <div style={{ flexShrink: 0, padding: `0.875rem ${p} 1.5rem`, borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div>
+            <p style={{
+              fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 600, letterSpacing: '0.14em',
+              color: 'var(--fg-3)', marginBottom: '0.25rem', textTransform: 'uppercase',
+            }}>
+              Total
+            </p>
+            <span style={{
+              fontFamily: 'var(--font-display)', fontSize: 'clamp(30px, 3vw, 42px)',
+              color: selectedService ? 'var(--gold)' : 'var(--fg-4)', lineHeight: 1, transition: 'color 0.2s',
+            }}>
+              {selectedService ? `${selectedService.price}€` : '—'}
+            </span>
+            {selectedService && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 7 }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="var(--gold)" stroke="none">
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                 </svg>
-                <span style={{
-                  fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 700,
-                  color: selectedService ? 'var(--gold)' : 'var(--fg-4)', transition: 'color 0.2s',
-                }}>
-                  {selectedService ? `+${selectedService.loyaltyPoints} pts` : '— pts'}
+                <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'rgba(201,162,74,0.75)', letterSpacing: '0.02em' }}>
+                  Ganarás <strong style={{ color: 'var(--gold)' }}>+{selectedService.loyaltyPoints} pts</strong> de fidelidad
                 </span>
               </div>
-              <span style={{ fontFamily: 'var(--font-ui)', fontSize: 9, color: 'var(--fg-4)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                fidelidad
-              </span>
-            </div>
+            )}
           </div>
           <button
             disabled={!canConfirm}
@@ -794,7 +735,6 @@ export default function CalendarPage() {
               cursor: canConfirm ? 'pointer' : 'default',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
               transition: 'all 0.2s',
-              boxShadow: canConfirm ? '0 4px 24px rgba(201,162,74,0.3)' : 'none',
             }}
           >
             Confirmar reserva
