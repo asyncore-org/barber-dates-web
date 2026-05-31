@@ -23,13 +23,13 @@ type Section = 'servicios' | 'horarios' | 'barberos' | 'fidelizacion' | 'barberi
 
 const BARBER_ROLES = ['Barbero', 'Propietario'] as const
 
-const SECTIONS: { id: Section; label: string }[] = [
-  { id: 'servicios',    label: 'Servicios' },
-  { id: 'horarios',     label: 'Horarios' },
-  { id: 'barberos',     label: 'Barberos' },
+const SECTIONS: { id: Section; label: string; adminOnly?: boolean }[] = [
+  { id: 'servicios',    label: 'Servicios'    },
+  { id: 'horarios',     label: 'Horarios'     },
+  { id: 'barberos',     label: 'Equipo'       },
   { id: 'fidelizacion', label: 'Fidelización' },
-  { id: 'barberia',     label: 'Barbería' },
-  { id: 'apariencia',   label: 'Apariencia' },
+  { id: 'barberia',     label: 'Negocio'      },
+  { id: 'apariencia',   label: 'Apariencia', adminOnly: true },
 ]
 
 const DAY_KEYS: { key: DayKey; name: string }[] = [
@@ -182,6 +182,7 @@ export default function SettingsPage() {
   const [logoPreviewUrl, setLogoPreviewUrl]   = useState<string | null>(null)
   const [logoError, setLogoError]             = useState<string | null>(null)
   const [pendingShape, setPendingShape]       = useState<LogoShape | undefined>(undefined)
+  const [logoTab, setLogoTab]               = useState<'info' | 'logo'>('info')
   const [logoScale, setLogoScale]             = useState<number>(1)
   const [logoOffsetX, setLogoOffsetX]         = useState<number>(0)
   const [logoOffsetY, setLogoOffsetY]         = useState<number>(0)
@@ -579,7 +580,7 @@ export default function SettingsPage() {
               key={s.id}
               onClick={() => handleSectionChange(s.id)}
               style={{
-                display: 'flex', alignItems: 'center', gap: 5,
+                display: 'flex', alignItems: 'center', gap: 6,
                 padding: '0.5rem 1rem', borderRadius: 20, border: 'none', minHeight: 40,
                 background: section === s.id ? '#C8A44E' : 'var(--bg-3)',
                 color: section === s.id ? '#000' : 'var(--fg-2)',
@@ -589,9 +590,6 @@ export default function SettingsPage() {
               }}
             >
               {s.label}
-              {s.id === 'apariencia' && (
-                <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', padding: '1px 5px', borderRadius: 4, background: 'rgba(200,164,78,0.2)', color: section === s.id ? '#7a5a00' : '#c8a44e', flexShrink: 0 }}>ADMIN</span>
-              )}
               {sectionDirty[s.id] && (
                 <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: section === s.id ? '#000' : 'var(--led)', flexShrink: 0 }} />
               )}
@@ -610,11 +608,8 @@ export default function SettingsPage() {
           {visibleSections.map(s => (
             <button key={s.id} onClick={() => handleSectionChange(s.id)} style={sidebarBtn(s.id)}>
               <span style={{ flex: 1 }}>{s.label}</span>
-              {s.id === 'apariencia' && (
-                <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', padding: '1px 5px', borderRadius: 4, background: 'rgba(200,164,78,0.2)', color: '#c8a44e', flexShrink: 0 }}>ADMIN</span>
-              )}
               {sectionDirty[s.id] && (
-                <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--led)', flexShrink: 0 }} />
+                <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: section === s.id ? 'var(--gold)' : 'var(--led)', flexShrink: 0 }} />
               )}
             </button>
           ))}
@@ -1331,215 +1326,228 @@ export default function SettingsPage() {
           {/* === BARBERÍA === */}
           {section === 'barberia' && (
             <div>
-              <SectionTitle>DATOS DE LA BARBERÍA</SectionTitle>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
-                {([
-                  { key: 'name' as const, label: 'Nombre' },
-                  { key: 'phone' as const, label: 'Teléfono' },
-                  { key: 'email' as const, label: 'Email' },
-                  { key: 'instagram' as const, label: 'Instagram' },
-                  { key: 'address' as const, label: 'Dirección' },
-                  { key: 'opening_hours' as const, label: 'Horario' },
-                ]).map(({ key, label }) => (
-                  <div key={key} className="flex flex-col gap-1 md:grid md:grid-cols-[160px_1fr] md:items-center md:gap-3">
-                    <label style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>{label}</label>
-                    <input value={localShop[key]} onChange={e => setShopEdits(s => ({ ...s, [key]: e.target.value }))}
-                      style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.5rem 0.6rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' }} />
-                  </div>
-                ))}
-                <div className="flex flex-col gap-1 md:grid md:grid-cols-[160px_1fr] md:items-start md:gap-3">
-                  <label style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)', paddingTop: 6 }}>Descripción</label>
-                  <textarea value={localShop.description} onChange={e => setShopEdits(s => ({ ...s, description: e.target.value }))} rows={3}
-                    style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.5rem 0.6rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, resize: 'vertical', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
-                </div>
-              </div>
-              <SaveBtn onClick={handleSaveShopInfo} loading={mutateShopInfo.isPending} isDirty={Object.keys(shopEdits).length > 0} />
-              {sectionError.barberia && (
-                <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', marginTop: 6, marginBottom: 0 }}>{sectionError.barberia}</p>
-              )}
+              <SectionTitle>NEGOCIO</SectionTitle>
 
-              {/* ── Logo editor ── */}
-              <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--line)' }}>
-                <p style={{ fontSize: 13, fontFamily: 'var(--font-ui)', fontWeight: 600, color: 'var(--fg-1)', marginBottom: '1.25rem' }}>Logo de la barbería</p>
-
-                {/* Preview + controls row */}
-                <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-
-                  {/* Preview interactivo */}
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                    {(() => {
-                      const displayUrl = logoPreviewUrl ?? shopInfo?.logo_url
-                      const activeShape = pendingShape ?? shopInfo?.logo_shape ?? 'hexagon'
-                      const PREVIEW = 180
-                      const sStyle = shapeStyle(activeShape, PREVIEW)
-                      const w = (sStyle.width as number | undefined) ?? PREVIEW
-                      const h = (sStyle.height as number | undefined) ?? PREVIEW
-                      return (
-                        <div
-                          ref={logoPreviewRef}
-                          onMouseDown={displayUrl ? handleDragStart : undefined}
-                          style={{
-                            width: w, height: h, position: 'relative', overflow: 'hidden',
-                            background: 'var(--bg-3)', border: '1px solid var(--line)',
-                            cursor: displayUrl ? (isDragging ? 'grabbing' : 'grab') : 'default',
-                            userSelect: 'none',
-                            ...sStyle,
-                          }}
-                        >
-                          {displayUrl ? (
-                            <img
-                              src={displayUrl}
-                              alt="preview"
-                              draggable={false}
-                              style={{
-                                position: 'absolute', inset: 0,
-                                width: '100%', height: '100%', objectFit: 'cover',
-                                transform: `scale(${logoScale}) translate(${logoOffsetX / logoScale}%, ${logoOffsetY / logoScale}%)`,
-                                transformOrigin: 'center', pointerEvents: 'none',
-                              }}
-                            />
-                          ) : (
-                            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--fg-4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
-                              </svg>
-                              <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-4)', textAlign: 'center' }}>Sin imagen</span>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })()}
-                    {(logoPreviewUrl ?? shopInfo?.logo_url) && (
-                      <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-4)', letterSpacing: '0.03em' }}>
-                        Arrastra para reposicionar
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Controls */}
-                  <div style={{ flex: 1, minWidth: 220, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-
-                    {/* Zoom */}
-                    {(logoPreviewUrl ?? shopInfo?.logo_url) && (
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-2)' }}>Zoom</span>
-                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--gold)', fontWeight: 600 }}>{logoScale.toFixed(1)}×</span>
-                        </div>
-                        <input
-                          type="range" min={0.5} max={3} step={0.05}
-                          value={logoScale}
-                          onChange={e => setLogoScale(Number(e.target.value))}
-                          style={{ width: '100%', accentColor: 'var(--gold)', cursor: 'pointer' }}
-                        />
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
-                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-4)' }}>0.5×</span>
-                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-4)' }}>3×</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Botones de imagen */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <button onClick={() => logoInputRef.current?.click()} style={{ fontSize: 12, fontFamily: 'var(--font-ui)', padding: '0.45rem 0.9rem', borderRadius: 7, background: 'var(--bg-3)', border: '1px solid var(--line)', color: 'var(--fg-0)', cursor: 'pointer' }}>
-                          {pendingLogoFile ? 'Cambiar imagen' : 'Seleccionar imagen'}
-                        </button>
-                        {shopInfo?.logo_url && (
-                          <button onClick={handleRemoveLogo} style={{ fontSize: 12, fontFamily: 'var(--font-ui)', padding: '0.45rem 0.9rem', borderRadius: 7, background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', cursor: 'pointer' }}>
-                            Eliminar logo
-                          </button>
-                        )}
-                      </div>
-                      {pendingLogoFile && (
-                        <p style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', margin: 0 }}>
-                          Nueva imagen: <span style={{ color: 'var(--fg-1)' }}>{pendingLogoFile.name}</span>
-                        </p>
-                      )}
-                      <p style={{ fontSize: 11, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', margin: 0 }}>PNG, JPG o WEBP · máximo 2 MB</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Formas */}
-                <div style={{ marginTop: '1.5rem' }}>
-                  <p style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--fg-3)', marginBottom: '0.875rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>Forma</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: 10 }}>
-                    {([
-                      { shape: 'hexagon'   as LogoShape, label: 'Hexágono'   },
-                      { shape: 'circle'    as LogoShape, label: 'Círculo'    },
-                      { shape: 'square'    as LogoShape, label: 'Cuadrado'   },
-                      { shape: 'rounded'   as LogoShape, label: 'Redondeado' },
-                      { shape: 'squircle'  as LogoShape, label: 'Squircle'   },
-                      { shape: 'pentagon'  as LogoShape, label: 'Pentágono'  },
-                      { shape: 'rectangle' as LogoShape, label: 'Rectángulo' },
-                      { shape: 'oval'      as LogoShape, label: 'Óvalo'      },
-                      { shape: 'diamond'   as LogoShape, label: 'Rombo'      },
-                      { shape: 'shield'    as LogoShape, label: 'Escudo'     },
-                      { shape: 'triangle'  as LogoShape, label: 'Triángulo'  },
-                      { shape: 'badge'     as LogoShape, label: 'Badge'      },
-                    ]).map(({ shape, label }) => {
-                      const active = (pendingShape ?? shopInfo?.logo_shape ?? 'hexagon') === shape
-                      const THUMB = 44
-                      const s = shapeStyle(shape, THUMB)
-                      const tw = (s.width as number | undefined) ?? THUMB
-                      const th = (s.height as number | undefined) ?? THUMB
-                      const displayUrl = logoPreviewUrl ?? shopInfo?.logo_url
-                      return (
-                        <button
-                          key={shape}
-                          onClick={() => setPendingShape(shape)}
-                          title={label}
-                          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', cursor: 'pointer', padding: '6px 4px' }}
-                        >
-                          <div style={{
-                            width: THUMB, height: THUMB,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            border: `2px solid ${active ? 'var(--gold)' : 'transparent'}`,
-                            borderRadius: 6, padding: 2, transition: 'border-color 0.15s',
-                          }}>
-                            <div style={{
-                              width: tw, height: th, position: 'relative', overflow: 'hidden',
-                              background: active ? 'var(--bg-3)' : 'var(--bg-4)',
-                              border: `1px solid ${active ? 'rgba(201,162,74,0.4)' : 'var(--line)'}`,
-                              transition: 'background 0.15s',
-                              ...s,
-                            }}>
-                              {displayUrl && (
-                                <img src={displayUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                              )}
-                            </div>
-                          </div>
-                          <span style={{ fontSize: 9, fontFamily: 'var(--font-ui)', color: active ? 'var(--gold)' : 'var(--fg-4)', letterSpacing: '0.04em', lineHeight: 1.2, textAlign: 'center' }}>
-                            {label}
-                          </span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Botón guardar logo */}
-                <div style={{ marginTop: '1.25rem', display: 'flex', alignItems: 'center', gap: 12 }}>
+              {/* ── Tabs ── */}
+              <div style={{ display: 'flex', gap: 4, marginBottom: '1.5rem', background: 'var(--bg-3)', borderRadius: 10, padding: 4 }}>
+                {(['info', 'logo'] as const).map(tab => (
                   <button
-                    onClick={handleSaveLogo}
-                    disabled={uploadLogo.isPending || mutateShopInfo.isPending}
+                    key={tab}
+                    onClick={() => setLogoTab(tab)}
                     style={{
-                      fontSize: 13, fontFamily: 'var(--font-ui)', fontWeight: 600,
-                      padding: '0.55rem 1.2rem', borderRadius: 8, border: 'none',
-                      background: 'var(--gold)', color: '#000',
-                      cursor: (uploadLogo.isPending || mutateShopInfo.isPending) ? 'not-allowed' : 'pointer',
-                      opacity: (uploadLogo.isPending || mutateShopInfo.isPending) ? 0.7 : 1,
-                      transition: 'opacity 0.15s',
+                      flex: 1, padding: '0.5rem 1rem', borderRadius: 7, border: 'none',
+                      background: logoTab === tab ? 'var(--bg-0)' : 'transparent',
+                      color: logoTab === tab ? 'var(--fg-0)' : 'var(--fg-3)',
+                      fontFamily: 'var(--font-ui)', fontSize: 13,
+                      fontWeight: logoTab === tab ? 600 : 400,
+                      cursor: 'pointer', transition: 'all 0.15s',
+                      boxShadow: logoTab === tab ? '0 1px 3px rgba(0,0,0,0.25)' : 'none',
                     }}
                   >
-                    {(uploadLogo.isPending || mutateShopInfo.isPending) ? 'Guardando…' : 'Guardar logo'}
+                    {tab === 'info' ? 'Información' : 'Logo'}
                   </button>
-                  {logoError && <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', margin: 0 }}>{logoError}</p>}
-                </div>
-
-                <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/webp" aria-label="Subir imagen de logo de la barbería" style={{ display: 'none' }} onChange={handleLogoFileChange} />
+                ))}
               </div>
+
+              {/* ── Tab: Información ── */}
+              {logoTab === 'info' && (
+                <div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
+                    {([
+                      { key: 'name' as const, label: 'Nombre' },
+                      { key: 'phone' as const, label: 'Teléfono' },
+                      { key: 'email' as const, label: 'Email' },
+                      { key: 'instagram' as const, label: 'Instagram' },
+                      { key: 'address' as const, label: 'Dirección' },
+                      { key: 'opening_hours' as const, label: 'Horario' },
+                    ]).map(({ key, label }) => (
+                      <div key={key} className="flex flex-col gap-1 md:grid md:grid-cols-[160px_1fr] md:items-center md:gap-3">
+                        <label style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>{label}</label>
+                        <input value={localShop[key]} onChange={e => setShopEdits(s => ({ ...s, [key]: e.target.value }))}
+                          style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.5rem 0.6rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+                      </div>
+                    ))}
+                    <div className="flex flex-col gap-1 md:grid md:grid-cols-[160px_1fr] md:items-start md:gap-3">
+                      <label style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)', paddingTop: 6 }}>Descripción</label>
+                      <textarea value={localShop.description} onChange={e => setShopEdits(s => ({ ...s, description: e.target.value }))} rows={3}
+                        style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.5rem 0.6rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, resize: 'vertical', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+                    </div>
+                  </div>
+                  <SaveBtn onClick={handleSaveShopInfo} loading={mutateShopInfo.isPending} isDirty={Object.keys(shopEdits).length > 0} />
+                  {sectionError.barberia && (
+                    <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', marginTop: 6, marginBottom: 0 }}>{sectionError.barberia}</p>
+                  )}
+                </div>
+              )}
+
+              {/* ── Tab: Logo ── */}
+              {logoTab === 'logo' && (
+                <div>
+                  {/* Preview + controls */}
+                  <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+
+                    {/* Preview interactivo */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      {(() => {
+                        const displayUrl = logoPreviewUrl ?? shopInfo?.logo_url
+                        const activeShape = pendingShape ?? shopInfo?.logo_shape ?? 'hexagon'
+                        const PREVIEW = 180
+                        const sStyle = shapeStyle(activeShape, PREVIEW)
+                        const w = (sStyle.width as number | undefined) ?? PREVIEW
+                        const h = (sStyle.height as number | undefined) ?? PREVIEW
+                        return (
+                          <div
+                            ref={logoPreviewRef}
+                            onMouseDown={displayUrl ? handleDragStart : undefined}
+                            style={{
+                              width: w, height: h, position: 'relative', overflow: 'hidden',
+                              background: 'var(--bg-3)', border: '1px solid var(--line)',
+                              cursor: displayUrl ? (isDragging ? 'grabbing' : 'grab') : 'default',
+                              userSelect: 'none', ...sStyle,
+                            }}
+                          >
+                            {displayUrl ? (
+                              <img src={displayUrl} alt="preview" draggable={false} style={{
+                                position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+                                transform: `scale(${logoScale}) translate(${logoOffsetX / logoScale}%, ${logoOffsetY / logoScale}%)`,
+                                transformOrigin: 'center', pointerEvents: 'none',
+                              }} />
+                            ) : (
+                              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--fg-4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                                </svg>
+                                <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-4)', textAlign: 'center' }}>Sin imagen</span>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
+                      {(logoPreviewUrl ?? shopInfo?.logo_url) && (
+                        <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-4)' }}>
+                          Arrastra para reposicionar
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Controls: zoom + imagen */}
+                    <div style={{ flex: 1, minWidth: 220, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      {(logoPreviewUrl ?? shopInfo?.logo_url) && (
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                            <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-2)' }}>Zoom</span>
+                            <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--gold)', fontWeight: 600 }}>{logoScale.toFixed(1)}×</span>
+                          </div>
+                          <input type="range" min={0.5} max={3} step={0.05} value={logoScale}
+                            onChange={e => setLogoScale(Number(e.target.value))}
+                            style={{ width: '100%', accentColor: 'var(--gold)', cursor: 'pointer' }} />
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
+                            <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-4)' }}>0.5×</span>
+                            <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-4)' }}>3×</span>
+                          </div>
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <button onClick={() => logoInputRef.current?.click()} style={{ fontSize: 12, fontFamily: 'var(--font-ui)', padding: '0.45rem 0.9rem', borderRadius: 7, background: 'var(--bg-3)', border: '1px solid var(--line)', color: 'var(--fg-0)', cursor: 'pointer' }}>
+                            {pendingLogoFile ? 'Cambiar imagen' : 'Seleccionar imagen'}
+                          </button>
+                          {shopInfo?.logo_url && (
+                            <button onClick={handleRemoveLogo} style={{ fontSize: 12, fontFamily: 'var(--font-ui)', padding: '0.45rem 0.9rem', borderRadius: 7, background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', cursor: 'pointer' }}>
+                              Eliminar logo
+                            </button>
+                          )}
+                        </div>
+                        {pendingLogoFile && (
+                          <p style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', margin: 0 }}>
+                            Nueva imagen: <span style={{ color: 'var(--fg-1)' }}>{pendingLogoFile.name}</span>
+                          </p>
+                        )}
+                        <p style={{ fontSize: 11, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', margin: 0 }}>PNG, JPG o WEBP · máximo 2 MB</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Formas */}
+                  <div style={{ marginTop: '1.75rem' }}>
+                    <p style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--fg-3)', marginBottom: '1rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>Forma</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: 8 }}>
+                      {([
+                        { shape: 'hexagon'   as LogoShape, label: 'Hexágono'   },
+                        { shape: 'circle'    as LogoShape, label: 'Círculo'    },
+                        { shape: 'square'    as LogoShape, label: 'Cuadrado'   },
+                        { shape: 'rounded'   as LogoShape, label: 'Redondeado' },
+                        { shape: 'squircle'  as LogoShape, label: 'Squircle'   },
+                        { shape: 'pentagon'  as LogoShape, label: 'Pentágono'  },
+                        { shape: 'rectangle' as LogoShape, label: 'Rectángulo' },
+                        { shape: 'oval'      as LogoShape, label: 'Óvalo'      },
+                        { shape: 'diamond'   as LogoShape, label: 'Rombo'      },
+                        { shape: 'shield'    as LogoShape, label: 'Escudo'     },
+                        { shape: 'triangle'  as LogoShape, label: 'Triángulo'  },
+                        { shape: 'badge'     as LogoShape, label: 'Badge'      },
+                      ]).map(({ shape, label }) => {
+                        const active = (pendingShape ?? shopInfo?.logo_shape ?? 'hexagon') === shape
+                        const THUMB = 48
+                        const s = shapeStyle(shape, THUMB)
+                        const tw = (s.width as number | undefined) ?? THUMB
+                        const th = (s.height as number | undefined) ?? THUMB
+                        return (
+                          <button
+                            key={shape}
+                            onClick={() => setPendingShape(shape)}
+                            style={{
+                              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7,
+                              background: active ? 'rgba(201,162,74,0.08)' : 'transparent',
+                              border: `1.5px solid ${active ? 'var(--gold)' : 'transparent'}`,
+                              borderRadius: 10, cursor: 'pointer', padding: '10px 4px',
+                              transition: 'all 0.15s',
+                            }}
+                          >
+                            <div style={{
+                              width: tw, height: th, flexShrink: 0,
+                              background: active
+                                ? 'linear-gradient(135deg, rgba(201,162,74,0.55), rgba(201,162,74,0.25))'
+                                : 'var(--bg-3)',
+                              border: `1.5px solid ${active ? 'rgba(201,162,74,0.6)' : 'var(--line)'}`,
+                              transition: 'all 0.15s',
+                              ...s,
+                            }} />
+                            <span style={{
+                              fontSize: 9, fontFamily: 'var(--font-ui)',
+                              color: active ? 'var(--gold)' : 'var(--fg-3)',
+                              letterSpacing: '0.04em', lineHeight: 1.2, textAlign: 'center',
+                              fontWeight: active ? 600 : 400,
+                            }}>
+                              {label}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Botón guardar logo */}
+                  <div style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <button
+                      onClick={handleSaveLogo}
+                      disabled={uploadLogo.isPending || mutateShopInfo.isPending}
+                      style={{
+                        fontSize: 13, fontFamily: 'var(--font-ui)', fontWeight: 600,
+                        padding: '0.55rem 1.2rem', borderRadius: 8, border: 'none',
+                        background: 'var(--gold)', color: '#000',
+                        cursor: (uploadLogo.isPending || mutateShopInfo.isPending) ? 'not-allowed' : 'pointer',
+                        opacity: (uploadLogo.isPending || mutateShopInfo.isPending) ? 0.7 : 1,
+                        transition: 'opacity 0.15s',
+                      }}
+                    >
+                      {(uploadLogo.isPending || mutateShopInfo.isPending) ? 'Guardando…' : 'Guardar logo'}
+                    </button>
+                    {logoError && <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', margin: 0 }}>{logoError}</p>}
+                  </div>
+
+                  <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/webp" aria-label="Subir imagen de logo" style={{ display: 'none' }} onChange={handleLogoFileChange} />
+                </div>
+              )}
             </div>
           )}
 
