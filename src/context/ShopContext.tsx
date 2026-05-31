@@ -23,6 +23,9 @@ interface ShopContextValue {
   openingHours?: string
   logoUrl?: string
   logoShape?: LogoShape
+  logoScale?: number
+  logoOffsetX?: number
+  logoOffsetY?: number
   maxAdvanceDays: number
   allowBarberChoice: boolean
   slotIntervalMinutes: number
@@ -52,6 +55,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     openingHours: info.opening_hours,
     logoUrl: info.logo_url,
     logoShape: info.logo_shape,
+    logoScale: info.logo_scale,
+    logoOffsetX: info.logo_offset_x,
+    logoOffsetY: info.logo_offset_y,
     maxAdvanceDays: booking.maxAdvanceDays,
     allowBarberChoice: booking.allowBarberChoice,
     slotIntervalMinutes: booking.slotIntervalMinutes,

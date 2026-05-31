@@ -6,25 +6,25 @@ interface LogoProps {
   size?: number
 }
 
-function shapeStyle(shape: LogoShape | undefined, size: number): CSSProperties {
+export function shapeStyle(shape: LogoShape | undefined, size: number): CSSProperties {
   switch (shape) {
-    case 'circle':
-      return { borderRadius: '50%' }
-    case 'square':
-      return { borderRadius: 0 }
-    case 'rounded':
-      return { borderRadius: size * 0.22 }
-    case 'pentagon':
-      return { clipPath: 'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)' }
-    case 'rectangle':
-      return { borderRadius: size * 0.12, width: size * 1.75, height: size }
-    default:
-      return { clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }
+    case 'circle':    return { borderRadius: '50%' }
+    case 'square':    return { borderRadius: 0 }
+    case 'rounded':   return { borderRadius: size * 0.22 }
+    case 'squircle':  return { borderRadius: '22%' }
+    case 'pentagon':  return { clipPath: 'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)' }
+    case 'rectangle': return { borderRadius: size * 0.12, width: size * 1.75, height: size }
+    case 'oval':      return { borderRadius: '50%', width: size * 1.5, height: size }
+    case 'diamond':   return { clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)' }
+    case 'shield':    return { clipPath: 'polygon(0% 0%, 100% 0%, 100% 70%, 50% 100%, 0% 70%)' }
+    case 'triangle':  return { clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)' }
+    case 'badge':     return { clipPath: 'polygon(0% 10%, 10% 0%, 90% 0%, 100% 10%, 100% 90%, 90% 100%, 10% 100%, 0% 90%)' }
+    default:          return { clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }
   }
 }
 
 export function Logo({ size = 36 }: LogoProps) {
-  const { name, logoUrl, logoShape } = useShopContext()
+  const { name, logoUrl, logoShape, logoScale = 1, logoOffsetX = 0, logoOffsetY = 0 } = useShopContext()
   const parts = name.toUpperCase().trim().split(/\s+/)
   const line1 = parts.length > 1 ? parts.slice(0, -1).join(' ') : parts[0]
   const line2 = parts.length > 1 ? `— ${parts[parts.length - 1]} —` : '— SHOP —'
@@ -50,7 +50,12 @@ export function Logo({ size = 36 }: LogoProps) {
           <img
             src={logoUrl}
             alt={name}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            style={{
+              position: 'absolute', inset: 0,
+              width: '100%', height: '100%', objectFit: 'cover',
+              transform: `scale(${logoScale}) translate(${logoOffsetX / logoScale}%, ${logoOffsetY / logoScale}%)`,
+              transformOrigin: 'center',
+            }}
           />
         ) : (
           <svg

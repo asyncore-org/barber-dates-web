@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type CSSProperties } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { ConfirmDialog, Modal } from '@/components/ui'
 import { MonthCalendar } from '@/components/calendar'
@@ -15,7 +15,8 @@ import type { WeeklySchedule, DayKey } from '@/domain/schedule'
 import type { Service } from '@/domain/service'
 import type { Barber } from '@/domain/barber'
 import type { Reward } from '@/domain/loyalty'
-import type { LoyaltyTierConfig, LoyaltyTierReward } from '@/domain/shop'
+import type { LoyaltyTierConfig, LoyaltyTierReward, LogoShape } from '@/domain/shop'
+import { shapeStyle } from '@/components/layout/Logo'
 import { AppearanceSection } from '@/components/appearance'
 
 type Section = 'servicios' | 'horarios' | 'barberos' | 'fidelizacion' | 'barberia' | 'apariencia'
@@ -176,12 +177,47 @@ export default function SettingsPage() {
     opening_hours: shopEdits.opening_hours ?? shopInfo?.opening_hours ?? '',
   }
 
-  // ── Logo upload state ───────────────────────────────────────────────────────
+  // ── Logo upload + adjustment state ─────────────────────────────────────────
   const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null)
   const [logoPreviewUrl, setLogoPreviewUrl]   = useState<string | null>(null)
   const [logoError, setLogoError]             = useState<string | null>(null)
-  const logoInputRef = useRef<HTMLInputElement>(null)
-  const uploadLogo   = useUploadLogo()
+  const [pendingShape, setPendingShape]       = useState<LogoShape | undefined>(undefined)
+  const [logoScale, setLogoScale]             = useState<number>(1)
+  const [logoOffsetX, setLogoOffsetX]         = useState<number>(0)
+  const [logoOffsetY, setLogoOffsetY]         = useState<number>(0)
+  const [isDragging, setIsDragging]           = useState(false)
+  const dragRef = useRef<{ x: number; y: number; ox: number; oy: number }>({ x: 0, y: 0, ox: 0, oy: 0 })
+  const logoPreviewRef                        = useRef<HTMLDivElement>(null)
+  const logoInputRef                          = useRef<HTMLInputElement>(null)
+  const uploadLogo                            = useUploadLogo()
+  const logoInitialized                       = useRef(false)
+
+  // Sync adjustment fields from DB on first load
+  useEffect(() => {
+    if (shopInfo && !logoInitialized.current) {
+      logoInitialized.current = true
+      setLogoScale(shopInfo.logo_scale ?? 1)
+      setLogoOffsetX(shopInfo.logo_offset_x ?? 0)
+      setLogoOffsetY(shopInfo.logo_offset_y ?? 0)
+    }
+  }, [shopInfo])
+
+  // Drag event listeners
+  useEffect(() => {
+    if (!isDragging) return
+    const onMove = (e: MouseEvent) => {
+      const rect = logoPreviewRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const dx = (e.clientX - dragRef.current.x) / rect.width * 100
+      const dy = (e.clientY - dragRef.current.y) / rect.height * 100
+      setLogoOffsetX(Math.max(-60, Math.min(60, dragRef.current.ox + dx)))
+      setLogoOffsetY(Math.max(-60, Math.min(60, dragRef.current.oy + dy)))
+    }
+    const onUp = () => setIsDragging(false)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+  }, [isDragging])
 
   const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -193,24 +229,37 @@ export default function SettingsPage() {
     setLogoPreviewUrl(URL.createObjectURL(file))
   }
 
-  const handleUploadLogo = () => {
-    if (!pendingLogoFile) return
+  const handleSaveLogo = async () => {
     setLogoError(null)
-    uploadLogo.mutate(pendingLogoFile, {
-      onSuccess: () => {
+    try {
+      if (pendingLogoFile) {
+        await uploadLogo.mutateAsync(pendingLogoFile)
         setPendingLogoFile(null)
         if (logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl)
         setLogoPreviewUrl(null)
         if (logoInputRef.current) logoInputRef.current.value = ''
-      },
-      onError: (e) => setLogoError(e instanceof Error ? e.message : 'Error al subir el logo'),
-    })
+      }
+      await mutateShopInfo.mutateAsync({
+        logo_shape:    pendingShape ?? shopInfo?.logo_shape ?? 'hexagon',
+        logo_scale:    logoScale,
+        logo_offset_x: logoOffsetX,
+        logo_offset_y: logoOffsetY,
+      })
+    } catch (e) {
+      setLogoError(e instanceof Error ? e.message : 'Error al guardar el logo')
+    }
   }
 
   const handleRemoveLogo = () => {
     mutateShopInfo.mutate({ logo_url: undefined }, {
       onError: () => setLogoError('No se pudo eliminar el logo'),
     })
+  }
+
+  const handleDragStart = (e: React.MouseEvent) => {
+    e.preventDefault()
+    dragRef.current = { x: e.clientX, y: e.clientY, ox: logoOffsetX, oy: logoOffsetY }
+    setIsDragging(true)
   }
 
   const [pendingMaxDays, setPendingMaxDays] = useState<string | null>(null)
@@ -1309,71 +1358,187 @@ export default function SettingsPage() {
                 <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', marginTop: 6, marginBottom: 0 }}>{sectionError.barberia}</p>
               )}
 
-              {/* ── Logo de la barbería ── */}
+              {/* ── Logo editor ── */}
               <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--line)' }}>
-                <p style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)', marginBottom: '0.75rem' }}>Logo de la barbería</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                  <div style={{ width: 72, height: 72, clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)', background: 'var(--bg-3)', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {(logoPreviewUrl ?? shopInfo?.logo_url) ? (
-                      <img src={logoPreviewUrl ?? shopInfo?.logo_url} alt="Logo preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
-                      </svg>
+                <p style={{ fontSize: 13, fontFamily: 'var(--font-ui)', fontWeight: 600, color: 'var(--fg-1)', marginBottom: '1.25rem' }}>Logo de la barbería</p>
+
+                {/* Preview + controls row */}
+                <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+
+                  {/* Preview interactivo */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                    {(() => {
+                      const displayUrl = logoPreviewUrl ?? shopInfo?.logo_url
+                      const activeShape = pendingShape ?? shopInfo?.logo_shape ?? 'hexagon'
+                      const PREVIEW = 180
+                      const sStyle = shapeStyle(activeShape, PREVIEW)
+                      const w = (sStyle.width as number | undefined) ?? PREVIEW
+                      const h = (sStyle.height as number | undefined) ?? PREVIEW
+                      return (
+                        <div
+                          ref={logoPreviewRef}
+                          onMouseDown={displayUrl ? handleDragStart : undefined}
+                          style={{
+                            width: w, height: h, position: 'relative', overflow: 'hidden',
+                            background: 'var(--bg-3)', border: '1px solid var(--line)',
+                            cursor: displayUrl ? (isDragging ? 'grabbing' : 'grab') : 'default',
+                            userSelect: 'none',
+                            ...sStyle,
+                          }}
+                        >
+                          {displayUrl ? (
+                            <img
+                              src={displayUrl}
+                              alt="preview"
+                              draggable={false}
+                              style={{
+                                position: 'absolute', inset: 0,
+                                width: '100%', height: '100%', objectFit: 'cover',
+                                transform: `scale(${logoScale}) translate(${logoOffsetX / logoScale}%, ${logoOffsetY / logoScale}%)`,
+                                transformOrigin: 'center', pointerEvents: 'none',
+                              }}
+                            />
+                          ) : (
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--fg-4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                              </svg>
+                              <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-4)', textAlign: 'center' }}>Sin imagen</span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
+                    {(logoPreviewUrl ?? shopInfo?.logo_url) && (
+                      <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-4)', letterSpacing: '0.03em' }}>
+                        Arrastra para reposicionar
+                      </span>
                     )}
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <button onClick={() => logoInputRef.current?.click()} style={{ fontSize: 12, fontFamily: 'var(--font-ui)', padding: '0.4rem 0.8rem', borderRadius: 6, background: 'var(--bg-3)', border: '1px solid var(--line)', color: 'var(--fg-0)', cursor: 'pointer' }}>
-                        {pendingLogoFile ? 'Cambiar selección' : 'Seleccionar imagen'}
-                      </button>
+
+                  {/* Controls */}
+                  <div style={{ flex: 1, minWidth: 220, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+                    {/* Zoom */}
+                    {(logoPreviewUrl ?? shopInfo?.logo_url) && (
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-2)' }}>Zoom</span>
+                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--gold)', fontWeight: 600 }}>{logoScale.toFixed(1)}×</span>
+                        </div>
+                        <input
+                          type="range" min={0.5} max={3} step={0.05}
+                          value={logoScale}
+                          onChange={e => setLogoScale(Number(e.target.value))}
+                          style={{ width: '100%', accentColor: 'var(--gold)', cursor: 'pointer' }}
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
+                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-4)' }}>0.5×</span>
+                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-4)' }}>3×</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Botones de imagen */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <button onClick={() => logoInputRef.current?.click()} style={{ fontSize: 12, fontFamily: 'var(--font-ui)', padding: '0.45rem 0.9rem', borderRadius: 7, background: 'var(--bg-3)', border: '1px solid var(--line)', color: 'var(--fg-0)', cursor: 'pointer' }}>
+                          {pendingLogoFile ? 'Cambiar imagen' : 'Seleccionar imagen'}
+                        </button>
+                        {shopInfo?.logo_url && (
+                          <button onClick={handleRemoveLogo} style={{ fontSize: 12, fontFamily: 'var(--font-ui)', padding: '0.45rem 0.9rem', borderRadius: 7, background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', cursor: 'pointer' }}>
+                            Eliminar logo
+                          </button>
+                        )}
+                      </div>
                       {pendingLogoFile && (
-                        <button onClick={handleUploadLogo} disabled={uploadLogo.isPending} style={{ fontSize: 12, fontFamily: 'var(--font-ui)', padding: '0.4rem 0.8rem', borderRadius: 6, background: 'var(--gold)', border: 'none', color: '#000', cursor: uploadLogo.isPending ? 'not-allowed' : 'pointer', opacity: uploadLogo.isPending ? 0.7 : 1 }}>
-                          {uploadLogo.isPending ? 'Subiendo…' : 'Guardar logo'}
-                        </button>
+                        <p style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', margin: 0 }}>
+                          Nueva imagen: <span style={{ color: 'var(--fg-1)' }}>{pendingLogoFile.name}</span>
+                        </p>
                       )}
-                      {shopInfo?.logo_url && !pendingLogoFile && (
-                        <button onClick={handleRemoveLogo} style={{ fontSize: 12, fontFamily: 'var(--font-ui)', padding: '0.4rem 0.8rem', borderRadius: 6, background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', cursor: 'pointer' }}>
-                          Eliminar logo
-                        </button>
-                      )}
+                      <p style={{ fontSize: 11, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', margin: 0 }}>PNG, JPG o WEBP · máximo 2 MB</p>
                     </div>
-                    <p style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', margin: 0 }}>PNG, JPG o WEBP · máximo 2 MB</p>
-                    {pendingLogoFile && <p style={{ fontSize: 11, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', margin: 0 }}>Seleccionado: {pendingLogoFile.name}</p>}
                   </div>
                 </div>
-                {logoError && <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', marginTop: 8, marginBottom: 0 }}>{logoError}</p>}
-                <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/webp" aria-label="Subir imagen de logo de la barbería" style={{ display: 'none' }} onChange={handleLogoFileChange} />
-              </div>
 
-              {/* ── Forma del logo ── */}
-              <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--line)' }}>
-                <p style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)', marginBottom: '0.75rem' }}>Forma del logo</p>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  {([
-                    { shape: 'hexagon'   as const, label: 'Hexágono',   style: { clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' } as CSSProperties },
-                    { shape: 'circle'    as const, label: 'Círculo',    style: { borderRadius: '50%' } as CSSProperties },
-                    { shape: 'square'    as const, label: 'Cuadrado',   style: { borderRadius: 0 } as CSSProperties },
-                    { shape: 'rounded'   as const, label: 'Redondeado', style: { borderRadius: 8 } as CSSProperties },
-                    { shape: 'pentagon'  as const, label: 'Pentágono',  style: { clipPath: 'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)' } as CSSProperties },
-                    { shape: 'rectangle' as const, label: 'Rectángulo', style: { borderRadius: 4, width: 56, height: 36 } as CSSProperties },
-                  ]).map(({ shape, label, style }) => {
-                    const active = (shopInfo?.logo_shape ?? 'hexagon') === shape
-                    return (
-                      <button key={shape} onClick={() => mutateShopInfo.mutate({ logo_shape: shape })} title={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', cursor: 'pointer', padding: '6px 4px' }}>
-                        <div style={{
-                          width: 44, height: 44, background: active ? 'var(--bg-3)' : 'var(--bg-4)',
-                          border: `2px solid ${active ? 'var(--gold)' : 'var(--line)'}`,
-                          overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          transition: 'border-color 0.15s', ...style,
-                        }}>
-                          {shopInfo?.logo_url && <img src={shopInfo.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                        </div>
-                        <span style={{ fontSize: 10, fontFamily: 'var(--font-ui)', color: active ? 'var(--gold)' : 'var(--fg-3)' }}>{label}</span>
-                      </button>
-                    )
-                  })}
+                {/* Formas */}
+                <div style={{ marginTop: '1.5rem' }}>
+                  <p style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--fg-3)', marginBottom: '0.875rem', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>Forma</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: 10 }}>
+                    {([
+                      { shape: 'hexagon'   as LogoShape, label: 'Hexágono'   },
+                      { shape: 'circle'    as LogoShape, label: 'Círculo'    },
+                      { shape: 'square'    as LogoShape, label: 'Cuadrado'   },
+                      { shape: 'rounded'   as LogoShape, label: 'Redondeado' },
+                      { shape: 'squircle'  as LogoShape, label: 'Squircle'   },
+                      { shape: 'pentagon'  as LogoShape, label: 'Pentágono'  },
+                      { shape: 'rectangle' as LogoShape, label: 'Rectángulo' },
+                      { shape: 'oval'      as LogoShape, label: 'Óvalo'      },
+                      { shape: 'diamond'   as LogoShape, label: 'Rombo'      },
+                      { shape: 'shield'    as LogoShape, label: 'Escudo'     },
+                      { shape: 'triangle'  as LogoShape, label: 'Triángulo'  },
+                      { shape: 'badge'     as LogoShape, label: 'Badge'      },
+                    ]).map(({ shape, label }) => {
+                      const active = (pendingShape ?? shopInfo?.logo_shape ?? 'hexagon') === shape
+                      const THUMB = 44
+                      const s = shapeStyle(shape, THUMB)
+                      const tw = (s.width as number | undefined) ?? THUMB
+                      const th = (s.height as number | undefined) ?? THUMB
+                      const displayUrl = logoPreviewUrl ?? shopInfo?.logo_url
+                      return (
+                        <button
+                          key={shape}
+                          onClick={() => setPendingShape(shape)}
+                          title={label}
+                          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', cursor: 'pointer', padding: '6px 4px' }}
+                        >
+                          <div style={{
+                            width: THUMB, height: THUMB,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            border: `2px solid ${active ? 'var(--gold)' : 'transparent'}`,
+                            borderRadius: 6, padding: 2, transition: 'border-color 0.15s',
+                          }}>
+                            <div style={{
+                              width: tw, height: th, position: 'relative', overflow: 'hidden',
+                              background: active ? 'var(--bg-3)' : 'var(--bg-4)',
+                              border: `1px solid ${active ? 'rgba(201,162,74,0.4)' : 'var(--line)'}`,
+                              transition: 'background 0.15s',
+                              ...s,
+                            }}>
+                              {displayUrl && (
+                                <img src={displayUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                              )}
+                            </div>
+                          </div>
+                          <span style={{ fontSize: 9, fontFamily: 'var(--font-ui)', color: active ? 'var(--gold)' : 'var(--fg-4)', letterSpacing: '0.04em', lineHeight: 1.2, textAlign: 'center' }}>
+                            {label}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
+
+                {/* Botón guardar logo */}
+                <div style={{ marginTop: '1.25rem', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <button
+                    onClick={handleSaveLogo}
+                    disabled={uploadLogo.isPending || mutateShopInfo.isPending}
+                    style={{
+                      fontSize: 13, fontFamily: 'var(--font-ui)', fontWeight: 600,
+                      padding: '0.55rem 1.2rem', borderRadius: 8, border: 'none',
+                      background: 'var(--gold)', color: '#000',
+                      cursor: (uploadLogo.isPending || mutateShopInfo.isPending) ? 'not-allowed' : 'pointer',
+                      opacity: (uploadLogo.isPending || mutateShopInfo.isPending) ? 0.7 : 1,
+                      transition: 'opacity 0.15s',
+                    }}
+                  >
+                    {(uploadLogo.isPending || mutateShopInfo.isPending) ? 'Guardando…' : 'Guardar logo'}
+                  </button>
+                  {logoError && <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', margin: 0 }}>{logoError}</p>}
+                </div>
+
+                <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/webp" aria-label="Subir imagen de logo de la barbería" style={{ display: 'none' }} onChange={handleLogoFileChange} />
               </div>
             </div>
           )}

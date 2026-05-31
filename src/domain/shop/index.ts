@@ -1,4 +1,6 @@
-export type LogoShape = 'hexagon' | 'circle' | 'square' | 'rounded' | 'pentagon' | 'rectangle'
+export type LogoShape =
+  | 'hexagon' | 'circle' | 'square' | 'rounded' | 'squircle'
+  | 'pentagon' | 'rectangle' | 'oval' | 'diamond' | 'shield' | 'triangle' | 'badge'
 
 export interface ShopInfo {
   name: string
@@ -10,6 +12,9 @@ export interface ShopInfo {
   opening_hours?: string
   logo_url?: string
   logo_shape?: LogoShape
+  logo_scale?: number
+  logo_offset_x?: number
+  logo_offset_y?: number
 }
 
 export interface BookingConfig {
