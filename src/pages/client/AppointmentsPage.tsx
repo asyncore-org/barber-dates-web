@@ -72,7 +72,6 @@ function AppointmentHistory({ appointments, services, barbers, fill }: {
   fill?: boolean
 }) {
   const [open,          setOpen]          = useState(false)
-  const [loaded,        setLoaded]        = useState(false)
   const [filterStatus,  setFilterStatus]  = useState<HistoryFilter>('all')
   const [filterFrom,    setFilterFrom]    = useState('')
   const [filterTo,      setFilterTo]      = useState('')
@@ -143,7 +142,7 @@ function AppointmentHistory({ appointments, services, barbers, fill }: {
       >
         <div className={SECTION_LABEL} style={{ marginBottom: 0 }}>HISTORIAL</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-          {loaded && total > 0 && (
+          {total > 0 && (
             <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', fontWeight: 500 }}>
               {total} cita{total !== 1 ? 's' : ''}
             </span>
@@ -163,41 +162,7 @@ function AppointmentHistory({ appointments, services, barbers, fill }: {
 
       {open && (
         <div style={{ borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', flex: fill ? 1 : undefined, minHeight: 0 }}>
-          {!loaded ? (
-            /* ── Load prompt — clean, no technical explanation ── */
-            <div style={{ padding: '2.5rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
-              <div style={{
-                width: 44, height: 44, borderRadius: '50%',
-                background: 'var(--bg-3)', border: '1px solid var(--line)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 8v4l3 3" /><circle cx="12" cy="12" r="9" />
-                </svg>
-              </div>
-              <button
-                onClick={() => setLoaded(true)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '0.5rem',
-                  padding: '0.7rem 1.75rem', minHeight: 46, borderRadius: 10,
-                  border: '1px solid rgba(201,162,74,0.35)',
-                  background: 'linear-gradient(135deg, rgba(201,162,74,0.14) 0%, rgba(201,162,74,0.05) 100%)',
-                  color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontSize: 13,
-                  fontWeight: 600, cursor: 'pointer', letterSpacing: '0.04em',
-                  boxShadow: '0 2px 16px rgba(201,162,74,0.08)',
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 3" />
-                </svg>
-                Ver historial de citas
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-          ) : (
-            <>
+          <>
               {/* ── Filters ── */}
               <div style={{ padding: '0.875rem 1.25rem', borderBottom: '1px solid var(--line)', background: 'var(--bg-3)', display: 'flex', flexDirection: 'column', gap: '0.625rem', flexShrink: 0 }}>
                 {/* Segmented control: status */}
@@ -320,7 +285,6 @@ function AppointmentHistory({ appointments, services, barbers, fill }: {
                 )}
               </div>
             </>
-          )}
         </div>
       )}
     </div>
