@@ -90,20 +90,26 @@ function AppointmentHistory({ appointments, services, barbers }: {
         onClick={() => setOpen(o => !o)}
         style={{
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '0.9rem 1.25rem', background: 'none', border: 'none', cursor: 'pointer',
+          padding: '1rem 1.5rem', background: 'none', border: 'none', cursor: 'pointer',
         }}
       >
         <div className={SECTION_LABEL} style={{ marginBottom: 0 }}>HISTORIAL</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
           {loaded && total > 0 && (
-            <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}>
+            <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', fontWeight: 500 }}>
               {total} cita{total !== 1 ? 's' : ''}
             </span>
           )}
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="var(--fg-3)" strokeWidth="1.5"
-            style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}>
-            <path d="M2 4l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <div style={{
+            width: 22, height: 22, borderRadius: '50%', border: '1px solid var(--line)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: open ? 'var(--bg-3)' : 'transparent', transition: 'all 0.15s',
+          }}>
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="var(--fg-3)" strokeWidth="1.5"
+              style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}>
+              <path d="M2 4l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
         </div>
       </button>
 
@@ -111,56 +117,82 @@ function AppointmentHistory({ appointments, services, barbers }: {
         <div style={{ borderTop: '1px solid var(--line)' }}>
           {!loaded ? (
             /* ── Prompt to load ── */
-            <div style={{ padding: '1.5rem 1.25rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
-              <p style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--fg-3)', margin: 0, textAlign: 'center' }}>
-                El historial no se carga automáticamente.
+            <div style={{ padding: '2rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--fg-4)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 8v4l3 3" /><circle cx="12" cy="12" r="9" />
+              </svg>
+              <p style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--fg-3)', margin: 0, textAlign: 'center', lineHeight: 1.5 }}>
+                El historial se carga bajo demanda<br />para no ralentizar la página.
               </p>
               <button
                 onClick={() => setLoaded(true)}
                 style={{
-                  padding: '0.5rem 1.5rem', minHeight: 40, borderRadius: 8,
+                  padding: '0.6rem 1.75rem', minHeight: 42, borderRadius: 8,
                   border: '1px solid var(--line)', background: 'var(--bg-3)',
-                  color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer',
+                  color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13,
+                  fontWeight: 600, cursor: 'pointer', letterSpacing: '0.02em',
                 }}
               >Solicitar historial</button>
             </div>
           ) : (
             <>
               {/* ── Filters ── */}
-              <div style={{ padding: '0.5rem 1rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid var(--line)', background: 'var(--bg-3)' }}>
-                {(['all', 'completed', 'cancelled'] as const).map(s => (
+              <div style={{ padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--line)', background: 'var(--bg-3)', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                {/* Segmented control */}
+                <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: 3, gap: 2 }}>
+                  {(['all', 'completed', 'cancelled'] as const).map(s => (
+                    <button
+                      key={s}
+                      onClick={() => setFilterStatus(s)}
+                      style={{
+                        flex: 1, padding: '0.35rem 0', borderRadius: 6, border: 'none', cursor: 'pointer',
+                        fontSize: 12, fontFamily: 'var(--font-ui)', fontWeight: filterStatus === s ? 600 : 400,
+                        background: filterStatus === s ? 'var(--bg-2)' : 'transparent',
+                        color: filterStatus === s ? 'var(--gold)' : 'var(--fg-3)',
+                        transition: 'all 0.12s',
+                        boxShadow: filterStatus === s ? '0 1px 4px rgba(0,0,0,0.35)' : 'none',
+                      }}
+                    >
+                      {s === 'all' ? 'Todas' : s === 'completed' ? 'Completadas' : 'Canceladas'}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Date range + clear */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--fg-4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+                  </svg>
+                  <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} title="Desde"
+                    style={{ flex: 1, minWidth: 0, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.3rem 0.5rem', color: filterFrom ? 'var(--fg-1)' : 'var(--fg-4)', fontSize: 12, fontFamily: 'var(--font-ui)', outline: 'none' }} />
+                  <span style={{ fontSize: 11, color: 'var(--fg-4)', flexShrink: 0 }}>–</span>
+                  <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} title="Hasta"
+                    style={{ flex: 1, minWidth: 0, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.3rem 0.5rem', color: filterTo ? 'var(--fg-1)' : 'var(--fg-4)', fontSize: 12, fontFamily: 'var(--font-ui)', outline: 'none' }} />
                   <button
-                    key={s}
-                    onClick={() => setFilterStatus(s)}
+                    onClick={() => { setFilterStatus('all'); setFilterFrom(''); setFilterTo('') }}
+                    title="Limpiar filtros"
                     style={{
-                      padding: '0.2rem 0.6rem', borderRadius: 20, border: 'none', cursor: 'pointer',
-                      fontSize: 11, fontFamily: 'var(--font-ui)',
-                      background: filterStatus === s ? 'var(--gold)' : 'var(--bg-4)',
-                      color: filterStatus === s ? '#000' : 'var(--fg-2)',
+                      flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      width: 28, height: 28, borderRadius: 6, border: '1px solid transparent',
+                      background: (filterFrom || filterTo || filterStatus !== 'all') ? 'rgba(192,64,64,0.1)' : 'transparent',
+                      color: (filterFrom || filterTo || filterStatus !== 'all') ? 'var(--danger)' : 'var(--fg-4)',
+                      cursor: (filterFrom || filterTo || filterStatus !== 'all') ? 'pointer' : 'default',
+                      opacity: (filterFrom || filterTo || filterStatus !== 'all') ? 1 : 0.3,
+                      transition: 'all 0.12s',
                     }}
                   >
-                    {s === 'all' ? 'Todas' : s === 'completed' ? 'Completadas' : 'Canceladas'}
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
                   </button>
-                ))}
-                <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)}
-                  title="Desde"
-                  style={{ background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.2rem 0.4rem', color: 'var(--fg-1)', fontSize: 11, fontFamily: 'var(--font-ui)', outline: 'none', minWidth: 0 }} />
-                <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)}
-                  title="Hasta"
-                  style={{ background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.2rem 0.4rem', color: 'var(--fg-1)', fontSize: 11, fontFamily: 'var(--font-ui)', outline: 'none', minWidth: 0 }} />
-                {(filterFrom || filterTo || filterStatus !== 'all') && (
-                  <button onClick={() => { setFilterStatus('all'); setFilterFrom(''); setFilterTo('') }}
-                    style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-ui)', padding: '0 4px' }}>
-                    Limpiar
-                  </button>
-                )}
+                </div>
               </div>
 
               {/* ── List ── */}
               <div style={{ overflowY: 'auto', maxHeight: 420 }}>
                 {filtered.length === 0 ? (
-                  <div style={{ padding: '1.5rem 1.25rem', color: 'var(--fg-3)', fontSize: 13, fontFamily: 'var(--font-ui)' }}>
-                    Sin resultados
+                  <div style={{ padding: '2rem 1.5rem', color: 'var(--fg-3)', fontSize: 13, fontFamily: 'var(--font-ui)', textAlign: 'center' }}>
+                    Sin resultados para estos filtros
                   </div>
                 ) : (
                   filtered.map((h, i) => {
@@ -169,10 +201,10 @@ function AppointmentHistory({ appointments, services, barbers }: {
                     const cancelled = h.status === 'cancelled'
                     return (
                       <div key={h.id} style={{
-                        display: 'flex', alignItems: 'center', gap: '0.875rem',
-                        padding: '0.875rem 1.25rem',
+                        display: 'flex', alignItems: 'center', gap: '1rem',
+                        padding: '1rem 1.5rem',
                         borderBottom: i < filtered.length - 1 ? '1px solid var(--line)' : undefined,
-                        opacity: cancelled ? 0.55 : 1,
+                        opacity: cancelled ? 0.5 : 1,
                       }}>
                         <div style={{
                           width: 34, height: 34, borderRadius: '50%', flexShrink: 0,

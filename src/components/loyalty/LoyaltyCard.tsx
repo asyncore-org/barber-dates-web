@@ -238,31 +238,51 @@ export function LoyaltyCard({
           }} />
         ))}
         {tierPct > 2 && tierPct < 100 && (
-          <div style={{
-            position: 'absolute', top: 6, left: `${tierPct}%`,
-            width: 18, height: 18, borderRadius: '50%', background: '#fff',
-            transform: 'translate(-50%, -50%)',
-            boxShadow: `0 0 0 4px ${hexToRgba(tier.primary, 0.3)}, 0 0 22px ${tier.primary}`, zIndex: 2,
-          }} />
+          <>
+            {/* Floating current-tier label above the nod */}
+            <div style={{
+              position: 'absolute', bottom: 18, left: `${tierPct}%`,
+              transform: 'translateX(-50%)',
+              fontFamily: 'var(--font-ui)', fontSize: 7, letterSpacing: '0.12em',
+              color: tier.accent, whiteSpace: 'nowrap', fontWeight: 700,
+              textShadow: `0 0 8px ${hexToRgba(tier.primary, 0.6)}`,
+              pointerEvents: 'none',
+            }}>
+              {tier.label}
+            </div>
+            {/* Active nod */}
+            <div style={{
+              position: 'absolute', top: 6, left: `${tierPct}%`,
+              width: 18, height: 18, borderRadius: '50%', background: '#fff',
+              transform: 'translate(-50%, -50%)',
+              boxShadow: `0 0 0 4px ${hexToRgba(tier.primary, 0.3)}, 0 0 22px ${tier.primary}`, zIndex: 2,
+            }} />
+          </>
         )}
       </div>
 
-      <div style={{ position: 'relative', height: 20, marginTop: 8 }}>
-        {futureTierMarks.map((m, i) => {
-          const isLast  = i === futureTierMarks.length - 1
-          const isFirst = i === 0
-          return (
-            <span key={m.label} style={{
-              position: 'absolute',
-              left:  isLast ? undefined : (isFirst ? `${m.r * 100}%` : `${m.r * 100}%`),
-              right: isLast ? 0 : undefined,
-              transform: !isLast ? 'translateX(-50%)' : undefined,
-              fontFamily: 'var(--font-ui)', fontSize: 7.5, letterSpacing: '0.08em',
-              color: 'rgba(255,255,255,0.45)',
-              whiteSpace: 'nowrap',
-            }}>{m.label}</span>
-          )
-        })}
+      {/* Labels: only next tier (accent) + max tier (faint). No overlap. */}
+      <div style={{ position: 'relative', height: 18, marginTop: 6 }}>
+        {futureTierMarks.length > 0 && (
+          <span style={{
+            position: 'absolute',
+            left: `${futureTierMarks[0].r * 100}%`,
+            transform: 'translateX(-50%)',
+            fontFamily: 'var(--font-ui)', fontSize: 7.5, letterSpacing: '0.08em',
+            color: hexToRgba(tier.accent, 0.8), whiteSpace: 'nowrap', fontWeight: 600,
+          }}>
+            {futureTierMarks[0].label}
+          </span>
+        )}
+        {futureTierMarks.length > 1 && (
+          <span style={{
+            position: 'absolute', right: 0,
+            fontFamily: 'var(--font-ui)', fontSize: 7.5, letterSpacing: '0.08em',
+            color: 'rgba(255,255,255,0.28)', whiteSpace: 'nowrap',
+          }}>
+            {futureTierMarks[futureTierMarks.length - 1].label}
+          </span>
+        )}
       </div>
 
       <div style={{
