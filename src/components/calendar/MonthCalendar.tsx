@@ -13,6 +13,8 @@ interface MonthCalendarProps {
   closedDayOfWeeks?: number[]
   /** 'YYYY-MM-DD' dates with a partial schedule block. Rendered with an orange indicator dot. */
   partialDates?: string[]
+  /** Hide the internal month navigation row (use when nav is rendered externally). */
+  hideNav?: boolean
 }
 
 const DAYS = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do']
@@ -32,7 +34,7 @@ const MONTH_NAMES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
 
-export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, busyDays = [], minDate, maxDate, closedDayOfWeeks = [], partialDates = [] }: MonthCalendarProps) {
+export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, busyDays = [], minDate, maxDate, closedDayOfWeeks = [], partialDates = [], hideNav = false }: MonthCalendarProps) {
   const today = new Date()
   const todayNorm = new Date(today.getFullYear(), today.getMonth(), today.getDate())
   const minNorm = minDate ? new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate()) : null
@@ -62,35 +64,25 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.875rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-          <button
-            onClick={prev}
-            disabled={isAtMinMonth}
-            className="cal-nav-btn"
-          >
-            <Icon name="chevronL" size={14} />
-          </button>
-          <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: 'var(--fg-0)', letterSpacing: '0.06em', minWidth: 180, textAlign: 'center' }}>
-            {MONTH_NAMES[month]} {year}
-          </span>
-          <button
-            onClick={next}
-            disabled={isNextMonthBeyondMax}
-            className="cal-nav-btn"
-          >
-            <Icon name="chevronR" size={14} />
+      {!hideNav && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.875rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+            <button onClick={prev} disabled={isAtMinMonth} className="cal-nav-btn">
+              <Icon name="chevronL" size={14} />
+            </button>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: 'var(--fg-0)', letterSpacing: '0.06em', minWidth: 180, textAlign: 'center' }}>
+              {MONTH_NAMES[month]} {year}
+            </span>
+            <button onClick={next} disabled={isNextMonthBeyondMax} className="cal-nav-btn">
+              <Icon name="chevronR" size={14} />
+            </button>
+          </div>
+          <button onClick={goToday} disabled={isAtCurrentMonth && !minNorm} className="cal-nav-btn"
+            style={{ width: 'auto', padding: '0 0.875rem', fontSize: 12, fontFamily: 'var(--font-ui)' }}>
+            Hoy
           </button>
         </div>
-        <button
-          onClick={goToday}
-          disabled={isAtCurrentMonth && !minNorm}
-          className="cal-nav-btn"
-          style={{ width: 'auto', padding: '0 0.875rem', fontSize: 12, fontFamily: 'var(--font-ui)' }}
-        >
-          Hoy
-        </button>
-      </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 5, marginBottom: 5 }}>
         {DAYS.map(d => (
