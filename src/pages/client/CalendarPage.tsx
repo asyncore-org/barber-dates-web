@@ -104,12 +104,12 @@ function AccordionStep({ num, title, summary, isOpen, isDone, isLocked, onToggle
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
             fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 700,
-            letterSpacing: '0.22em', textTransform: 'uppercase',
-            color: isOpen ? 'var(--gold)' : isDone ? 'var(--fg-3)' : 'var(--fg-4)',
+            letterSpacing: '0.2em', textTransform: 'uppercase',
+            color: isOpen ? 'var(--gold)' : isDone ? 'var(--fg-2)' : 'var(--fg-4)',
             marginBottom: (!isOpen && isDone && summary) ? 3 : 0,
             transition: 'color 0.2s',
           }}>
-            Paso {num} · {title}
+            {title}
           </div>
           {!isOpen && isDone && summary && (
             <div style={{
@@ -268,7 +268,7 @@ export default function CalendarPage() {
   const [selectedSlot, setSelectedSlot]   = useState<string | null>(null)
   const [selectedService, setSelectedService] = useState<Service | null>(null)
   const [selectedBarber, setSelectedBarber]   = useState<Barber | null>(null)
-  const [activeStep, setActiveStep]           = useState<StepId | null>('date')
+  const [activeStep, setActiveStep]           = useState<StepId>('date')
   const [confirmOpen, setConfirmOpen]         = useState(false)
   const [bookingError, setBookingError]       = useState<string | null>(null)
   const [bookingBlocked, setBookingBlocked]   = useState(false)
@@ -355,7 +355,6 @@ export default function CalendarPage() {
     [blocks])
 
   const canConfirm = !!(selectedDate && selectedSlot && selectedService && !createAppointment.isPending)
-  const [ticketNum] = useState(() => String(Math.floor(Math.random() * 9000) + 1000))
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -380,9 +379,9 @@ export default function CalendarPage() {
     setActiveStep('service')
   }, [])
 
-  // Toggle a step: if already open, close it (null); otherwise open it
+  // Toggle: clicking an open+done step closes it, otherwise always opens
   const toggle = useCallback((step: StepId) => {
-    setActiveStep(cur => cur === step ? null : step)
+    setActiveStep(step)
   }, [])
 
   const handleServiceSelect = useCallback((s: Service) => {
@@ -538,166 +537,97 @@ export default function CalendarPage() {
   // ── Summary card ─────────────────────────────────────────────────────────────
 
   const summaryCard = () => {
-    const stepLabels = allowBarberChoice ? ['Fecha', 'Hora', 'Barbero', 'Servicio'] : ['Fecha', 'Hora', 'Servicio']
-    const stepDone = allowBarberChoice
-      ? [!!selectedDate, !!selectedSlot, !!selectedSlot, !!selectedService]
-      : [!!selectedDate, !!selectedSlot, !!selectedService]
-    const dateDay = selectedDate?.getDate()
-    const dateDayName = selectedDate?.toLocaleDateString('es-ES', { weekday: 'long' }).toUpperCase()
-    const dateMonthYear = selectedDate?.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase()
     const barberInitials = selectedBarber ? getInitials(selectedBarber.fullName) : '✦'
-    const progress = stepDone.filter(Boolean).length / stepDone.length
+    const dateStr = selectedDate
+      ? selectedDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
+      : null
 
     return (
       <div style={{
         background: 'var(--bg-2)',
         border: '1px solid var(--line)',
-        borderRadius: 18,
+        borderRadius: 16,
         overflow: 'hidden',
-        boxShadow: '0 8px 40px rgba(0,0,0,0.45)',
-        position: 'relative',
       }}>
-        {/* Gold top bar that grows with progress */}
-        <div style={{ height: 3, background: 'var(--bg-4)' }}>
-          <div style={{ height: '100%', width: `${progress * 100}%`, background: 'linear-gradient(90deg, rgba(201,162,74,0.6), var(--gold))', transition: 'width 0.5s cubic-bezier(0.4,0,0.2,1)' }} />
-        </div>
 
         {/* ── Header ── */}
-        <div style={{ padding: '1.25rem 1.5rem 1.125rem', borderBottom: '1px solid var(--line)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.125rem' }}>
-            <div>
-              <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 700, letterSpacing: '0.22em', color: 'var(--gold)', textTransform: 'uppercase', marginBottom: 3 }}>
-                Resumen de Reserva
-              </div>
-              <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-4)', letterSpacing: '0.04em' }}>
-                {Math.round(progress * 100)}% completado
-              </div>
-            </div>
-            <div style={{
-              fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--gold)',
-              background: 'rgba(201,162,74,0.08)', border: '1px solid rgba(201,162,74,0.25)',
-              borderRadius: 8, padding: '0.25rem 0.625rem', letterSpacing: '0.1em', fontWeight: 700,
-            }}>
-              #{ticketNum}
-            </div>
+        <div style={{ padding: '1.25rem 1.25rem 1rem', borderBottom: '1px solid var(--line)' }}>
+          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 700, letterSpacing: '0.22em', color: 'var(--gold)', textTransform: 'uppercase', marginBottom: 6 }}>
+            Tu reserva
           </div>
-
-          {/* Progress stepper */}
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            {stepLabels.map((label, i) => (
-              <div key={label} style={{ display: 'flex', alignItems: 'center', flex: i < stepLabels.length - 1 ? 1 : 'none' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
-                  <div style={{
-                    width: 24, height: 24, borderRadius: '50%',
-                    background: stepDone[i] ? 'var(--gold)' : 'var(--bg-3)',
-                    border: `2px solid ${stepDone[i] ? 'var(--gold)' : 'var(--line)'}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.3s', boxShadow: stepDone[i] ? '0 0 10px rgba(201,162,74,0.35)' : 'none',
-                  }}>
-                    {stepDone[i]
-                      ? <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                      : <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--fg-4)' }} />
-                    }
-                  </div>
-                  <span style={{
-                    fontFamily: 'var(--font-ui)', fontSize: 7.5, fontWeight: 700, letterSpacing: '0.1em',
-                    color: stepDone[i] ? 'var(--fg-1)' : 'var(--fg-4)', textTransform: 'uppercase',
-                    transition: 'color 0.3s', whiteSpace: 'nowrap',
-                  }}>
-                    {label}
-                  </span>
-                </div>
-                {i < stepLabels.length - 1 && (
-                  <div style={{
-                    flex: 1, height: 1.5, margin: '0 5px', marginBottom: 17, borderRadius: 1,
-                    background: stepDone[i] ? 'var(--gold)' : 'var(--line)',
-                    opacity: stepDone[i] ? 0.5 : 1, transition: 'background 0.3s',
-                  }} />
-                )}
-              </div>
-            ))}
+          {/* Mini progress bar */}
+          <div style={{ height: 4, background: 'var(--bg-4)', borderRadius: 2, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%', borderRadius: 2,
+              width: `${[!!selectedDate, !!selectedSlot, !!selectedService].filter(Boolean).length / 3 * 100}%`,
+              background: 'linear-gradient(90deg, rgba(201,162,74,0.5), var(--gold))',
+              transition: 'width 0.4s ease',
+            }} />
           </div>
         </div>
 
-        {/* ── Body ── */}
-        <div style={{ padding: '1.25rem 1.5rem 0' }}>
+        {/* ── Content rows ── */}
+        <div style={{ padding: '0 1.25rem' }}>
 
-          {/* Date ticket stub */}
-          {selectedDate ? (
+          {/* Fecha & Hora */}
+          <div style={{
+            display: 'flex', gap: '0.875rem', alignItems: 'center',
+            padding: '1rem 0', borderBottom: '1px solid var(--line)',
+          }}>
             <div style={{
-              borderRadius: 12, overflow: 'hidden', marginBottom: '1rem',
-              background: 'linear-gradient(135deg, rgba(201,162,74,0.07) 0%, rgba(201,162,74,0.02) 100%)',
-              border: '1px solid rgba(201,162,74,0.22)',
-              boxShadow: '0 2px 12px rgba(201,162,74,0.08)',
+              width: 42, height: 42, borderRadius: 10, flexShrink: 0,
+              background: selectedDate ? 'rgba(201,162,74,0.1)' : 'var(--bg-3)',
+              border: `1px solid ${selectedDate ? 'rgba(201,162,74,0.3)' : 'var(--line)'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
             }}>
-              <div style={{ display: 'flex', alignItems: 'stretch' }}>
-                {/* Day number column */}
-                <div style={{
-                  width: 72, flexShrink: 0,
-                  background: 'linear-gradient(180deg, rgba(201,162,74,0.16) 0%, rgba(201,162,74,0.08) 100%)',
-                  borderRight: '1px dashed rgba(201,162,74,0.3)',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  padding: '1rem 0', gap: 0,
-                }}>
-                  <span style={{ fontFamily: 'var(--font-display)', fontSize: 52, color: 'var(--gold)', lineHeight: 0.95, letterSpacing: '-0.02em' }}>
-                    {dateDay}
-                  </span>
-                </div>
-                {/* Date details */}
-                <div style={{ flex: 1, padding: '0.875rem 1rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 5, minWidth: 0 }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, color: 'var(--fg-0)', letterSpacing: '0.1em', lineHeight: 1 }}>
-                    {dateDayName}
-                  </div>
-                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-3)', letterSpacing: '0.06em' }}>
-                    {dateMonthYear}
-                  </div>
-                  <div>
-                    {selectedSlot ? (
-                      <span style={{
-                        fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 700, color: 'var(--gold)',
-                        background: 'rgba(201,162,74,0.15)', border: '1px solid rgba(201,162,74,0.3)',
-                        borderRadius: 6, padding: '0.2rem 0.6rem', display: 'inline-block', letterSpacing: '0.05em',
-                      }}>{selectedSlot}</span>
-                    ) : (
-                      <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-4)', fontStyle: 'italic' }}>Elige hora en el Paso 2</span>
-                    )}
-                  </div>
-                </div>
-                {selectedSlot && (
-                  <div style={{ padding: '0 1rem', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                    <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--ok)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 10px rgba(34,197,94,0.3)' }}>
-                      <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                        <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div style={{ borderRadius: 12, border: '1px dashed var(--line)', background: 'var(--bg-3)', padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.875rem', marginBottom: '1rem' }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, background: 'var(--bg-4)', border: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--fg-4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              {selectedDate ? (
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--gold)', lineHeight: 1 }}>
+                  {selectedDate.getDate()}
+                </span>
+              ) : (
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--fg-4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M3 10h18M8 2v4M16 2v4" />
                 </svg>
-              </div>
-              <div>
-                <div style={{ fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: 'var(--fg-4)', textTransform: 'uppercase', marginBottom: 4 }}>Fecha y Hora</div>
-                <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-4)', fontStyle: 'italic' }}>Selecciona en el Paso 1</div>
-              </div>
+              )}
             </div>
-          )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: 'var(--fg-4)', textTransform: 'uppercase', marginBottom: 4 }}>Fecha y hora</div>
+              {dateStr ? (
+                <>
+                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 600, color: 'var(--fg-0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'capitalize' }}>
+                    {dateStr}
+                  </div>
+                  <div style={{ marginTop: 3 }}>
+                    {selectedSlot
+                      ? <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: 700, color: 'var(--gold)' }}>{selectedSlot}</span>
+                      : <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-4)' }}>Elige hora →</span>
+                    }
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-4)' }}>Selecciona en Paso 1</div>
+              )}
+            </div>
+            {selectedSlot && (
+              <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="var(--ok)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </div>
+            )}
+          </div>
 
-          {/* ── Barbero row ── */}
-          <div style={{ display: 'flex', gap: '0.875rem', alignItems: 'center', paddingBottom: '1rem', borderBottom: '1px dashed rgba(255,255,255,0.07)' }}>
+          {/* Barbero */}
+          <div style={{
+            display: 'flex', gap: '0.875rem', alignItems: 'center',
+            padding: '1rem 0', borderBottom: '1px solid var(--line)',
+          }}>
             <div style={{
-              width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-              background: selectedSlot ? (selectedBarber ? 'rgba(123,79,255,0.14)' : 'rgba(201,162,74,0.1)') : 'var(--bg-3)',
-              border: `1.5px solid ${selectedSlot ? (selectedBarber ? 'rgba(123,79,255,0.35)' : 'rgba(201,162,74,0.3)') : 'var(--line)'}`,
+              width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+              background: selectedSlot ? 'rgba(123,79,255,0.12)' : 'var(--bg-3)',
+              border: `1.5px solid ${selectedSlot ? 'rgba(123,79,255,0.3)' : 'var(--line)'}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: 700,
-              color: selectedSlot ? (selectedBarber ? 'var(--led-soft)' : 'var(--gold)') : 'var(--fg-4)',
-              transition: 'all 0.25s',
+              fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 700,
+              color: selectedSlot ? 'var(--led-soft)' : 'var(--fg-4)',
+              transition: 'all 0.2s',
             }}>
               {selectedSlot
                 ? barberInitials
@@ -705,82 +635,75 @@ export default function CalendarPage() {
               }
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--fg-4)', textTransform: 'uppercase', marginBottom: 4 }}>Barbero</div>
+              <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: 'var(--fg-4)', textTransform: 'uppercase', marginBottom: 4 }}>Barbero</div>
               <div style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: selectedSlot ? 'var(--fg-0)' : 'var(--fg-4)', fontWeight: selectedSlot ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {selectedSlot ? (selectedBarber?.fullName ?? 'Cualquier barbero') : 'Sin seleccionar'}
               </div>
             </div>
           </div>
 
-          {/* ── Servicio row ── */}
-          <div style={{ display: 'flex', gap: '0.875rem', alignItems: 'flex-start', paddingTop: '1rem' }}>
+          {/* Servicio */}
+          <div style={{ display: 'flex', gap: '0.875rem', alignItems: 'center', padding: '1rem 0' }}>
             <div style={{
-              width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+              width: 42, height: 42, borderRadius: 10, flexShrink: 0,
               background: selectedService ? 'rgba(201,162,74,0.1)' : 'var(--bg-3)',
               border: `1px solid ${selectedService ? 'rgba(201,162,74,0.3)' : 'var(--line)'}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.25s',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
             }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={selectedService ? 'var(--gold)' : 'var(--fg-4)'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><line x1="20" y1="4" x2="8.12" y2="15.88" /><line x1="14.47" y1="14.48" x2="20" y2="20" /><line x1="8.12" y1="8.12" x2="12" y2="12" />
               </svg>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--fg-4)', textTransform: 'uppercase', marginBottom: 4 }}>Servicio</div>
+              <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: 'var(--fg-4)', textTransform: 'uppercase', marginBottom: 4 }}>Servicio</div>
               {selectedService ? (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                  <div>
-                    <div style={{ fontFamily: 'var(--font-ui)', fontSize: 14, color: 'var(--fg-0)', fontWeight: 600 }}>{selectedService.name}</div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--fg-0)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedService.name}</div>
                     <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-3)', marginTop: 2 }}>{selectedService.durationMinutes} min</div>
                   </div>
-                  <span style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: 'var(--gold)', lineHeight: 1, flexShrink: 0 }}>{selectedService.price}€</span>
+                  <span style={{ fontFamily: 'var(--font-display)', fontSize: 24, color: 'var(--gold)', lineHeight: 1, flexShrink: 0 }}>{selectedService.price}€</span>
                 </div>
               ) : (
-                <div style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--fg-4)', fontStyle: 'italic' }}>Sin seleccionar</div>
+                <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-4)' }}>Sin seleccionar</div>
               )}
             </div>
           </div>
         </div>
 
-        {/* ── Perforated separator ── */}
+        {/* ── Perforated divider ── */}
         <div style={{
-          margin: '1.25rem 0 0', height: 16,
-          background: 'radial-gradient(circle at 50% 0%, var(--bg-0) 7px, transparent 7px)',
-          backgroundSize: '22px 16px', backgroundRepeat: 'repeat-x',
-          borderTop: '1px solid var(--line)',
+          height: 14, borderTop: '1px solid var(--line)',
+          background: 'radial-gradient(circle at 50% 0%, var(--bg-0) 6px, transparent 6px)',
+          backgroundSize: '20px 14px', backgroundRepeat: 'repeat-x',
         }} />
 
         {/* ── Footer ── */}
-        <div style={{ padding: '1rem 1.5rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-          {/* Loyalty */}
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '0.625rem 0.875rem', borderRadius: 10,
-            background: selectedService ? 'rgba(201,162,74,0.07)' : 'var(--bg-3)',
-            border: `1px solid ${selectedService ? 'rgba(201,162,74,0.2)' : 'var(--line)'}`,
-            transition: 'all 0.25s',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill={selectedService ? 'var(--gold)' : 'var(--fg-4)'} stroke="none" style={{ transition: 'fill 0.25s', flexShrink: 0 }}>
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-              </svg>
-              <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: selectedService ? 'var(--fg-1)' : 'var(--fg-4)', fontWeight: 500, transition: 'color 0.25s' }}>
-                Puntos de fidelidad
+        <div style={{ padding: '1rem 1.25rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+
+          {/* Puntos de fidelidad */}
+          {selectedService && (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '0.5rem 0.75rem', borderRadius: 8,
+              background: 'rgba(201,162,74,0.07)', border: '1px solid rgba(201,162,74,0.18)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="var(--gold)" stroke="none">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+                <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-2)', fontWeight: 500 }}>Puntos de fidelidad</span>
+              </div>
+              <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: 700, color: 'var(--gold)' }}>
+                +{selectedService.loyaltyPoints} pts
               </span>
             </div>
-            <span style={{ fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 700, color: selectedService ? 'var(--gold)' : 'var(--fg-4)', transition: 'color 0.25s' }}>
-              {selectedService ? `+${selectedService.loyaltyPoints} pts` : '—'}
-            </span>
-          </div>
+          )}
 
           {/* Total */}
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', paddingTop: '0.75rem', borderTop: '1px solid var(--line)' }}>
-            <div>
-              <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--fg-3)', textTransform: 'uppercase', marginBottom: 4 }}>Total</div>
-              {selectedService && (
-                <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-4)' }}>{selectedService.durationMinutes} min</div>
-              )}
-            </div>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(32px, 3vw, 42px)', color: selectedService ? 'var(--gold)' : 'var(--fg-4)', lineHeight: 1, transition: 'color 0.25s', letterSpacing: '-0.01em' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.625rem', borderTop: '1px solid var(--line)' }}>
+            <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', color: 'var(--fg-3)', textTransform: 'uppercase' }}>Total</span>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 2.8vw, 36px)', color: selectedService ? 'var(--gold)' : 'var(--fg-4)', lineHeight: 1, letterSpacing: '-0.01em', transition: 'color 0.2s' }}>
               {selectedService ? `${selectedService.price}€` : '—'}
             </span>
           </div>
@@ -790,27 +713,22 @@ export default function CalendarPage() {
             disabled={!canConfirm}
             onClick={() => setConfirmOpen(true)}
             style={{
-              width: '100%', padding: '1rem', borderRadius: 12, border: 'none',
-              background: canConfirm
-                ? 'linear-gradient(135deg, #c9a24a 0%, #e8be6a 50%, #c9a24a 100%)'
-                : 'var(--bg-3)',
+              width: '100%', padding: '0.9rem', borderRadius: 10, border: 'none',
+              background: canConfirm ? 'var(--gold)' : 'var(--bg-3)',
               color: canConfirm ? '#000' : 'var(--fg-4)',
               fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 700,
               cursor: canConfirm ? 'pointer' : 'default',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-              transition: 'all 0.25s',
-              boxShadow: canConfirm ? '0 4px 20px rgba(201,162,74,0.3)' : 'none',
-              letterSpacing: '0.03em',
+              transition: 'all 0.2s',
+              boxShadow: canConfirm ? '0 4px 16px rgba(201,162,74,0.25)' : 'none',
             }}
           >
-            {canConfirm ? (
-              <>
-                Confirmar reserva
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </>
-            ) : 'Confirmar reserva'}
+            Confirmar reserva
+            {canConfirm && (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            )}
           </button>
         </div>
       </div>
@@ -823,29 +741,31 @@ export default function CalendarPage() {
     <>
       <Helmet><title>Pedir cita — {shopName}</title></Helmet>
 
-      {/* ── DESKTOP ────────────────────────────────────────────────────────── */}
-      <div className="hidden lg:block">
-        {/* Title — outside grid so both columns start at same level */}
-        <div style={{ marginBottom: '1.25rem' }}>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(22px, 2.4vw, 32px)', letterSpacing: '0.06em', color: 'var(--fg-0)', lineHeight: 1, margin: 0 }}>
+      {/* ── DESKTOP: fits viewport, no scrollbar ─────────────────────────── */}
+      <div className="hidden lg:flex" style={{ flexDirection: 'column', height: 'calc(100dvh - 104px)' }}>
+        {/* Title row */}
+        <div style={{ flexShrink: 0, marginBottom: '1rem' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(20px, 2.2vw, 30px)', letterSpacing: '0.06em', color: 'var(--fg-0)', lineHeight: 1, margin: 0 }}>
             PEDIR CITA
           </h1>
-          <p style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-3)', marginTop: 5, marginBottom: 0 }}>
+          <p style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-3)', marginTop: 4, marginBottom: 0 }}>
             Completa cada paso para reservar tu cita
           </p>
         </div>
-        {/* Grid: both columns start aligned. Open accordion fills height to match summary card. */}
+        {/* Two-column grid — fills remaining height */}
         <div style={{
+          flex: 1, minHeight: 0,
           display: 'grid',
-          gridTemplateColumns: '1fr 0.72fr',
-          columnGap: '3.5rem',
+          gridTemplateColumns: '1fr 0.68fr',
+          columnGap: '3rem',
           alignItems: 'start',
-          height: 'calc(100dvh - 145px)',
         }}>
+          {/* Left: accordion steps fill height */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', height: '100%' }}>
             {stepContent(true)}
           </div>
-          <div style={{ position: 'sticky', top: 0, maxHeight: 'calc(100dvh - 145px)', overflowY: 'auto', scrollbarWidth: 'none' }}
+          {/* Right: summary card, scrollable internally if needed */}
+          <div style={{ overflowY: 'auto', maxHeight: '100%', scrollbarWidth: 'none' }}
             className="[&::-webkit-scrollbar]:hidden">
             {summaryCard()}
           </div>

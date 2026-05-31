@@ -84,15 +84,15 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 5, marginBottom: 5 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 4 }}>
         {DAYS.map(d => (
-          <div key={d} style={{ textAlign: 'center', fontSize: 10, color: 'var(--fg-3)', fontWeight: 700, fontFamily: 'var(--font-ui)', padding: '0.4rem 0', letterSpacing: '0.06em' }}>
+          <div key={d} style={{ textAlign: 'center', fontSize: 10, color: 'var(--fg-4)', fontWeight: 700, fontFamily: 'var(--font-ui)', padding: '0.5rem 0', letterSpacing: '0.08em' }}>
             {d}
           </div>
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 5 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
         {days.map(({ day, current }, i) => {
           if (!current) return <div key={`e${i}`} />
           const date = new Date(year, month, day)
@@ -120,28 +120,28 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
               data-today={isToday || undefined}
               style={{
                 position: 'relative',
-                height: 38,
+                height: 44,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderRadius: 10,
                 border: isSelected
-                  ? '1.5px solid var(--gold)'
+                  ? '2px solid var(--gold)'
                   : isToday
-                    ? '1px solid rgba(201,162,74,0.55)'
+                    ? '1.5px solid rgba(201,162,74,0.5)'
                     : '1px solid transparent',
                 background: isSelected
                   ? 'var(--gold)'
                   : isToday
-                    ? 'rgba(201,162,74,0.08)'
-                    : 'transparent',
-                color: isDisabled ? 'var(--fg-3)' : isSelected ? '#000' : 'var(--fg-0)',
+                    ? 'rgba(201,162,74,0.1)'
+                    : 'var(--bg-3)',
+                color: isDisabled ? 'var(--fg-4)' : isSelected ? '#000' : 'var(--fg-0)',
                 fontSize: 14,
                 fontFamily: 'var(--font-ui)',
                 fontWeight: isToday || isSelected ? 700 : 400,
-                cursor: isDisabled ? 'not-allowed' : 'pointer',
-                boxShadow: 'none',
-                opacity: isDisabled ? (isClosed ? 0.4 : isBeyondMax ? 0.2 : 0.35) : 1,
+                cursor: isDisabled ? 'default' : 'pointer',
+                boxShadow: isSelected ? '0 2px 12px rgba(201,162,74,0.3)' : 'none',
+                opacity: isDisabled ? (isClosed ? 0.3 : isBeyondMax ? 0.15 : 0.3) : 1,
                 textDecoration: isClosed ? 'line-through' : 'none',
                 transition: 'all 0.12s',
               }}
