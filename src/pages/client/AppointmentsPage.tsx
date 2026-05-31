@@ -120,9 +120,15 @@ function AppointmentHistory({ appointments, services, barbers, fill }: {
   const hasActiveFilter = filterFrom || filterTo || filterStatus !== 'all' || filterService
   const clearFilters = () => { setFilterStatus('all'); setFilterFrom(''); setFilterTo(''); setFilterService('') }
 
-  const cardStyle: React.CSSProperties = fill
-    ? { padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }
-    : { padding: 0, overflow: 'hidden' }
+  // fill+open: stretches to fill remaining column height (aligns with loyalty card)
+  // fill+closed: compact natural height (just the header)
+  const cardStyle: React.CSSProperties = {
+    padding: 0,
+    overflow: 'hidden',
+    ...(fill
+      ? { display: 'flex', flexDirection: 'column', ...(open ? { flex: 1, minHeight: 0 } : {}) }
+      : {}),
+  }
 
   return (
     <div className={CARD} style={cardStyle}>
@@ -172,12 +178,23 @@ function AppointmentHistory({ appointments, services, barbers, fill }: {
               <button
                 onClick={() => setLoaded(true)}
                 style={{
-                  padding: '0.65rem 2rem', minHeight: 44, borderRadius: 8,
-                  border: '1px solid var(--line)', background: 'var(--bg-3)',
-                  color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13,
-                  fontWeight: 600, cursor: 'pointer', letterSpacing: '0.02em',
+                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  padding: '0.7rem 1.75rem', minHeight: 46, borderRadius: 10,
+                  border: '1px solid rgba(201,162,74,0.35)',
+                  background: 'linear-gradient(135deg, rgba(201,162,74,0.14) 0%, rgba(201,162,74,0.05) 100%)',
+                  color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontSize: 13,
+                  fontWeight: 600, cursor: 'pointer', letterSpacing: '0.04em',
+                  boxShadow: '0 2px 16px rgba(201,162,74,0.08)',
                 }}
-              >Ver historial de citas</button>
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 3" />
+                </svg>
+                Ver historial de citas
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </button>
             </div>
           ) : (
             <>
@@ -619,6 +636,12 @@ export default function AppointmentsPage() {
           columnGap: '2rem',
           height: 'calc(100dvh - 105px)',
           overflow: 'hidden',
+          paddingLeft: '0.5rem',
+          paddingRight: '0.5rem',
+          maxWidth: 1280,
+          width: '100%',
+          marginLeft: 'auto',
+          marginRight: 'auto',
         }}
       >
         {/* Left: proxima (shrink) + historial (fills remaining, aligns with loyalty card) */}

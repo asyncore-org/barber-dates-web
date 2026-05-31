@@ -193,8 +193,8 @@ export function LoyaltyCard({
     }
   }, [])
 
-  const HP  = sm ? '1rem'    : '1.25rem'
-  const VPH = sm ? '0.6rem'  : '0.875rem'
+  const HP  = sm ? '1rem'   : '1.5rem'
+  const VPH = sm ? '0.6rem' : '1rem'
 
   // ── Chart: Progress bar (tier progression) ──────────────────────────────────
 
@@ -573,7 +573,7 @@ export function LoyaltyCard({
             fontFamily: 'var(--font-mono, monospace)',
             fontSize: sm ? 11 : 13, fontWeight: 700,
             letterSpacing: '0.14em', color: tier.accent,
-            marginBottom: 3,
+            marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>{memberCode}</div>
           <div style={{
             fontFamily: 'var(--font-ui)', fontSize: 7.5,
