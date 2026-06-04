@@ -7,11 +7,12 @@ import { canCancelAppointment } from '@/domain/appointment'
 import type { Appointment } from '@/domain/appointment'
 import { DEFAULT_WEEKLY_SCHEDULE, type DayKey } from '@/domain/schedule'
 import { LoyaltyCard } from '@/components/loyalty'
-import { Modal, ConfirmDialog } from '@/components/ui'
+import { Modal, ConfirmDialog, InfoButton } from '@/components/ui'
 import { MonthCalendar, TimeSlots, generateScheduleSlots } from '@/components/calendar'
 import { useAuthStore } from '@/stores/authStore'
 import {
   useClientAppointments,
+  useClientHistoryAppointments,
   useAllAppointments,
   useCancelAppointment,
   useUpdateAppointment,
@@ -65,8 +66,8 @@ function writeApptCache(uid: string, data: Appointment[]) {
 
 type HistoryFilter = 'all' | 'completed' | 'cancelled'
 
-function AppointmentHistory({ appointments, services, barbers, fill }: {
-  appointments: Appointment[]
+function AppointmentHistory({ userId, services, barbers, fill }: {
+  userId: string | undefined
   services: Service[]
   barbers: Barber[]
   fill?: boolean
@@ -76,6 +77,9 @@ function AppointmentHistory({ appointments, services, barbers, fill }: {
   const [filterFrom,    setFilterFrom]    = useState('')
   const [filterTo,      setFilterTo]      = useState('')
   const [filterService, setFilterService] = useState('')
+
+  // Lazy: only fetches when the accordion is opened for the first time
+  const { data: appointments = [], isLoading } = useClientHistoryAppointments(userId, open)
 
   const history = useMemo(() =>
     appointments
@@ -227,7 +231,11 @@ function AppointmentHistory({ appointments, services, barbers, fill }: {
 
               {/* ── List ── */}
               <div style={{ overflowY: 'auto', flex: fill ? 1 : undefined, maxHeight: fill ? undefined : 420 }}>
-                {filtered.length === 0 ? (
+                {isLoading ? (
+                  <div style={{ padding: '2rem 1.5rem', color: 'var(--fg-3)', fontSize: 13, fontFamily: 'var(--font-ui)', textAlign: 'center' }}>
+                    Cargando historial…
+                  </div>
+                ) : filtered.length === 0 ? (
                   <div style={{ padding: '2rem 1.5rem', color: 'var(--fg-3)', fontSize: 13, fontFamily: 'var(--font-ui)', textAlign: 'center' }}>
                     Sin resultados para estos filtros
                   </div>
@@ -592,6 +600,20 @@ export default function AppointmentsPage() {
         </div>
       )}
 
+      {/* ── Page header with info button ── */}
+      <div className="hidden lg:flex" style={{ alignItems: 'center', justifyContent: 'flex-end', paddingRight: '0.5rem', marginBottom: '-0.5rem', maxWidth: 1280, width: '100%', marginLeft: 'auto', marginRight: 'auto' }}>
+        <InfoButton
+          title="GUÍA — MIS CITAS"
+          items={[
+            { icon: '📅', label: 'Próxima cita', description: 'Aquí ves tu próxima cita. Puedes cancelarla (hasta 2 h antes) o reprogramarla a otra fecha y hora.' },
+            { icon: '🎫', label: 'Tarjeta de fidelización', description: 'Acumulas puntos en cada visita. Pulsa el QR para ampliarlo y facilitar el escaneo en la barbería.' },
+            { icon: '🏅', label: 'Niveles de fidelización', description: 'Cuantos más puntos acumulas, más alto es tu nivel: Cobre → Bronce → Plata → Oro → Platino → Diamante…' },
+            { icon: '🎁', label: 'Recompensas', description: 'Cuando tengas puntos suficientes, pulsa "Canjear" en la recompensa deseada para activarla.' },
+            { icon: '🕒', label: 'Historial', description: 'Registro de todas tus citas pasadas. Filtra por estado (completadas/canceladas), servicio o fechas.' },
+          ]}
+        />
+      </div>
+
       {/* ── DESKTOP: 2 columns, left = proxima+historial, right = loyalty ── */}
       <div
         className="hidden lg:grid"
@@ -611,7 +633,7 @@ export default function AppointmentsPage() {
         {/* Left: proxima (shrink) + historial (fills remaining, aligns with loyalty card) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflow: 'hidden', minHeight: 0 }}>
           <div style={{ flexShrink: 0 }}>{proximaSection}</div>
-          <AppointmentHistory appointments={appointments} services={services} barbers={barbers} fill />
+          <AppointmentHistory userId={user?.id} services={services} barbers={barbers} fill />
         </div>
 
         {/* Right: loyalty card fills full column height */}
@@ -622,9 +644,24 @@ export default function AppointmentsPage() {
 
       {/* ── MOBILE: stacked ── */}
       <div className="flex flex-col gap-4 lg:hidden" style={{ paddingBottom: '5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <InfoButton
+            title="GUÍA — MIS CITAS"
+            items={[
+              { icon: '📅', label: 'Próxima cita', description: 'Aquí ves tu próxima cita. Puedes cancelarla (hasta 2 h antes) o reprogramarla.' },
+              { icon: '🎫', label: 'Tarjeta fidelización', description: 'Acumulas puntos en cada visita. Pulsa el QR para ampliarlo y escanear más fácilmente.' },
+              { icon: '🏅', label: 'Niveles', description: 'Cuantos más puntos acumulas, más alto es tu nivel y mejores recompensas desbloqueas.' },
+              { icon: '🎁', label: 'Recompensas', description: 'Con puntos suficientes puedes canjear recompensas pulsando el botón "Canjear".' },
+              { icon: '🕒', label: 'Historial', description: 'Registro de citas pasadas con filtros por estado, servicio y fechas.' },
+            ]}
+          />
+        </div>
         {proximaSection}
-        {loyaltySectionMobile}
-        <AppointmentHistory appointments={appointments} services={services} barbers={barbers} />
+        <div>
+          <div className={SECTION_LABEL}>TARJETA DE FIDELIZACIÓN</div>
+          {loyaltySectionMobile}
+        </div>
+        <AppointmentHistory userId={user?.id} services={services} barbers={barbers} />
       </div>
 
       {/* ── Cancel confirmation ── */}

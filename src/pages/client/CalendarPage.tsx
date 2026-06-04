@@ -5,7 +5,7 @@ import { useShopContext } from '@/context/ShopContext'
 import { getMaxBookingDate, getAvailableBarbersForDate, getBarbersAvailableForSlot } from '@/domain/booking'
 import { DEFAULT_WEEKLY_SCHEDULE, type DayKey } from '@/domain/schedule'
 import { MonthCalendar, TimeSlots, generateScheduleSlots } from '@/components/calendar'
-import { Modal } from '@/components/ui'
+import { Modal, InfoButton } from '@/components/ui'
 import { useAuth } from '@/hooks'
 import { useServices } from '@/hooks/useServices'
 import { useBarbers } from '@/hooks/useBarbers'
@@ -768,13 +768,25 @@ export default function CalendarPage() {
       {/* ── DESKTOP: fits viewport, no scrollbar ─────────────────────────── */}
       <div className="hidden lg:flex" style={{ flexDirection: 'column', height: 'calc(100dvh - 104px)', padding: '1.25rem 0', overflow: 'hidden' }}>
         {/* Title row */}
-        <div style={{ flexShrink: 0, marginBottom: '1rem', maxWidth: '920px', width: '100%', alignSelf: 'center' }}>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(20px, 2.2vw, 30px)', letterSpacing: '0.06em', color: 'var(--fg-0)', lineHeight: 1, margin: 0 }}>
-            PEDIR CITA
-          </h1>
-          <p style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-3)', marginTop: 4, marginBottom: 0 }}>
-            Completa cada paso para reservar tu cita
-          </p>
+        <div style={{ flexShrink: 0, marginBottom: '1rem', maxWidth: '920px', width: '100%', alignSelf: 'center', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+          <div>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(20px, 2.2vw, 30px)', letterSpacing: '0.06em', color: 'var(--fg-0)', lineHeight: 1, margin: 0 }}>
+              PEDIR CITA
+            </h1>
+            <p style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-3)', marginTop: 4, marginBottom: 0 }}>
+              Completa cada paso para reservar tu cita
+            </p>
+          </div>
+          <InfoButton
+            title="GUÍA — PEDIR CITA"
+            items={[
+              { icon: '📆', label: '1. Elige el día', description: 'Selecciona un día disponible en el calendario. Los días con punto azul tienen huecos libres.' },
+              { icon: '✂️', label: '2. Selecciona el servicio', description: 'Elige el servicio que deseas: corte, afeitado, etc. Verás duración y precio.' },
+              { icon: '💈', label: '3. Elige el barbero', description: 'Selecciona tu barbero favorito o cualquiera disponible en ese horario.' },
+              { icon: '⏰', label: '4. Elige la hora', description: 'Los huecos en gris ya están ocupados o bloqueados. Elige uno libre.' },
+              { icon: '✅', label: '5. Confirma', description: 'Revisa el resumen: servicio, barbero, fecha y precio. Pulsa "Confirmar cita" para reservar.' },
+            ]}
+          />
         </div>
         {/* Two-column grid — fills remaining height */}
         <div style={{
@@ -800,13 +812,25 @@ export default function CalendarPage() {
       {/* ── MOBILE: natural scroll ────────────────────────────────────────── */}
       <div className="flex flex-col lg:hidden" style={{ gap: '1.25rem', paddingBottom: '2rem' }}>
         <div>
-          <div style={{ marginBottom: '1.25rem' }}>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(22px, 6vw, 30px)', letterSpacing: '0.06em', color: 'var(--fg-0)', lineHeight: 1, margin: 0 }}>
-              PEDIR CITA
-            </h1>
-            <p style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-3)', marginTop: 5, marginBottom: 0 }}>
-              Completa cada paso para reservar
-            </p>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.25rem', gap: '0.75rem' }}>
+            <div>
+              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(22px, 6vw, 30px)', letterSpacing: '0.06em', color: 'var(--fg-0)', lineHeight: 1, margin: 0 }}>
+                PEDIR CITA
+              </h1>
+              <p style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-3)', marginTop: 5, marginBottom: 0 }}>
+                Completa cada paso para reservar
+              </p>
+            </div>
+            <InfoButton
+              title="GUÍA — PEDIR CITA"
+              items={[
+                { icon: '📆', label: '1. Elige el día', description: 'Selecciona un día disponible. Los días con punto azul tienen huecos.' },
+                { icon: '✂️', label: '2. Selecciona el servicio', description: 'Elige el servicio que deseas: corte, afeitado, etc.' },
+                { icon: '💈', label: '3. Elige el barbero', description: 'Selecciona tu barbero preferido o cualquiera disponible.' },
+                { icon: '⏰', label: '4. Elige la hora', description: 'Los huecos grises ya están ocupados. Elige uno libre.' },
+                { icon: '✅', label: '5. Confirma', description: 'Revisa el resumen y pulsa "Confirmar cita" para reservar.' },
+              ]}
+            />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
             {stepContent(false)}
