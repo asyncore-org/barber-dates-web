@@ -836,9 +836,9 @@ export default function DashboardPage() {
         </div>
 
         {/* Right column — hidden in landscape */}
-        {!isLandscape && <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', minHeight: 0 }}>
-          {/* Stats grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.625rem' }}>
+        {!isLandscape && <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflow: 'hidden', minHeight: 0 }}>
+          {/* Stats grid — fixed height, never scrolls */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.625rem', flexShrink: 0 }}>
             {metrics.map(m => (
               <div key={m.label} style={{
                 background: 'var(--bg-2)',
@@ -863,26 +863,26 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          {/* Today's upcoming appointments */}
-          <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden' }}>
-            <div style={{ padding: '0.875rem 1rem 0.625rem', borderBottom: upcomingToday.length > 0 ? '1px solid var(--line)' : undefined }}>
+          {/* Today's upcoming appointments — scrolls internally */}
+          <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+            <div style={{ padding: '0.875rem 1rem 0.625rem', borderBottom: upcomingToday.length > 0 ? '1px solid var(--line)' : undefined, flexShrink: 0 }}>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.14em', color: 'var(--fg-3)' }}>
                 HOY · PRÓXIMAS CITAS
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', flex: 1, minHeight: 0 }}>
               {upcomingToday.length === 0 ? (
                 <div style={{ padding: '0.875rem 1rem', fontSize: 13, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}>Sin más citas hoy</div>
               ) : (
-                upcomingToday.slice(0, 5).map((a, i) => {
+                upcomingToday.slice(0, 20).map((a) => {
                   const c = COLOR_MAP[a.color]
                   return (
                     <button key={a.id} onClick={() => setSelectedAppt(a)} style={{
                       display: 'flex', alignItems: 'center', gap: '0.75rem',
                       padding: '0.6rem 1rem', cursor: 'pointer',
-                      borderBottom: i < Math.min(upcomingToday.length, 5) - 1 ? '1px solid var(--line)' : 'none',
+                      borderBottom: '1px solid var(--line)',
                       background: 'transparent', border: 'none', textAlign: 'left',
-                      transition: 'background 0.1s',
+                      transition: 'background 0.1s', flexShrink: 0,
                     }}>
                       <div style={{ width: 3, height: 32, borderRadius: 2, flexShrink: 0, background: c.border }} />
                       <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 12, color: 'var(--fg-0)', minWidth: 38, fontWeight: 600 }}>
@@ -899,12 +899,12 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Barbers */}
-          <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden' }}>
-            <div style={{ padding: '0.875rem 1rem 0.625rem', borderBottom: '1px solid var(--line)' }}>
+          {/* Equipo — scrolls internally */}
+          <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+            <div style={{ padding: '0.875rem 1rem 0.625rem', borderBottom: '1px solid var(--line)', flexShrink: 0 }}>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.14em', color: 'var(--fg-3)' }}>EQUIPO</div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', flex: 1, minHeight: 0 }}>
               {barbers.map((b, i) => {
                 const todayApptCount = appointments.filter(a => a.day === todayCols && a.barberId === b.id).length
                 return (
