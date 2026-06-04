@@ -426,12 +426,15 @@ export default function DashboardPage() {
       </div>
 
       {/* Desktop + landscape mobile: two-column layout */}
-      <div className={`${isLandscape ? 'flex flex-col gap-4' : 'hidden md:grid md:grid-cols-[1fr_360px]'} gap-6 items-start`}>
+      <div
+        className={`${isLandscape ? 'flex flex-col gap-4' : 'hidden md:grid md:grid-cols-[1fr_360px]'} gap-6`}
+        style={!isLandscape ? { height: 'calc(100dvh - 104px)', alignItems: 'stretch', minHeight: 0 } : undefined}
+      >
 
         {/* Left: agenda semanal */}
-        <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {/* Header toolbar */}
-          <div style={{ borderBottom: '1px solid var(--line)' }}>
+          <div style={{ borderBottom: '1px solid var(--line)', flexShrink: 0 }}>
             {/* Row 1: navigation + actions */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', flexWrap: 'wrap' }}>
               {/* Date navigation */}
@@ -709,8 +712,8 @@ export default function DashboardPage() {
             </div>
           ) : calView === 'week' ? (
             /* Portrait/desktop: 7-day grid */
-            <div style={{ overflowX: 'auto' }}>
-            <div style={{ maxHeight: 'calc(100dvh - 200px)', overflowY: 'auto', minWidth: 600 }}>
+            <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+            <div style={{ minWidth: 600 }}>
               {/* Day headers */}
               <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', borderBottom: '1px solid var(--line)', position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-2)' }}>
                 <div />
@@ -833,7 +836,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Right column — hidden in landscape */}
-        {!isLandscape && <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {!isLandscape && <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', minHeight: 0 }}>
           {/* Stats grid */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.625rem' }}>
             {metrics.map(m => (
