@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import type { LoyaltyTierConfig } from '@/domain/shop'
 
@@ -140,6 +140,7 @@ export function LoyaltyCard({
 }: LoyaltyCardProps) {
   const sm = compact
   const isSimple = loyaltyMode === 'simple'
+  const [qrExpanded, setQrExpanded] = useState(false)
 
   // Derive active tiers: config tiers (converted) or hardcoded fallback
   const activeTiers: TierDef[] = (configTiers && configTiers.length > 0)
@@ -562,11 +563,15 @@ export function LoyaltyCard({
         padding: `${VPH} ${HP} calc(${VPH} + 0.5rem)`,
         ...fixed,
       }}>
-        <div style={{
-          flexShrink: 0, padding: sm ? 4 : 5, borderRadius: 8, background: '#fff',
-        }}>
+        <button
+          onClick={() => setQrExpanded(true)}
+          title="Ampliar QR"
+          style={{ flexShrink: 0, padding: sm ? 4 : 5, borderRadius: 8, background: '#fff', border: 'none', cursor: 'pointer', display: 'block', transition: 'opacity 0.15s' }}
+          onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
+          onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+        >
           <QRCodeSVG value={qrValue} size={sm ? 46 : 58} level="M" marginSize={0} />
-        </div>
+        </button>
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
@@ -626,6 +631,32 @@ export function LoyaltyCard({
 
       {/* ── Bottom bar ── */}
       <div style={{ height: 3, background: `linear-gradient(90deg, ${tier.c1} 0%, ${tier.primary} 30%, ${tier.accent} 55%, ${tier.primary} 80%, ${tier.c1} 100%)`, zIndex: 2, ...fixed }} />
+
+      {/* ── QR expand modal ── */}
+      {qrExpanded && (
+        <div
+          onClick={() => setQrExpanded(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: tier.c1, borderRadius: 20, padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', border: `1px solid ${hexToRgba(tier.primary, 0.5)}`, boxShadow: `0 0 60px ${hexToRgba(tier.primary, 0.3)}, 0 24px 64px rgba(0,0,0,0.8)`, maxWidth: 320, width: '100%' }}
+          >
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.12em', color: tier.accent }}>GIO BARBER LOYALTY</div>
+            <div style={{ padding: 12, borderRadius: 12, background: '#fff' }}>
+              <QRCodeSVG value={qrValue} size={220} level="H" marginSize={0} />
+            </div>
+            <div>
+              <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 16, fontWeight: 700, letterSpacing: '0.18em', color: tier.accent, textAlign: 'center' }}>{memberCode}</div>
+              <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.14em', textTransform: 'uppercase', textAlign: 'center', marginTop: 4 }}>Código de miembro</div>
+            </div>
+            <button
+              onClick={() => setQrExpanded(false)}
+              style={{ padding: '0.6rem 2rem', borderRadius: 8, border: `1px solid ${hexToRgba(tier.primary, 0.4)}`, background: 'transparent', color: 'rgba(255,255,255,0.65)', fontFamily: 'var(--font-ui)', fontSize: 12, cursor: 'pointer' }}
+            >Cerrar</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
