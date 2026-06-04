@@ -163,8 +163,9 @@ export function LoyaltyCard({
     .filter(t => t.min > points)
     .map(t => ({ r: t.min / activeTierMax, label: t.label }))
 
-  // Cycle cost multiplier
-  const cycleMult = Math.pow(2, completedCycles)
+  // Cycle cost multiplier — cap at 5 cycles to prevent absurd display values
+  const safeCycles = Math.min(completedCycles, 5)
+  const cycleMult = Math.pow(2, safeCycles)
 
   const redeemable = rewards.filter(r => !r.redeemed)
   const qrValue    = `GIO-BARBER://member/${memberCode}`

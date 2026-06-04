@@ -347,11 +347,38 @@ export default function AppointmentsPage() {
   const loyaltyPoints     = loyaltyCard?.points      ?? 0
   const loyaltyStamps     = loyaltyCard?.totalVisits ?? 0
   const loyaltyMemberCode = loyaltyCard?.memberCode  ?? '—'
-  const loyaltyTarget     = rewards.length > 0 ? Math.max(...rewards.map(r => r.cost)) : 100
+  // target: in tiers mode, use max tier minPoints; in simple mode, use highest reward cost
+  const loyaltyTarget = useMemo(() => {
+    if (loyaltyConfig?.mode === 'tiers' && (loyaltyConfig.tiers?.length ?? 0) > 0) {
+      return Math.max(...loyaltyConfig.tiers.map(t => t.minPoints), 100)
+    }
+    return rewards.length > 0 ? Math.max(...rewards.map(r => r.cost)) : 100
+  }, [loyaltyConfig, rewards])
 
   const loyaltyRewardsData = useMemo(() => {
+    // Tiers mode: show rewards from all tiers the user has reached (from config)
+    if (loyaltyConfig?.mode === 'tiers' && (loyaltyConfig.tiers?.length ?? 0) > 0) {
+      const sorted = [...loyaltyConfig.tiers].sort((a, b) => a.minPoints - b.minPoints)
+      const reachedTiers = sorted.filter(t => loyaltyPoints >= t.minPoints)
+      return reachedTiers.flatMap(tier =>
+        tier.rewards.map(r => {
+          const permanent = r.isPermanent ?? false
+          const redeemed = !permanent && redeemedIds.includes(r.id)
+          return {
+            id: r.id,
+            label: r.label,
+            cost: r.cost,
+            redeemed,
+            canRedeem: permanent || (loyaltyPoints >= r.cost && !redeemed),
+          }
+        }),
+      )
+    }
+
+    // Simple mode: DB rewards with cycle multiplier (cap at 5 cycles to avoid absurd values)
     const isRepeatable = (loyaltyConfig?.rewardMode ?? 'one_time') === 'repeatable'
-    const cycleMult = Math.pow(2, loyaltyCard?.completedCycles ?? 0)
+    const safeCycles = Math.min(loyaltyCard?.completedCycles ?? 0, 5)
+    const cycleMult = Math.pow(2, safeCycles)
     return rewards.filter(r => r.isActive).map(r => {
       const isRedeemed = !isRepeatable && redeemedIds.includes(r.id)
       const adjustedCost = r.cost * cycleMult
@@ -600,16 +627,17 @@ export default function AppointmentsPage() {
         </div>
       )}
 
-      {/* ── Page header with info button ── */}
-      <div className="hidden lg:flex" style={{ alignItems: 'center', justifyContent: 'flex-end', paddingRight: '0.5rem', marginBottom: '-0.5rem', maxWidth: 1280, width: '100%', marginLeft: 'auto', marginRight: 'auto' }}>
+      {/* ── Page header ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: '0.5rem', paddingRight: '0.5rem', marginBottom: '0.75rem', maxWidth: 1280, width: '100%', marginLeft: 'auto', marginRight: 'auto' }}>
+        <span style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)' }}>MIS CITAS</span>
         <InfoButton
           title="GUÍA — MIS CITAS"
           items={[
             { icon: '📅', label: 'Próxima cita', description: 'Aquí ves tu próxima cita. Puedes cancelarla (hasta 2 h antes) o reprogramarla a otra fecha y hora.' },
             { icon: '🎫', label: 'Tarjeta de fidelización', description: 'Acumulas puntos en cada visita. Pulsa el QR para ampliarlo y facilitar el escaneo en la barbería.' },
-            { icon: '🏅', label: 'Niveles de fidelización', description: 'Cuantos más puntos acumulas, más alto es tu nivel: Cobre → Bronce → Plata → Oro → Platino → Diamante…' },
+            { icon: '🏅', label: 'Niveles', description: 'Cuantos más puntos acumulas, más alto es tu nivel: Cobre → Bronce → Plata → Oro → Platino…' },
             { icon: '🎁', label: 'Recompensas', description: 'Cuando tengas puntos suficientes, pulsa "Canjear" en la recompensa deseada para activarla.' },
-            { icon: '🕒', label: 'Historial', description: 'Registro de todas tus citas pasadas. Filtra por estado (completadas/canceladas), servicio o fechas.' },
+            { icon: '🕒', label: 'Historial', description: 'Registro de tus citas pasadas. Filtra por estado, servicio o fechas.' },
           ]}
         />
       </div>
@@ -644,18 +672,6 @@ export default function AppointmentsPage() {
 
       {/* ── MOBILE: stacked ── */}
       <div className="flex flex-col gap-4 lg:hidden" style={{ paddingBottom: '5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <InfoButton
-            title="GUÍA — MIS CITAS"
-            items={[
-              { icon: '📅', label: 'Próxima cita', description: 'Aquí ves tu próxima cita. Puedes cancelarla (hasta 2 h antes) o reprogramarla.' },
-              { icon: '🎫', label: 'Tarjeta fidelización', description: 'Acumulas puntos en cada visita. Pulsa el QR para ampliarlo y escanear más fácilmente.' },
-              { icon: '🏅', label: 'Niveles', description: 'Cuantos más puntos acumulas, más alto es tu nivel y mejores recompensas desbloqueas.' },
-              { icon: '🎁', label: 'Recompensas', description: 'Con puntos suficientes puedes canjear recompensas pulsando el botón "Canjear".' },
-              { icon: '🕒', label: 'Historial', description: 'Registro de citas pasadas con filtros por estado, servicio y fechas.' },
-            ]}
-          />
-        </div>
         {proximaSection}
         <div>
           <div className={SECTION_LABEL}>TARJETA DE FIDELIZACIÓN</div>
