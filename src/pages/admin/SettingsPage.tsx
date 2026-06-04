@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { ConfirmDialog, Modal } from '@/components/ui'
+import { ConfirmDialog, Modal, InfoButton } from '@/components/ui'
+import type { InfoItem } from '@/components/ui'
 import { MonthCalendar } from '@/components/calendar'
 import { useAuth } from '@/hooks'
 import { useShopContext } from '@/context/ShopContext'
@@ -9,7 +10,8 @@ import { useAllAppointments } from '@/hooks/useAppointments'
 import { useAllBarbers, useUpdateBarber, useDeleteBarber, useAddBarberByEmail } from '@/hooks/useBarbers'
 import { useWeeklySchedule, useScheduleBlocks, useMutateWeeklySchedule, useAddScheduleBlock, useDeleteScheduleBlock } from '@/hooks/useSchedule'
 import { useShopInfo, useBookingConfig, useLoyaltyConfig, useMutateShopInfo, useMutateBookingConfig, useUploadLogo, DEFAULT_LOYALTY_TIERS } from '@/hooks/useShopConfig'
-import { useAllRewards, useCreateReward, useUpdateReward, useDeleteReward, useUpdateLoyaltyConfig } from '@/hooks/useLoyalty'
+import { useAllRewards, useCreateReward, useUpdateReward, useDeleteReward, useUpdateLoyaltyConfig, useSearchCardByCode, useManualAdjustPoints, useRecentTransactions, useClearLoyaltyHistory } from '@/hooks/useLoyalty'
+import { LoyaltyCard, QRScannerModal } from '@/components/loyalty'
 import { DEFAULT_WEEKLY_SCHEDULE } from '@/domain/schedule'
 import type { WeeklySchedule, DayKey } from '@/domain/schedule'
 import type { Service } from '@/domain/service'
@@ -19,7 +21,7 @@ import type { LoyaltyTierConfig, LoyaltyTierReward, LogoShape } from '@/domain/s
 import { shapeStyle } from '@/components/layout/Logo'
 import { AppearanceSection } from '@/components/appearance'
 
-type Section = 'servicios' | 'horarios' | 'barberos' | 'fidelizacion' | 'barberia' | 'apariencia'
+type Section = 'servicios' | 'horarios' | 'barberos' | 'fidelizacion' | 'clientes' | 'barberia' | 'apariencia'
 
 const BARBER_ROLES = ['Barbero', 'Propietario'] as const
 
@@ -28,8 +30,9 @@ const SECTIONS: { id: Section; label: string; adminOnly?: boolean }[] = [
   { id: 'horarios',     label: 'Horarios'     },
   { id: 'barberos',     label: 'Equipo'       },
   { id: 'fidelizacion', label: 'Fidelización' },
+  { id: 'clientes',     label: 'Clientes',     adminOnly: true },
   { id: 'barberia',     label: 'Negocio'      },
-  { id: 'apariencia',   label: 'Apariencia', adminOnly: true },
+  { id: 'apariencia',   label: 'Apariencia',   adminOnly: true },
 ]
 
 const DAY_KEYS: { key: DayKey; name: string }[] = [
@@ -54,10 +57,13 @@ function toISODate(d: Date): string {
   return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-')
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
+function SectionTitle({ children, infoTitle, infoItems }: { children: React.ReactNode; infoTitle?: string; infoItems?: InfoItem[] }) {
   return (
-    <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)', marginBottom: '1rem' }}>
-      {children}
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)' }}>
+        {children}
+      </div>
+      {infoTitle && infoItems && <InfoButton title={infoTitle} items={infoItems} />}
     </div>
   )
 }
@@ -99,7 +105,8 @@ function SaveBtn({ onClick, loading, isDirty }: { onClick: () => void; loading?:
 
 export default function SettingsPage() {
   const { user } = useAuth()
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = user?.role === 'admin' || user?.role === 'owner'
+  const isOwner = user?.role === 'owner' || user?.role === 'admin'
   const visibleSections = isAdmin ? SECTIONS : SECTIONS.filter(s => s.id !== 'apariencia')
   const { name: shopName, allowBarberChoice } = useShopContext()
   const [section, setSection] = useState<Section>('servicios')
@@ -273,22 +280,39 @@ export default function SettingsPage() {
   const [rewardEdits, setRewardEdits] = useState<Record<string, { label: string; cost: number }>>({})
 
   // ── Loyalty card config local state ─────────────────────────────────────────
-  type PendingCard = { mode: 'tiers' | 'simple'; tiers: LoyaltyTierConfig[]; maxPoints: number }
+  type PendingCard = { mode: 'tiers' | 'simple'; tiers: LoyaltyTierConfig[]; maxPoints: number; rewardMode: 'one_time' | 'repeatable' }
   const [pendingLoyaltyCard, setPendingLoyaltyCard] = useState<PendingCard | null>(null)
   const [expandedTierId, setExpandedTierId] = useState<string | null>(null)
+  const [qrScanOpen, setQrScanOpen] = useState(false)
+  const [simPoints, setSimPoints] = useState(0)
 
-  const localMode      = pendingLoyaltyCard?.mode      ?? loyaltyConfig?.mode      ?? 'tiers'
-  const localTiers     = pendingLoyaltyCard?.tiers     ?? (loyaltyConfig?.tiers?.length ? loyaltyConfig.tiers : DEFAULT_LOYALTY_TIERS)
-  const localMaxPoints = pendingLoyaltyCard?.maxPoints ?? loyaltyConfig?.maxPoints ?? 500
-  const tiersDirty     = pendingLoyaltyCard !== null
+  const localMode       = pendingLoyaltyCard?.mode       ?? loyaltyConfig?.mode       ?? 'tiers'
+  const localTiers      = pendingLoyaltyCard?.tiers      ?? (loyaltyConfig?.tiers?.length ? loyaltyConfig.tiers : DEFAULT_LOYALTY_TIERS)
+  const localMaxPoints  = pendingLoyaltyCard?.maxPoints  ?? loyaltyConfig?.maxPoints  ?? 500
+  const localRewardMode = pendingLoyaltyCard?.rewardMode ?? loyaltyConfig?.rewardMode ?? 'one_time'
+  const tiersDirty      = pendingLoyaltyCard !== null
 
   const patchCard = (patch: Partial<PendingCard>) =>
     setPendingLoyaltyCard(prev => ({
-      mode:      prev?.mode      ?? localMode,
-      tiers:     prev?.tiers     ?? localTiers,
-      maxPoints: prev?.maxPoints ?? localMaxPoints,
+      mode:       prev?.mode       ?? localMode,
+      tiers:      prev?.tiers      ?? localTiers,
+      maxPoints:  prev?.maxPoints  ?? localMaxPoints,
+      rewardMode: prev?.rewardMode ?? localRewardMode,
       ...patch,
     }))
+
+  // ── Admin card search + points adjustment state ───────────────────────────
+  const [cardSearchInput, setCardSearchInput] = useState('')
+  const [cardSearchQuery, setCardSearchQuery] = useState<string | null>(null)
+  const { data: foundCard, isFetching: cardSearchFetching, isError: cardSearchError } = useSearchCardByCode(cardSearchQuery)
+  const { data: foundCardTxs = [] } = useRecentTransactions(foundCard?.clientId, 8)
+  const manualAdjust   = useManualAdjustPoints()
+  const clearHistory   = useClearLoyaltyHistory()
+  const [adjPoints, setAdjPoints]       = useState('')
+  const [adjDesc, setAdjDesc]           = useState('')
+  const [adjError, setAdjError]         = useState<string | null>(null)
+  const [adjSuccess, setAdjSuccess]     = useState(false)
+  const [clearConfirm, setClearConfirm] = useState(false)
 
   // ── Section errors ───────────────────────────────────────────────────────────
   const [sectionError, setSectionError] = useState<Partial<Record<Section, string>>>({})
@@ -475,12 +499,54 @@ export default function SettingsPage() {
   // ── Handlers: loyalty card config ────────────────────────────────────────────
   const handleSaveLoyaltyCardConfig = () => {
     updateLoyaltyConfig.mutate(
-      { mode: localMode, tiers: localTiers, maxPoints: localMaxPoints },
+      { mode: localMode, tiers: localTiers, maxPoints: localMaxPoints, rewardMode: localRewardMode },
       {
         onSuccess: () => { setPendingLoyaltyCard(null); clearSecError('fidelizacion') },
         onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('fidelizacion', 'No se pudo guardar la configuración. Revisa tu conexión.') },
       },
     )
+  }
+
+  const handleAdjustPoints = () => {
+    if (!foundCard) return
+    const pts = parseInt(adjPoints, 10)
+    if (isNaN(pts) || pts === 0) { setAdjError('Introduce un número de puntos distinto de cero'); return }
+    if (!adjDesc.trim()) { setAdjError('Añade una descripción del ajuste'); return }
+    setAdjError(null)
+    manualAdjust.mutate(
+      { clientId: foundCard.clientId, points: pts, description: adjDesc.trim() },
+      {
+        onSuccess: () => {
+          setAdjPoints('')
+          setAdjDesc('')
+          setAdjSuccess(true)
+          setTimeout(() => setAdjSuccess(false), 3000)
+          // Re-query to refresh the card data
+          setCardSearchQuery(null)
+          setTimeout(() => setCardSearchQuery(cardSearchInput.trim() || null), 50)
+        },
+        onError: (e) => {
+          const msg = e instanceof Error ? e.message : String(e)
+          setAdjError(`Error: ${msg}`)
+        },
+      },
+    )
+  }
+
+  const handleClearHistory = () => {
+    if (!foundCard) return
+    clearHistory.mutate(foundCard.clientId, {
+      onSuccess: () => {
+        setClearConfirm(false)
+        setCardSearchQuery(null)
+        setTimeout(() => setCardSearchQuery(cardSearchInput.trim() || null), 50)
+      },
+      onError: (e) => {
+        setClearConfirm(false)
+        const msg = e instanceof Error ? e.message : String(e)
+        setAdjError(`Error al limpiar historial: ${msg}`)
+      },
+    })
   }
 
   const handleAddTier = () => {
@@ -498,7 +564,7 @@ export default function SettingsPage() {
   }
 
   const handleAddTierReward = (tierId: string) => {
-    const newReward: LoyaltyTierReward = { id: crypto.randomUUID(), label: 'Nueva recompensa', cost: 50 }
+    const newReward: LoyaltyTierReward = { id: crypto.randomUUID(), label: 'Nueva recompensa', cost: 50, isPermanent: false }
     patchCard({ tiers: localTiers.map(x => x.id === tierId ? { ...x, rewards: [...x.rewards, newReward] } : x) })
   }
 
@@ -506,7 +572,7 @@ export default function SettingsPage() {
     patchCard({ tiers: localTiers.map(x => x.id === tierId ? { ...x, rewards: x.rewards.filter(r => r.id !== rewardId) } : x) })
   }
 
-  const handleUpdateTierReward = (tierId: string, rewardId: string, field: 'label' | 'cost', value: string | number) => {
+  const handleUpdateTierReward = (tierId: string, rewardId: string, field: 'label' | 'cost' | 'isPermanent', value: string | number | boolean) => {
     patchCard({ tiers: localTiers.map(x => x.id === tierId ? { ...x, rewards: x.rewards.map(r => r.id === rewardId ? { ...r, [field]: value } : r) } : x) })
   }
 
@@ -516,8 +582,9 @@ export default function SettingsPage() {
     horarios:     pendingSchedule !== null || pendingMaxDays !== null,
     barberos:     Object.keys(barberEdits).length > 0,
     fidelizacion: Object.keys(rewardEdits).length > 0 || tiersDirty,
+    clientes:     false,
     barberia:     Object.keys(shopEdits).length > 0,
-    apariencia:   false, // AppearanceSection manages its own confirm dialog
+    apariencia:   false,
   }
   const anyDirty = Object.values(sectionDirty).some(Boolean)
 
@@ -626,7 +693,15 @@ export default function SettingsPage() {
           {/* === SERVICIOS === */}
           {section === 'servicios' && (
             <div>
-              <SectionTitle>SERVICIOS</SectionTitle>
+              <SectionTitle
+                infoTitle="GUÍA — SERVICIOS"
+                infoItems={[
+                  { icon: '✂️', label: 'Lista de servicios', description: 'Aquí gestionas todos los servicios disponibles para reservar: nombre, precio, duración y puntos de fidelización que otorga.' },
+                  { icon: '➕', label: 'Añadir servicio', description: 'Pulsa "Nuevo servicio" para crear uno. Rellena el nombre, precio, duración y los puntos de fidelización que recibirá el cliente.' },
+                  { icon: '✏️', label: 'Editar / eliminar', description: 'Haz clic en un servicio para editarlo. Puedes desactivarlo temporalmente sin eliminarlo (no aparecerá al reservar).' },
+                  { icon: '⭐', label: 'Puntos de fidelización', description: 'Los puntos asignados a cada servicio se añaden a la tarjeta del cliente cuando se completa la cita.' },
+                ]}
+              >SERVICIOS</SectionTitle>
 
               {/* Desktop table */}
               <div className="hidden md:block" style={{ overflowX: 'auto' }}>
@@ -749,7 +824,14 @@ export default function SettingsPage() {
           {/* === HORARIOS === */}
           {section === 'horarios' && (
             <div>
-              <SectionTitle>HORARIOS</SectionTitle>
+              <SectionTitle
+                infoTitle="GUÍA — HORARIOS"
+                infoItems={[
+                  { icon: '🕐', label: 'Horario semanal', description: 'Activa o desactiva cada día de la semana y establece la hora de apertura y cierre.' },
+                  { icon: '🚫', label: 'Cierres especiales', description: 'Añade días concretos que estarán cerrados (festivos, vacaciones) o bloquea franjas horarias específicas.' },
+                  { icon: '💾', label: 'Guardar cambios', description: 'Los cambios en el horario se aplican a la disponibilidad de citas de inmediato tras guardar.' },
+                ]}
+              >HORARIOS</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
                 {DAY_KEYS.map(({ key, name }) => {
                   const d = localSchedule[key]
@@ -822,7 +904,14 @@ export default function SettingsPage() {
                 )}
               </div>
 
-              <SectionTitle>CIERRES ESPECIALES</SectionTitle>
+              <SectionTitle
+                infoTitle="GUÍA — CIERRES ESPECIALES"
+                infoItems={[
+                  { icon: '📅', label: 'Día completo cerrado', description: 'Bloquea un día completo: no aparecerá como disponible al reservar. Ideal para festivos o vacaciones.' },
+                  { icon: '⏳', label: 'Franja horaria bloqueada', description: 'Bloquea un rango de horas dentro de un día normal. Los clientes no podrán reservar en esa franja.' },
+                  { icon: '🔁', label: 'Bloqueos recurrentes', description: 'Los bloqueos recurrentes se repiten cada semana. Útil para reuniones fijas o mantenimiento semanal.' },
+                ]}
+              >CIERRES ESPECIALES</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {blocks.filter(b => !b.isRecurring).map(b => {
                   const barberName = b.barberId ? (barbersData.find(br => br.id === b.barberId)?.fullName ?? b.barberId) : null
@@ -912,7 +1001,15 @@ export default function SettingsPage() {
           {/* === BARBEROS === */}
           {section === 'barberos' && (
             <div>
-              <SectionTitle>BARBEROS</SectionTitle>
+              <SectionTitle
+                infoTitle="GUÍA — BARBEROS"
+                infoItems={[
+                  { icon: '👤', label: 'Lista del equipo', description: 'Aquí gestionas todos los miembros del equipo: nombre, rol, teléfono y descanso.' },
+                  { icon: '➕', label: 'Añadir barbero', description: 'Introduce el email de un usuario registrado para añadirlo al equipo como barbero.' },
+                  { icon: '⏸️', label: 'Descanso diario', description: 'Define la hora de inicio y fin del descanso de cada barbero. Esos huecos no estarán disponibles.' },
+                  { icon: '🗑️', label: 'Eliminar barbero', description: 'Al eliminar un barbero se desactiva su acceso. Las citas existentes no se cancelan automáticamente.' },
+                ]}
+              >BARBEROS</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                 {barbersData.map(b => {
                   const edits = getBarberEdit(b.id)
@@ -1054,7 +1151,15 @@ export default function SettingsPage() {
               </div>
 
               <div style={{ height: 1, background: 'var(--line)', margin: '1.5rem 0' }} />
-              <SectionTitle>OPCIONES DE RESERVA</SectionTitle>
+              <SectionTitle
+                infoTitle="GUÍA — OPCIONES DE RESERVA"
+                infoItems={[
+                  { icon: '📆', label: 'Días de antelación', description: 'Máximo de días con los que un cliente puede reservar con anticipación (ej. 14 días = reserva 2 semanas antes).' },
+                  { icon: '💈', label: 'Elección de barbero', description: 'Activa esta opción para que el cliente pueda elegir su barbero preferido al reservar.' },
+                  { icon: '⏱️', label: 'Intervalo de slots', description: 'Cada cuántos minutos aparecen huecos disponibles en el calendario de citas.' },
+                  { icon: '🔧', label: 'Buffer entre citas', description: 'Tiempo de preparación entre una cita y la siguiente (en minutos).' },
+                ]}
+              >OPCIONES DE RESERVA</SectionTitle>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
                 <div>
                   <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>Permitir elegir barbero</div>
@@ -1079,248 +1184,536 @@ export default function SettingsPage() {
 
           {/* === FIDELIZACIÓN === */}
           {section === 'fidelizacion' && (
-            <div>
-              <SectionTitle>TARJETA DE FIDELIZACIÓN</SectionTitle>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
-              {/* ── Mode selector ── */}
-              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                {(['tiers', 'simple'] as const).map(m => (
-                  <button
-                    key={m}
-                    onClick={() => patchCard({ mode: m })}
-                    style={{
-                      flex: 1, padding: '0.75rem', borderRadius: 8, cursor: 'pointer',
-                      border: `1px solid ${localMode === m ? 'var(--led)' : 'var(--line)'}`,
-                      background: localMode === m ? 'color-mix(in srgb, var(--led) 10%, transparent)' : 'var(--bg-3)',
-                      fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: localMode === m ? 700 : 400,
-                      color: localMode === m ? 'var(--fg-0)' : 'var(--fg-2)',
-                    }}
-                  >
-                    {m === 'tiers' ? 'Por Niveles' : 'Puntos Simples'}
-                  </button>
-                ))}
-              </div>
+              <SectionTitle
+                infoTitle="GUÍA — TARJETA FIDELIZACIÓN"
+                infoItems={[
+                  { icon: '🃏', label: 'Modalidad', description: '"Por Niveles": el cliente sube de nivel (Cobre, Bronce…) acumulando puntos. "Puntos Simples": solo hay una barra de progreso hasta el máximo.' },
+                  { icon: '🏆', label: 'Configurar niveles', description: 'En modo Niveles, define cada nivel con nombre, color y puntos mínimos para alcanzarlo. Añade recompensas por nivel.' },
+                  { icon: '🎁', label: 'Recompensas', description: '"Permanente": siempre disponible en ese nivel. "Un uso": se consume al canjear y no vuelve a aparecer.' },
+                  { icon: '👁️', label: 'Vista previa', description: 'La columna derecha muestra cómo verá el cliente su tarjeta en tiempo real según la configuración.' },
+                  { icon: '💾', label: 'Guardar', description: 'Los cambios no se aplican hasta que pulses "Guardar" en el botón flotante inferior.' },
+                ]}
+              >TARJETA DE FIDELIZACIÓN</SectionTitle>
 
-              {/* ── TIERS MODE ── */}
-              {localMode === 'tiers' && (
-                <div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                    {[...localTiers]
-                      .sort((a, b) => a.minPoints - b.minPoints)
-                      .map(tier => (
-                        <div key={tier.id} style={{ background: 'var(--bg-3)', borderRadius: 8, border: `1px solid ${expandedTierId === tier.id ? 'var(--led)' : 'var(--line)'}`, overflow: 'hidden' }}>
-                          {/* Tier row */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0.75rem', cursor: 'pointer' }}
-                            onClick={() => setExpandedTierId(expandedTierId === tier.id ? null : tier.id)}>
-                            <div style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, background: tier.color, border: '2px solid rgba(255,255,255,0.15)' }} />
-                            <span style={{ flex: 1, fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.1em', color: 'var(--fg-0)' }}>
-                              {tier.name || 'Sin nombre'}
-                            </span>
-                            <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', flexShrink: 0 }}>
-                              {tier.minPoints === 0 ? 'Base' : `${tier.minPoints} pts`}
-                            </span>
-                            <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', flexShrink: 0 }}>
-                              {tier.rewards.length} recompensa{tier.rewards.length !== 1 ? 's' : ''}
-                            </span>
-                            <button
-                              onClick={e => { e.stopPropagation(); handleDeleteTier(tier.id) }}
-                              style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 14, padding: '0 4px', flexShrink: 0, minWidth: 28, minHeight: 28 }}
-                            >✕</button>
-                          </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
-                          {/* Expanded editor */}
-                          {expandedTierId === tier.id && (
-                            <div style={{ borderTop: '1px solid var(--line)', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}
-                              onClick={e => e.stopPropagation()}>
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
-                                <div>
-                                  <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Nombre</label>
-                                  <input
-                                    value={tier.name}
-                                    onChange={e => handleUpdateTier(tier.id, 'name', e.target.value.toUpperCase())}
-                                    style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-display)', fontSize: 12, letterSpacing: '0.08em', outline: 'none' }}
-                                  />
-                                </div>
-                                <div>
-                                  <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Color (HEX)</label>
-                                  <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                                    <input
-                                      type="color"
-                                      value={tier.color}
-                                      onChange={e => handleUpdateTier(tier.id, 'color', e.target.value)}
-                                      style={{ width: 32, height: 32, padding: 2, borderRadius: 6, border: '1px solid var(--line)', background: 'var(--bg-4)', cursor: 'pointer', flexShrink: 0 }}
-                                    />
-                                    <input
-                                      value={tier.color}
-                                      onChange={e => handleUpdateTier(tier.id, 'color', e.target.value)}
-                                      style={{ flex: 1, minWidth: 0, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-mono, monospace)', fontSize: 11, outline: 'none' }}
-                                    />
-                                  </div>
-                                </div>
-                                <div>
-                                  <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Puntos mínimos</label>
-                                  <input
-                                    type="number"
-                                    value={tier.minPoints}
-                                    min={0}
-                                    onChange={e => handleUpdateTier(tier.id, 'minPoints', Number(e.target.value))}
-                                    style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }}
-                                  />
-                                </div>
-                              </div>
-
-                              {/* Tier rewards */}
-                              <div>
-                                <div style={{ fontSize: 10, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', letterSpacing: '0.1em', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Recompensas del nivel</div>
-                                {tier.rewards.length === 0 ? (
-                                  <div style={{ fontSize: 12, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', padding: '0.3rem 0', marginBottom: '0.4rem' }}>Sin recompensas</div>
-                                ) : (
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.4rem' }}>
-                                    {tier.rewards.map(r => (
-                                      <div key={r.id} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                                        <input
-                                          value={r.label}
-                                          onChange={e => handleUpdateTierReward(tier.id, r.id, 'label', e.target.value)}
-                                          placeholder="Nombre"
-                                          style={{ flex: 1, minWidth: 0, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.3rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 12, outline: 'none' }}
-                                        />
-                                        <input
-                                          type="number"
-                                          value={r.cost}
-                                          min={1}
-                                          onChange={e => handleUpdateTierReward(tier.id, r.id, 'cost', Number(e.target.value))}
-                                          style={{ width: 64, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.3rem 0.4rem', color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontSize: 12, outline: 'none', textAlign: 'center', flexShrink: 0 }}
-                                        />
-                                        <span style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', flexShrink: 0 }}>pts</span>
-                                        <button
-                                          onClick={() => handleDeleteTierReward(tier.id, r.id)}
-                                          style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 13, padding: 0, minWidth: 24, minHeight: 24, flexShrink: 0 }}
-                                        >✕</button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                                <button
-                                  onClick={() => handleAddTierReward(tier.id)}
-                                  style={{ padding: '0.25rem 0.6rem', minHeight: 28, borderRadius: 6, border: '1px dashed var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 11, cursor: 'pointer' }}
-                                >+ Añadir recompensa</button>
-                              </div>
-                            </div>
+                  {/* Mode selector + estado guardado */}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase' }}>Modalidad</div>
+                      {/* Indicador: modo guardado vs pendiente */}
+                      {loyaltyConfig && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 9, fontFamily: 'var(--font-ui)', color: 'var(--fg-4)' }}>
+                          <span style={{ padding: '2px 7px', borderRadius: 4, background: 'var(--bg-3)', border: '1px solid var(--line)', color: 'var(--fg-2)', fontWeight: 500 }}>
+                            {loyaltyConfig.mode === 'tiers' ? 'Niveles' : 'Puntos'} guardado
+                          </span>
+                          {tiersDirty && localMode !== loyaltyConfig.mode && (
+                            <>
+                              <span style={{ color: 'var(--fg-4)' }}>→</span>
+                              <span style={{ padding: '2px 7px', borderRadius: 4, background: 'rgba(201,162,74,0.12)', border: '1px solid rgba(201,162,74,0.35)', color: 'var(--gold)', fontWeight: 700 }}>
+                                {localMode === 'tiers' ? 'Niveles' : 'Puntos'} pendiente
+                              </span>
+                            </>
                           )}
                         </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 4, background: 'var(--bg-3)', borderRadius: 9, padding: 3 }}>
+                      {(['tiers', 'simple'] as const).map(m => (
+                        <button key={m} onClick={() => patchCard({ mode: m })} style={{
+                          flex: 1, padding: '0.5rem', borderRadius: 7, cursor: 'pointer', border: 'none',
+                          background: localMode === m ? 'var(--bg-1)' : 'transparent',
+                          boxShadow: localMode === m ? '0 1px 4px rgba(0,0,0,0.4)' : 'none',
+                          fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: localMode === m ? 700 : 400,
+                          color: localMode === m ? 'var(--fg-0)' : 'var(--fg-3)', transition: 'all 0.12s',
+                        }}>
+                          {m === 'tiers' ? 'Por Niveles' : 'Puntos Simples'}
+                        </button>
                       ))}
+                    </div>
                   </div>
-                  <button
-                    onClick={handleAddTier}
-                    style={{ padding: '0.5rem 0.875rem', minHeight: 40, borderRadius: 8, border: '1px dashed var(--led)', background: 'transparent', color: 'var(--led)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer', width: '100%', marginBottom: '1rem' }}
-                  >+ Añadir nivel</button>
-                  <SaveBtn onClick={handleSaveLoyaltyCardConfig} loading={updateLoyaltyConfig.isPending} isDirty={tiersDirty} />
-                </div>
-              )}
 
-              {/* ── SIMPLE MODE ── */}
-              {localMode === 'simple' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  <div>
-                    <SectionTitle>CONFIGURACIÓN</SectionTitle>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
-                      <div>
-                        <label style={{ fontSize: 12, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: '0.375rem' }}>Puntos máximos acumulables</label>
-                        <input
-                          type="number"
-                          value={localMaxPoints}
-                          min={1}
-                          onChange={e => patchCard({ maxPoints: Number(e.target.value) })}
-                          style={{ width: 140, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.6rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 14, outline: 'none' }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: 12, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: '0.375rem' }}>Canjeo de recompensas</label>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          {(['one_time', 'repeatable'] as const).map(mode => {
-                            const active = (loyaltyConfig?.rewardMode ?? 'one_time') === mode
-                            return (
-                              <button
-                                key={mode}
-                                onClick={() => updateLoyaltyConfig.mutate({ rewardMode: mode })}
-                                style={{
-                                  flex: 1, padding: '0.6rem 0.75rem', borderRadius: 8, cursor: 'pointer',
-                                  border: `1px solid ${active ? 'var(--led)' : 'var(--line)'}`,
-                                  background: active ? 'color-mix(in srgb, var(--led) 10%, transparent)' : 'var(--bg-3)',
-                                  fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: active ? 700 : 400,
-                                  color: active ? 'var(--fg-0)' : 'var(--fg-2)',
-                                }}
-                              >
-                                {mode === 'one_time' ? 'Una sola vez' : 'Repetible'}
-                              </button>
+                  {/* Two-column: editor left, live preview right */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
+
+                    {/* LEFT: editor */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+                      {/* TIERS MODE */}
+                      {localMode === 'tiers' && (
+                        <>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase' }}>Niveles</div>
+                            {/* Simulador de nivel activo */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <span style={{ fontSize: 9, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)' }}>Simula:</span>
+                              <input type="number" value={simPoints} min={0} onChange={e => setSimPoints(Number(e.target.value))}
+                                style={{ width: 60, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 5, padding: '2px 6px', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 10, outline: 'none', textAlign: 'center' }} />
+                              <span style={{ fontSize: 9, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)' }}>pts</span>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                            {[...localTiers].sort((a, b) => a.minPoints - b.minPoints).map((tier, idx, sorted) => {
+                              const nextTierMin = sorted[idx + 1]?.minPoints ?? Infinity
+                              const isActive = simPoints >= tier.minPoints && simPoints < nextTierMin
+                              return (
+                              <div key={tier.id} style={{ background: isActive ? `${tier.color}18` : 'var(--bg-3)', borderRadius: 10, border: `1px solid ${isActive ? tier.color + '66' : expandedTierId === tier.id ? 'var(--led)' : 'var(--line)'}`, overflow: 'hidden', transition: 'all 0.12s' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0.625rem 0.75rem', cursor: 'pointer' }}
+                                  onClick={() => setExpandedTierId(expandedTierId === tier.id ? null : tier.id)}>
+                                  <div style={{ width: 14, height: 14, borderRadius: '50%', flexShrink: 0, background: tier.color, boxShadow: `0 0 8px ${tier.color}88` }} />
+                                  <span style={{ flex: 1, fontFamily: 'var(--font-display)', fontSize: 12, letterSpacing: '0.12em', color: 'var(--fg-0)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {tier.name || 'Sin nombre'}
+                                  </span>
+                                  <span style={{ fontSize: 10, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', flexShrink: 0 }}>
+                                    {tier.minPoints === 0 ? 'Base' : `≥${tier.minPoints}`}
+                                  </span>
+                                  {tier.rewards.length > 0 && (
+                                    <span style={{ fontSize: 9, color: 'var(--gold)', fontFamily: 'var(--font-ui)', background: 'rgba(201,162,74,0.12)', border: '1px solid rgba(201,162,74,0.25)', borderRadius: 4, padding: '1px 5px', flexShrink: 0 }}>
+                                      {tier.rewards.length}★
+                                    </span>
+                                  )}
+                                  <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="var(--fg-4)" strokeWidth="1.5"
+                                    style={{ transform: expandedTierId === tier.id ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }}>
+                                    <path d="M2 4l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                  <button onClick={e => { e.stopPropagation(); handleDeleteTier(tier.id) }}
+                                    style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 13, padding: '0 2px', flexShrink: 0, minWidth: 24, minHeight: 24, opacity: 0.7 }}>✕</button>
+                                </div>
+                                {expandedTierId === tier.id && (
+                                  <div style={{ borderTop: '1px solid var(--line)', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--bg-4)' }}
+                                    onClick={e => e.stopPropagation()}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px', gap: '0.5rem' }}>
+                                      <div>
+                                        <label style={{ fontSize: 10, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3, letterSpacing: '0.08em' }}>NOMBRE</label>
+                                        <input value={tier.name} onChange={e => handleUpdateTier(tier.id, 'name', e.target.value.toUpperCase())}
+                                          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.1em', outline: 'none' }} />
+                                      </div>
+                                      <div>
+                                        <label style={{ fontSize: 10, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3, letterSpacing: '0.08em' }}>COLOR</label>
+                                        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                                          <input type="color" value={tier.color} onChange={e => handleUpdateTier(tier.id, 'color', e.target.value)}
+                                            style={{ width: 30, height: 30, padding: 2, borderRadius: 6, border: '1px solid var(--line)', background: 'var(--bg-3)', cursor: 'pointer', flexShrink: 0 }} />
+                                          <input value={tier.color} onChange={e => handleUpdateTier(tier.id, 'color', e.target.value)}
+                                            style={{ flex: 1, minWidth: 0, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-mono, monospace)', fontSize: 10, outline: 'none' }} />
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <label style={{ fontSize: 10, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3, letterSpacing: '0.08em' }}>DESDE pts</label>
+                                        <input type="number" value={tier.minPoints} min={0} onChange={e => handleUpdateTier(tier.id, 'minPoints', Number(e.target.value))}
+                                          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 12, outline: 'none', textAlign: 'center' }} />
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div style={{ fontSize: 9, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', letterSpacing: '0.12em', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Recompensas del nivel</div>
+                                      {tier.rewards.length === 0 && <div style={{ fontSize: 11, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', padding: '0.2rem 0', marginBottom: '0.35rem' }}>Sin recompensas aún</div>}
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.35rem' }}>
+                                        {tier.rewards.map(r => (
+                                          <div key={r.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', background: 'var(--bg-2)', borderRadius: 7, padding: '0.35rem 0.45rem', border: '1px solid var(--line)' }}>
+                                            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                              <input value={r.label} onChange={e => handleUpdateTierReward(tier.id, r.id, 'label', e.target.value)} placeholder="Nombre"
+                                                style={{ flex: 1, minWidth: 0, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.3rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 11, outline: 'none' }} />
+                                              <input type="number" value={r.cost} min={1} onChange={e => handleUpdateTierReward(tier.id, r.id, 'cost', Number(e.target.value))}
+                                                style={{ width: 56, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.3rem 0.35rem', color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontSize: 11, outline: 'none', textAlign: 'center', flexShrink: 0 }} />
+                                              <span style={{ fontSize: 9, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', flexShrink: 0 }}>pts</span>
+                                              <button onClick={() => handleDeleteTierReward(tier.id, r.id)}
+                                                style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 12, padding: 0, minWidth: 20, minHeight: 20, flexShrink: 0, opacity: 0.7 }}>✕</button>
+                                            </div>
+                                            {/* Toggle permanente / un uso */}
+                                            <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                                              {(['false', 'true'] as const).map(val => {
+                                                const isPerm = val === 'true'
+                                                const active = (r.isPermanent ?? false) === isPerm
+                                                return (
+                                                  <button key={val} onClick={() => handleUpdateTierReward(tier.id, r.id, 'isPermanent', isPerm)} style={{
+                                                    padding: '2px 7px', borderRadius: 4, border: `1px solid ${active ? (isPerm ? 'rgba(201,162,74,0.5)' : 'rgba(96,180,120,0.5)') : 'var(--line)'}`,
+                                                    background: active ? (isPerm ? 'rgba(201,162,74,0.12)' : 'rgba(96,180,120,0.12)') : 'transparent',
+                                                    color: active ? (isPerm ? 'var(--gold)' : 'var(--ok)') : 'var(--fg-4)',
+                                                    fontFamily: 'var(--font-ui)', fontSize: 9, letterSpacing: '0.06em', cursor: 'pointer',
+                                                    fontWeight: active ? 700 : 400,
+                                                  }}>
+                                                    {isPerm ? '★ Permanente' : '↺ Un uso'}
+                                                  </button>
+                                                )
+                                              })}
+                                              <span style={{ fontSize: 9, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', marginLeft: 3 }}>
+                                                {(r.isPermanent ?? false) ? '— fija del nivel' : '— se consume al canjear'}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                      <button onClick={() => handleAddTierReward(tier.id)}
+                                        style={{ padding: '0.2rem 0.55rem', minHeight: 26, borderRadius: 5, border: '1px dashed var(--line)', background: 'transparent', color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', fontSize: 10, cursor: 'pointer' }}>+ recompensa</button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             )
                           })}
+                          </div>
+                          <button onClick={handleAddTier}
+                            style={{ padding: '0.5rem', minHeight: 36, borderRadius: 8, border: '1px dashed var(--led)', background: 'transparent', color: 'var(--led)', fontFamily: 'var(--font-ui)', fontSize: 12, cursor: 'pointer', width: '100%' }}>+ Añadir nivel</button>
+                        </>
+                      )}
+
+                      {/* SIMPLE MODE */}
+                      {localMode === 'simple' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                          <div>
+                            <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: '0.35rem' }}>Puntos máximos</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <input type="number" value={localMaxPoints} min={1} onChange={e => patchCard({ maxPoints: Number(e.target.value) })}
+                                style={{ width: 110, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 7, padding: '0.5rem 0.625rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 700, outline: 'none', textAlign: 'center' }} />
+                              <span style={{ fontSize: 12, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}>pts</span>
+                            </div>
+                          </div>
+                          <div>
+                            <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: '0.35rem' }}>Canjeo de recompensas</label>
+                            <div style={{ display: 'flex', gap: 3, background: 'var(--bg-3)', borderRadius: 8, padding: 3 }}>
+                              {(['one_time', 'repeatable'] as const).map(mode => (
+                                <button key={mode} onClick={() => patchCard({ rewardMode: mode })} style={{
+                                  flex: 1, padding: '0.45rem', borderRadius: 6, cursor: 'pointer', border: 'none',
+                                  background: localRewardMode === mode ? 'var(--bg-1)' : 'transparent',
+                                  boxShadow: localRewardMode === mode ? '0 1px 4px rgba(0,0,0,0.35)' : 'none',
+                                  fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: localRewardMode === mode ? 700 : 400,
+                                  color: localRewardMode === mode ? 'var(--fg-0)' : 'var(--fg-3)', transition: 'all 0.12s',
+                                }}>
+                                  {mode === 'one_time' ? 'Una vez' : 'Repetible'}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Recompensas</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                              {rewardsData.map(r => (
+                                editingRewardId === r.id ? (
+                                  <div key={r.id} style={{ background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--led)', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px', gap: '0.4rem' }}>
+                                      <div>
+                                        <label style={{ fontSize: 10, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Nombre</label>
+                                        <input value={rewardEdits[r.id]?.label ?? r.label}
+                                          onChange={e => setRewardEdits(ed => ({ ...ed, [r.id]: { label: e.target.value, cost: ed[r.id]?.cost ?? r.cost } }))}
+                                          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.35rem 0.45rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 12, outline: 'none' }} />
+                                      </div>
+                                      <div>
+                                        <label style={{ fontSize: 10, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Pts</label>
+                                        <input type="number" value={rewardEdits[r.id]?.cost ?? r.cost}
+                                          onChange={e => setRewardEdits(ed => ({ ...ed, [r.id]: { label: ed[r.id]?.label ?? r.label, cost: Number(e.target.value) } }))}
+                                          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.35rem 0.45rem', color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontSize: 12, outline: 'none', textAlign: 'center' }} />
+                                      </div>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem' }}>
+                                      <button onClick={() => { setEditingRewardId(null); setRewardEdits(e => { const c = { ...e }; delete c[r.id]; return c }) }}
+                                        style={{ padding: '0.4rem 0.875rem', minHeight: 36, borderRadius: 7, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+                                      <button onClick={() => handleSaveReward(r)} disabled={!rewardEdits[r.id] || updateRewardMut.isPending}
+                                        style={{ padding: '0.4rem 1rem', minHeight: 36, borderRadius: 7, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: (!rewardEdits[r.id] || updateRewardMut.isPending) ? 0.5 : 1 }}>
+                                        {updateRewardMut.isPending ? 'Guardando…' : 'Guardar'}
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0.525rem 0.625rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
+                                    <div style={{ flex: 1, fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{r.label}</div>
+                                    <span style={{ fontSize: 11, color: 'var(--gold)', fontFamily: 'var(--font-ui)', flexShrink: 0 }}>{r.cost} pts</span>
+                                    <button onClick={() => setEditingRewardId(r.id)} style={{ padding: '0.25rem 0.5rem', minHeight: 28, borderRadius: 5, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 11, cursor: 'pointer', flexShrink: 0 }}>Editar</button>
+                                    <button onClick={() => deleteReward.mutate(r.id, { onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('fidelizacion', 'No se pudo eliminar.') } })}
+                                      style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 15, minWidth: 28, minHeight: 28, flexShrink: 0, opacity: 0.7 }}>✕</button>
+                                  </div>
+                                )
+                              ))}
+                            </div>
+                            <button onClick={handleAddReward} style={{ marginTop: '0.5rem', padding: '0.45rem 0.75rem', minHeight: 36, borderRadius: 7, border: '1px dashed var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 12, cursor: 'pointer' }}>
+                              + Añadir recompensa
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
-                    <SaveBtn onClick={handleSaveLoyaltyCardConfig} loading={updateLoyaltyConfig.isPending} isDirty={tiersDirty} />
+
+                    {/* RIGHT: live preview */}
+                    <div style={{ position: 'sticky', top: 0 }}>
+                      <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Vista previa en vivo</div>
+                      <LoyaltyCard
+                        points={250} target={500} stamps={8} memberCode="PREVIEW00"
+                        rewards={[{ id: 'p1', label: 'Descuento 10%', cost: 200, canRedeem: true }]}
+                        loyaltyMode={localMode}
+                        configTiers={localMode === 'tiers' ? localTiers : undefined}
+                        maxPoints={localMode === 'simple' ? localMaxPoints : undefined}
+                        compact
+                      />
+                      <p style={{ fontSize: 10, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', textAlign: 'center', marginTop: '0.5rem', letterSpacing: '0.04em' }}>Datos de ejemplo — actualiza al editar</p>
+                    </div>
                   </div>
 
-                  <div>
-                    <SectionTitle>RECOMPENSAS</SectionTitle>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      {rewardsData.map(r => (
-                        editingRewardId === r.id ? (
-                          <div key={r.id} style={{ background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--led)', padding: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px', gap: '0.5rem' }}>
-                              <div>
-                                <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Nombre</label>
-                                <input
-                                  value={rewardEdits[r.id]?.label ?? r.label}
-                                  onChange={e => setRewardEdits(ed => ({ ...ed, [r.id]: { label: e.target.value, cost: ed[r.id]?.cost ?? r.cost } }))}
-                                  style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }}
-                                />
-                              </div>
-                              <div>
-                                <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Puntos</label>
-                                <input
-                                  type="number"
-                                  value={rewardEdits[r.id]?.cost ?? r.cost}
-                                  onChange={e => setRewardEdits(ed => ({ ...ed, [r.id]: { label: ed[r.id]?.label ?? r.label, cost: Number(e.target.value) } }))}
-                                  style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none', textAlign: 'center' }}
-                                />
-                              </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                              <SaveBtn onClick={() => handleSaveReward(r)} loading={updateRewardMut.isPending} isDirty={!!rewardEdits[r.id]} />
-                              <button
-                                onClick={() => { setEditingRewardId(null); setRewardEdits(e => { const c = { ...e }; delete c[r.id]; return c }) }}
-                                style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}
-                              >Cancelar</button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0.75rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
-                            <div style={{ flex: 1, fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)' }}>{r.label}</div>
-                            <span style={{ fontSize: 12, color: 'var(--gold)', fontFamily: 'var(--font-ui)', flexShrink: 0 }}>{r.cost} pts</span>
-                            <button onClick={() => setEditingRewardId(r.id)} style={{ padding: '0.3rem 0.6rem', minHeight: 32, borderRadius: 6, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>Editar</button>
-                            <button onClick={() => deleteReward.mutate(r.id, { onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('fidelizacion', 'No se pudo eliminar. Revisa tu conexión.') } })} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 16, minWidth: 32, minHeight: 32, flexShrink: 0 }}>✕</button>
-                          </div>
-                        )
-                      ))}
-                    </div>
-                    <button onClick={handleAddReward} style={{ marginTop: '0.75rem', padding: '0.5rem 0.875rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>
-                      + Añadir recompensa
+                  {/* Single save button — right-aligned, below both columns */}
+                  {sectionError.fidelizacion && (
+                    <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', margin: 0 }}>{sectionError.fidelizacion}</p>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={handleSaveLoyaltyCardConfig}
+                      disabled={updateLoyaltyConfig.isPending || !tiersDirty}
+                      style={{
+                        padding: '0.5rem 1.5rem', minHeight: 40, borderRadius: 8, border: 'none',
+                        background: 'var(--led)', color: '#fff',
+                        fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 600, cursor: tiersDirty ? 'pointer' : 'default',
+                        opacity: (updateLoyaltyConfig.isPending || !tiersDirty) ? 0.4 : 1,
+                      }}
+                    >
+                      {updateLoyaltyConfig.isPending ? 'Guardando…' : 'Guardar configuración'}
                     </button>
                   </div>
-                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* === CLIENTES === */}
+          {section === 'clientes' && isAdmin && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <SectionTitle
+                infoTitle="GUÍA — CLIENTES"
+                infoItems={[
+                  { icon: '📷', label: 'Escanear QR', description: 'Pulsa el icono de cámara para escanear el QR del cliente con la cámara del dispositivo. Solo accesible para admin/propietario.' },
+                  { icon: '🔍', label: 'Buscar por código', description: 'Introduce el código de miembro del cliente manualmente y pulsa "Buscar" para ver su tarjeta.' },
+                  { icon: '⚡', label: 'Ajuste de puntos', description: 'Puedes añadir o restar puntos manualmente al cliente con una descripción del motivo.' },
+                  { icon: '🗑️', label: 'Limpiar historial', description: 'Elimina todas las transacciones del cliente (solo propietario). Acción irreversible.' },
+                ]}
+              >CLIENTES — TARJETAS DE FIDELIZACIÓN</SectionTitle>
+
+              {/* Search bar + QR button */}
+              <div>
+                <div style={{ fontSize: 10, letterSpacing: '0.16em', color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Buscar por código de tarjeta</div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {/* QR scan button */}
+                  <button
+                    onClick={() => setQrScanOpen(true)}
+                    title="Escanear QR con cámara"
+                    style={{
+                      flexShrink: 0, width: 44, height: 44, borderRadius: 8, border: '1px solid var(--line)',
+                      background: 'var(--bg-3)', color: 'var(--fg-2)', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/>
+                      <rect x="3" y="16" width="5" height="5" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/>
+                      <path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/>
+                      <path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/>
+                      <path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/>
+                    </svg>
+                  </button>
+                  <input
+                    value={cardSearchInput}
+                    onChange={e => setCardSearchInput(e.target.value.toUpperCase())}
+                    onKeyDown={e => e.key === 'Enter' && setCardSearchQuery(cardSearchInput.trim() || null)}
+                    placeholder="Código de miembro (ej. A1B2C3D4E)"
+                    style={{
+                      flex: 1, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 8,
+                      padding: '0.6rem 0.875rem', color: 'var(--fg-0)', fontFamily: 'var(--font-mono, monospace)',
+                      fontSize: 13, letterSpacing: '0.1em', outline: 'none',
+                    }}
+                  />
+                      <button
+                        onClick={() => { setAdjPoints(''); setAdjDesc(''); setAdjError(null); setAdjSuccess(false); setCardSearchQuery(cardSearchInput.trim() || null) }}
+                        disabled={cardSearchFetching || !cardSearchInput.trim()}
+                        style={{
+                          padding: '0.6rem 1.25rem', borderRadius: 8, border: 'none', background: 'var(--led)', color: '#fff',
+                          fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 600,
+                          cursor: cardSearchInput.trim() ? 'pointer' : 'default',
+                          opacity: (!cardSearchInput.trim() || cardSearchFetching) ? 0.5 : 1, minWidth: 88, flexShrink: 0,
+                        }}
+                      >
+                        {cardSearchFetching ? '…' : 'Buscar'}
+                      </button>
+                      {cardSearchQuery && (
+                        <button onClick={() => { setCardSearchQuery(null); setCardSearchInput(''); setAdjPoints(''); setAdjDesc(''); setAdjError(null) }}
+                          style={{ padding: '0.6rem 0.75rem', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>✕</button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Results */}
+                  {cardSearchQuery && !cardSearchFetching && (
+                    cardSearchError ? (
+                      <div style={{ padding: '1rem', background: 'rgba(192,64,64,0.06)', border: '1px solid rgba(192,64,64,0.2)', borderRadius: 8, fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--danger)' }}>
+                        Error al buscar. Revisa la conexión.
+                      </div>
+                    ) : !foundCard ? (
+                      <div style={{ padding: '1.5rem', background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 10, textAlign: 'center', fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--fg-3)' }}>
+                        No se encontró ninguna tarjeta con ese código
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+                        {/* Card + summary row */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', alignItems: 'start' }}>
+                          <LoyaltyCard
+                            points={foundCard.points} target={500}
+                            stamps={foundCard.totalVisits}
+                            memberCode={foundCard.memberCode ?? ''}
+                            createdAt={foundCard.createdAt}
+                            completedCycles={foundCard.completedCycles}
+                            loyaltyMode={loyaltyConfig?.mode}
+                            configTiers={loyaltyConfig?.tiers?.length ? loyaltyConfig.tiers : undefined}
+                            maxPoints={loyaltyConfig?.maxPoints}
+                            compact
+                          />
+                          <div style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 12, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                            <div style={{ fontFamily: 'var(--font-ui)', fontSize: 10, letterSpacing: '0.15em', color: 'var(--fg-4)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Resumen</div>
+                            {[
+                              { label: 'Código',        value: foundCard.memberCode ?? '—' },
+                              { label: 'Puntos',        value: foundCard.points.toLocaleString('es-ES') },
+                              { label: 'Visitas',       value: String(foundCard.totalVisits) },
+                              { label: 'Ciclos',        value: String(foundCard.completedCycles ?? 0) },
+                              { label: 'Cliente desde', value: new Date(foundCard.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) },
+                            ].map(({ label, value }) => (
+                              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--line)', paddingBottom: '0.4rem' }}>
+                                <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-3)' }}>{label}</span>
+                                <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 12, color: 'var(--fg-0)', fontWeight: 600 }}>{value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Points adjustment */}
+                        <div style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 12, padding: '1rem' }}>
+                          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 10, letterSpacing: '0.15em', color: 'var(--fg-4)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Ajustar puntos</div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '0.625rem', marginBottom: '0.75rem' }}>
+                            <div>
+                              <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Puntos</label>
+                              <input
+                                type="number"
+                                value={adjPoints}
+                                onChange={e => { setAdjPoints(e.target.value); setAdjError(null) }}
+                                placeholder="+50 o -20"
+                                style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: `1px solid ${adjError ? 'var(--danger)' : 'var(--line)'}`, borderRadius: 7, padding: '0.5rem 0.625rem', color: adjPoints.startsWith('-') ? 'var(--danger)' : 'var(--gold)', fontFamily: 'var(--font-mono, monospace)', fontSize: 14, fontWeight: 700, outline: 'none', textAlign: 'center' }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Descripción / motivo</label>
+                              <input
+                                value={adjDesc}
+                                onChange={e => { setAdjDesc(e.target.value); setAdjError(null) }}
+                                placeholder="Ej: Corrección manual, promoción..."
+                                style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: `1px solid ${adjError ? 'var(--danger)' : 'var(--line)'}`, borderRadius: 7, padding: '0.5rem 0.625rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }}
+                              />
+                            </div>
+                          </div>
+                          {adjError && <p style={{ color: 'var(--danger)', fontSize: 11, fontFamily: 'var(--font-ui)', margin: '0 0 0.5rem' }}>{adjError}</p>}
+                          {adjSuccess && <p style={{ color: 'var(--ok)', fontSize: 11, fontFamily: 'var(--font-ui)', margin: '0 0 0.5rem' }}>✓ Puntos ajustados correctamente</p>}
+                          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <button
+                              onClick={handleAdjustPoints}
+                              disabled={manualAdjust.isPending || !adjPoints.trim() || !adjDesc.trim()}
+                              style={{
+                                padding: '0.5rem 1.5rem', minHeight: 38, borderRadius: 7, border: 'none',
+                                background: 'var(--led)', color: '#fff',
+                                fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 600,
+                                cursor: (adjPoints.trim() && adjDesc.trim()) ? 'pointer' : 'default',
+                                opacity: (manualAdjust.isPending || !adjPoints.trim() || !adjDesc.trim()) ? 0.45 : 1,
+                              }}
+                            >
+                              {manualAdjust.isPending ? 'Aplicando…' : 'Aplicar ajuste'}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Recent transactions */}
+                        {foundCardTxs.length > 0 && (
+                          <div style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden' }}>
+                            <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <div style={{ fontFamily: 'var(--font-ui)', fontSize: 10, letterSpacing: '0.15em', color: 'var(--fg-4)', textTransform: 'uppercase' }}>Trazabilidad</div>
+                              {isOwner && (
+                                clearConfirm ? (
+                                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                    <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}>¿Seguro?</span>
+                                    <button onClick={handleClearHistory} disabled={clearHistory.isPending}
+                                      style={{ padding: '0.25rem 0.625rem', borderRadius: 5, border: 'none', background: 'var(--danger)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                                      {clearHistory.isPending ? '…' : 'Sí, limpiar'}
+                                    </button>
+                                    <button onClick={() => setClearConfirm(false)}
+                                      style={{ padding: '0.25rem 0.5rem', borderRadius: 5, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', fontSize: 11, cursor: 'pointer' }}>
+                                      Cancelar
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button onClick={() => setClearConfirm(true)}
+                                    style={{ padding: '0.25rem 0.625rem', borderRadius: 5, border: '1px solid rgba(192,64,64,0.35)', background: 'rgba(192,64,64,0.07)', color: 'var(--danger)', fontFamily: 'var(--font-ui)', fontSize: 11, cursor: 'pointer' }}>
+                                    Limpiar historial
+                                  </button>
+                                )
+                              )}
+                            </div>
+                            <div style={{ maxHeight: 260, overflowY: 'auto' }}>
+                              {foundCardTxs.map((tx, i) => {
+                                const isPos = tx.points > 0
+                                const isNeg = tx.points < 0
+                                return (
+                                  <div key={tx.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.625rem 1rem', borderBottom: i < foundCardTxs.length - 1 ? '1px solid var(--line)' : undefined }}>
+                                    <div style={{
+                                      width: 28, height: 28, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                      background: isPos ? 'rgba(50,180,100,0.1)' : isNeg ? 'rgba(192,64,64,0.08)' : 'rgba(255,255,255,0.04)',
+                                      border: `1px solid ${isPos ? 'rgba(50,180,100,0.25)' : isNeg ? 'rgba(192,64,64,0.2)' : 'var(--line)'}`,
+                                    }}>
+                                      <span style={{ fontSize: 10, fontWeight: 700, color: isPos ? 'var(--ok)' : isNeg ? 'var(--danger)' : 'var(--fg-4)' }}>
+                                        {isPos ? '+' : isNeg ? '−' : '○'}
+                                      </span>
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.description}</div>
+                                      <div style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-4)', marginTop: 1 }}>
+                                        {new Date(tx.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                      </div>
+                                    </div>
+                                    {tx.points !== 0 && (
+                                      <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 12, fontWeight: 700, flexShrink: 0, color: isPos ? 'var(--ok)' : 'var(--danger)' }}>
+                                        {isPos ? '+' : ''}{tx.points.toLocaleString('es-ES')}
+                                      </span>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                      </div>
+                    )
+                  )}
+
+              {/* QR scanner modal */}
+              {qrScanOpen && (
+                <QRScannerModal
+                  onScan={(code) => {
+                    setQrScanOpen(false)
+                    setCardSearchInput(code)
+                    setAdjPoints('')
+                    setAdjDesc('')
+                    setAdjError(null)
+                    setAdjSuccess(false)
+                    setCardSearchQuery(code)
+                  }}
+                  onClose={() => setQrScanOpen(false)}
+                />
               )}
 
-              {sectionError.fidelizacion && (
-                <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', marginTop: 8, marginBottom: 0 }}>{sectionError.fidelizacion}</p>
-              )}
             </div>
           )}
 
           {/* === APARIENCIA === */}
           {section === 'apariencia' && isAdmin && (
             <div>
-              <SectionTitle>APARIENCIA</SectionTitle>
+              <SectionTitle
+                infoTitle="GUÍA — APARIENCIA"
+                infoItems={[
+                  { icon: '🎨', label: 'Tema de colores', description: 'Selecciona el tema visual de la aplicación: claro, oscuro o un color de acento personalizado.' },
+                  { icon: '🖼️', label: 'Logo', description: 'Sube una imagen o diseña un logo con formas geométricas. Usa el zoom y la posición para ajustarlo.' },
+                ]}
+              >APARIENCIA</SectionTitle>
               <AppearanceSection />
             </div>
           )}
@@ -1328,7 +1721,15 @@ export default function SettingsPage() {
           {/* === BARBERÍA === */}
           {section === 'barberia' && (
             <div>
-              <SectionTitle>NEGOCIO</SectionTitle>
+              <SectionTitle
+                infoTitle="GUÍA — NEGOCIO"
+                infoItems={[
+                  { icon: '🏪', label: 'Nombre del negocio', description: 'El nombre que aparece en el título de la web, en los emails y en la cabecera de la app.' },
+                  { icon: '📝', label: 'Descripción', description: 'Texto descriptivo del negocio. Aparece en la página de reservas.' },
+                  { icon: '📍', label: 'Dirección', description: 'Dirección física de la barbería. Se muestra en la página de inicio.' },
+                  { icon: '📞', label: 'Teléfono', description: 'Número de contacto visible para los clientes.' },
+                ]}
+              >NEGOCIO</SectionTitle>
 
               {/* ── Tabs ── */}
               <div style={{ display: 'flex', gap: 4, marginBottom: '1.5rem', background: 'var(--bg-3)', borderRadius: 10, padding: 4 }}>

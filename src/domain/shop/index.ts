@@ -28,6 +28,8 @@ export interface LoyaltyTierReward {
   id: string
   label: string
   cost: number
+  /** true = permanente (siempre disponible en el nivel); false = un solo uso (se consume al canjear) */
+  isPermanent?: boolean
 }
 
 export interface LoyaltyTierConfig {

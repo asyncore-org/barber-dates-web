@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useSyncExternalStore, useCallback } from 'react'
+import { useState, useMemo, useEffect, useRef, useSyncExternalStore } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
 import { Icon } from '@/components/ui'
@@ -12,7 +12,6 @@ import { DEFAULT_WEEKLY_SCHEDULE } from '@/domain/schedule'
 import { useLoyaltyCardsForClients, useAutoAwardPoints, useCancelAppointmentWithDeduction } from '@/hooks/useLoyalty'
 import { useLoyaltyConfig } from '@/hooks/useShopConfig'
 import { LoyaltyProgressBar } from '@/components/loyalty'
-import jsQR from 'jsqr'
 
 const landscapeMq = typeof window !== 'undefined'
   ? window.matchMedia('(orientation: landscape) and (max-height: 600px)')
@@ -101,8 +100,6 @@ export default function DashboardPage() {
   const [monthViewMonth, setMonthViewMonth] = useState(() => new Date().getMonth())
   const [selectedMonthDay, setSelectedMonthDay] = useState<Date | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [qrScanOpen, setQrScanOpen] = useState(false)
-  const [loyaltySearch, setLoyaltySearch] = useState('')
   const nowLineRef = useRef<HTMLDivElement>(null)
 
   const weekStart = useMemo(() => {
@@ -144,24 +141,6 @@ export default function DashboardPage() {
     )
   }, [appointments, searchQuery])
 
-  const loyaltySearchResults = useMemo(() => {
-    if (!loyaltySearch.trim()) return []
-    const q = loyaltySearch.toLowerCase()
-    const seen = new Set<string>()
-    const results: Array<{ clientId: string; name: string; memberCode: string; points: number }> = []
-    for (const a of dbAppointments) {
-      if (seen.has(a.clientId)) continue
-      seen.add(a.clientId)
-      const card = loyaltyCards?.get(a.clientId)
-      const name = a.clientName ?? a.clientId.slice(0, 8)
-      const memberCode = card?.memberCode ?? ''
-      if (name.toLowerCase().includes(q) || memberCode.toLowerCase().includes(q)) {
-        results.push({ clientId: a.clientId, name, memberCode, points: card?.points ?? 0 })
-      }
-      if (results.length >= 6) break
-    }
-    return results
-  }, [loyaltySearch, dbAppointments, loyaltyCards])
 
   const handleNewApptConfirm = async (data: NewAppointmentData) => {
     setApptError(null)
@@ -952,61 +931,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Loyalty card search */}
-          <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden' }}>
-            <div style={{ padding: '0.875rem 1rem 0.625rem', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.14em', color: 'var(--fg-3)' }}>FIDELIZACIÓN</div>
-              <button onClick={() => setQrScanOpen(true)} title="Escanear QR" style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-3)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>
-              </button>
-            </div>
-            <div style={{ padding: '0.625rem 0.75rem' }}>
-              {/* Search input */}
-              <div style={{ position: 'relative', marginBottom: loyaltySearchResults.length > 0 ? '0.5rem' : 0 }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--fg-3)', pointerEvents: 'none' }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                <input
-                  type="text"
-                  placeholder="Nombre o código de tarjeta..."
-                  value={loyaltySearch}
-                  onChange={e => setLoyaltySearch(e.target.value)}
-                  style={{
-                    width: '100%', paddingLeft: 28, paddingRight: 8, height: 32,
-                    borderRadius: 7, border: '1px solid var(--line)', background: 'var(--bg-3)',
-                    color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 12,
-                    outline: 'none', boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-              {/* Results */}
-              {loyaltySearch.trim() && loyaltySearchResults.length === 0 && (
-                <div style={{ padding: '0.5rem 0.25rem', fontSize: 12, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}>Sin resultados</div>
-              )}
-              {loyaltySearchResults.map(r => (
-                <button
-                  key={r.clientId}
-                  onClick={() => { setProfileClientId(r.clientId); setLoyaltySearch('') }}
-                  style={{
-                    width: '100%', display: 'flex', alignItems: 'center', gap: '0.625rem',
-                    padding: '0.5rem 0.5rem', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
-                    background: 'transparent', border: 'none', marginBottom: 2,
-                    transition: 'background 0.1s',
-                  }}
-                >
-                  <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, background: 'rgba(123,79,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'var(--led-soft)' }}>
-                    {calcInitials(r.name)}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: 1 }}>
-                      <span style={{ fontSize: 9, fontFamily: 'var(--font-mono, monospace)', color: 'var(--fg-3)', letterSpacing: '0.06em' }}>{r.memberCode || '—'}</span>
-                      <span style={{ fontSize: 9, color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontWeight: 600 }}>{r.points} pts</span>
-                    </div>
-                  </div>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" strokeWidth="2" strokeLinecap="round"><path d="m9 18 6-6-6-6"/></svg>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>}
       </div>
 
@@ -1162,20 +1086,6 @@ export default function DashboardPage() {
         )
       })()}
 
-      {qrScanOpen && (
-        <QRScannerModal
-          onScan={(memberCode) => {
-            setQrScanOpen(false)
-            const entry = loyaltyCards
-              ? [...loyaltyCards.entries()].find(([, card]) => card.memberCode === memberCode)
-              : null
-            if (entry) {
-              setProfileClientId(entry[0])
-            }
-          }}
-          onClose={() => setQrScanOpen(false)}
-        />
-      )}
     </>
   )
 }
@@ -1184,137 +1094,6 @@ function calcInitials(name: string): string {
   return name.trim().split(/\s+/).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '?'
 }
 
-function QRScannerModal({ onScan, onClose }: { onScan: (code: string) => void; onClose: () => void }) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const streamRef = useRef<MediaStream | null>(null)
-  const rafRef = useRef<number>(0)
-  const [error, setError] = useState<string | null>(null)
-  const [scanning, setScanning] = useState(true)
-
-  const stopStream = useCallback(() => {
-    cancelAnimationFrame(rafRef.current)
-    streamRef.current?.getTracks().forEach(t => t.stop())
-  }, [])
-
-  useEffect(() => {
-    let active = true
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } } })
-      .then(stream => {
-        if (!active) { stream.getTracks().forEach(t => t.stop()); return }
-        streamRef.current = stream
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          videoRef.current.play().catch(() => {})
-        }
-      })
-      .catch(() => setError('No se pudo acceder a la cámara. Comprueba los permisos.'))
-    return () => { active = false; stopStream() }
-  }, [stopStream])
-
-  const tickRef = useRef<() => void>(() => {})
-
-  const tick = useCallback(() => {
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    if (!video || !canvas || !scanning) return
-    if (video.readyState < 2) { rafRef.current = requestAnimationFrame(tickRef.current); return }
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    ctx.drawImage(video, 0, 0)
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    const result = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' })
-    if (result?.data) {
-      const match = result.data.match(/^GIO-BARBER:\/\/member\/(.+)$/)
-      if (match) {
-        setScanning(false)
-        stopStream()
-        onScan(match[1])
-        return
-      }
-    }
-    rafRef.current = requestAnimationFrame(tickRef.current)
-  }, [scanning, stopStream, onScan])
-
-  useEffect(() => { tickRef.current = tick }, [tick])
-
-  useEffect(() => {
-    if (!error && scanning) {
-      rafRef.current = requestAnimationFrame(tick)
-      return () => cancelAnimationFrame(rafRef.current)
-    }
-  }, [error, scanning, tick])
-
-  return (
-    <div
-      onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'var(--overlay)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{ background: 'var(--bg-2)', borderRadius: 16, width: '100%', maxWidth: 380, border: '1px solid var(--line)', boxShadow: 'var(--shadow-lg)', overflow: 'hidden' }}
-      >
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', borderBottom: '1px solid var(--line)' }}>
-          <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--fg-0)', letterSpacing: '0.04em' }}>Escanear tarjeta</div>
-            <div style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', marginTop: 2 }}>Apunta la cámara al código QR del cliente</div>
-          </div>
-          <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: 7, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-3)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
-        </div>
-
-        {/* Camera */}
-        <div style={{ position: 'relative', background: '#000', aspectRatio: '4/3', overflow: 'hidden' }}>
-          {error ? (
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', padding: '1.5rem' }}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--brick-warm)" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-              <div style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', textAlign: 'center' }}>{error}</div>
-            </div>
-          ) : (
-            <>
-              <video ref={videoRef} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              {/* Scanning frame overlay */}
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                <div style={{ width: 180, height: 180, position: 'relative' }}>
-                  {/* Corner brackets */}
-                  {[['0 auto auto 0', '0 auto auto 0'], ['0 0 auto auto', '0 0 auto auto'], ['auto auto 0 0', 'auto auto 0 0'], ['auto 0 0 auto', 'auto 0 0 auto']].map(([_t, _], idx) => {
-                    const isTop = idx < 2; const isLeft = idx % 2 === 0
-                    return (
-                      <div key={idx} style={{
-                        position: 'absolute',
-                        top: isTop ? 0 : undefined, bottom: !isTop ? 0 : undefined,
-                        left: isLeft ? 0 : undefined, right: !isLeft ? 0 : undefined,
-                        width: 24, height: 24,
-                        borderTop: isTop ? '2.5px solid rgba(255,255,255,0.9)' : undefined,
-                        borderBottom: !isTop ? '2.5px solid rgba(255,255,255,0.9)' : undefined,
-                        borderLeft: isLeft ? '2.5px solid rgba(255,255,255,0.9)' : undefined,
-                        borderRight: !isLeft ? '2.5px solid rgba(255,255,255,0.9)' : undefined,
-                        borderRadius: isTop && isLeft ? '4px 0 0 0' : isTop ? '0 4px 0 0' : isLeft ? '0 0 0 4px' : '0 0 4px 0',
-                      }} />
-                    )
-                  })}
-                  <div style={{ position: 'absolute', inset: 0, border: '1px solid rgba(255,255,255,0.15)', borderRadius: 4 }} />
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-        <canvas ref={canvasRef} style={{ display: 'none' }} />
-
-        <div style={{ padding: '0.875rem 1.25rem' }}>
-          <button onClick={onClose} style={{ width: '100%', padding: '0.7rem', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>
-            Cancelar
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 const navBtn: React.CSSProperties = {
   display: 'flex', alignItems: 'center', justifyContent: 'center',
