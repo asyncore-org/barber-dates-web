@@ -46,6 +46,8 @@ export interface UpdateAppointmentData {
 
 export interface IAppointmentRepository {
   getForClient(clientId: string): Promise<Appointment[]>
+  /** Returns only completed + cancelled appointments for the client (used by lazy history). */
+  getHistoryForClient(clientId: string): Promise<Appointment[]>
   getForBarber(barberId: string): Promise<Appointment[]>
   getAll(): Promise<Appointment[]>
   create(data: CreateAppointmentData): Promise<Appointment>

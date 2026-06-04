@@ -4,6 +4,20 @@ import { repositories } from '@/infrastructure'
 import type { Appointment, CreateAppointmentData, AppointmentStatus, UpdateAppointmentData } from '@/domain/appointment'
 import { queryKeys, STALE } from './queryKeys'
 
+/** Client view: returns only completed+cancelled appointments (history).
+ *  enabled=false until the user opens the history accordion — avoids DB call on mount. */
+export function useClientHistoryAppointments(
+  clientId: string | undefined,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: queryKeys.appointments.list(clientId ? `history-${clientId}` : 'history-none'),
+    queryFn: () => repositories.appointments().getHistoryForClient(clientId!),
+    enabled: !!clientId && enabled,
+    staleTime: STALE.LONG,
+  })
+}
+
 /** Client view: returns appointments for the given user.
  *  Accepts optional initialData from sessionStorage so the UI renders instantly on reload. */
 export function useClientAppointments(
