@@ -296,7 +296,13 @@ export default function DashboardPage() {
 
   const nowMins = now.getHours() * 60 + now.getMinutes()
   const upcomingToday = appointments
-    .filter(a => a.day === todayCols && (weekOffset !== 0 || a.startH * 60 + a.startM >= nowMins))
+    .filter(a => {
+      if (a.day !== todayCols) return false
+      if (weekOffset !== 0) return true
+      // Include appointments not yet finished (started but still active counts as upcoming)
+      const endMins = a.startH * 60 + a.startM + (a.durationMin ?? 60)
+      return endMins > nowMins
+    })
     .sort((a, b) => a.startH * 60 + a.startM - (b.startH * 60 + b.startM))
 
   const landscapeRows = useMemo(() => {
