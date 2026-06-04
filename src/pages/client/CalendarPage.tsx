@@ -766,7 +766,7 @@ export default function CalendarPage() {
       <Helmet><title>Pedir cita — {shopName}</title></Helmet>
 
       {/* ── DESKTOP: fits viewport, no scrollbar ─────────────────────────── */}
-      <div className="hidden lg:flex" style={{ flexDirection: 'column', height: 'calc(100dvh - 104px)', padding: '1.25rem 0', overflow: 'hidden' }}>
+      <div className="hidden lg:flex" style={{ flexDirection: 'column', height: 'calc(100dvh - 105px)', padding: '1.25rem 0', overflow: 'hidden' }}>
         {/* Title row */}
         <div style={{ flexShrink: 0, marginBottom: '1rem', maxWidth: '920px', width: '100%', alignSelf: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

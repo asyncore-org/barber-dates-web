@@ -426,9 +426,11 @@ export default function DashboardPage() {
       </div>
 
       {/* Desktop + landscape mobile: two-column layout */}
+      {/* TopBar = 56px content + 1px border = 57px. main pt-6=24px + pb-6=24px → offset = 105px.
+          overflow:hidden clips any sub-pixel rounding so no browser scrollbar appears. */}
       <div
         className={`${isLandscape ? 'flex flex-col gap-4' : 'hidden md:grid md:grid-cols-[1fr_360px]'} gap-6`}
-        style={!isLandscape ? { height: 'calc(100dvh - 104px)', alignItems: 'stretch', minHeight: 0 } : undefined}
+        style={!isLandscape ? { height: 'calc(100dvh - 105px)', alignItems: 'stretch', minHeight: 0, overflow: 'hidden' } : undefined}
       >
 
         {/* Left: agenda semanal */}
