@@ -509,8 +509,8 @@ export default function AppointmentsPage() {
 
       <div className="flex flex-wrap gap-4 md:gap-6" style={{ marginBottom: '1.25rem' }}>
         {[
-          { label: 'Servicio',  value: nextService.name },
-          { label: 'Barbero',   value: nextBarber.fullName },
+          { label: 'Servicio',   value: nextService.name },
+          { label: 'Empleado',   value: nextBarber.fullName },
           { label: 'Duración',  value: `${nextService.durationMinutes} min` },
           { label: 'Precio',    value: `${nextService.price}€` },
         ].map(({ label, value }) => (
@@ -648,7 +648,7 @@ export default function AppointmentsPage() {
         style={{
           gridTemplateColumns: '1fr 0.85fr',
           columnGap: '2rem',
-          height: 'calc(100dvh - 105px)',
+          height: 'calc(100dvh - 155px)',
           overflow: 'hidden',
           paddingLeft: '0.5rem',
           paddingRight: '0.5rem',

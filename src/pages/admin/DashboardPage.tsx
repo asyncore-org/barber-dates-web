@@ -160,7 +160,7 @@ export default function DashboardPage() {
         ),
       )
       if (available.length === 0) {
-        setApptError('No hay barberos disponibles para ese horario.')
+        setApptError('No hay empleados disponibles para ese horario.')
         return
       }
       resolvedBarberId = available[Math.floor(Math.random() * available.length)].id
@@ -256,7 +256,7 @@ export default function DashboardPage() {
   const metrics = [
     { label: 'Citas hoy', value: appointments.filter(a => a.day === todayCols).length, icon: 'calendar' as const, color: 'var(--led)' },
     { label: 'Ingresos hoy', value: `${todayRevenue}€`, icon: 'euro' as const, color: 'var(--gold)' },
-    { label: 'Barberos', value: activeBarbers.length, icon: 'users' as const, color: 'var(--brick-warm)' },
+    { label: 'Empleados', value: activeBarbers.length, icon: 'users' as const, color: 'var(--brick-warm)' },
     { label: 'Esta semana', value: `${weekRevenue}€`, icon: 'clock' as const, color: 'var(--led-soft)' },
   ]
 
@@ -402,7 +402,7 @@ export default function DashboardPage() {
         {/* Barbers (mobile) */}
         <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '1rem' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)', marginBottom: '0.875rem' }}>
-            BARBEROS
+            EQUIPO
           </div>
           <div className="flex flex-col gap-2">
             {barbers.map(b => (
@@ -412,7 +412,7 @@ export default function DashboardPage() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{b.fullName}</div>
-                  <div style={{ fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>{b.role ?? 'Barbero'}</div>
+                  <div style={{ fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>{b.role ?? 'Empleado'}</div>
                 </div>
                 <div style={{
                   width: 8, height: 8, borderRadius: '50%',
@@ -899,7 +899,7 @@ export default function DashboardPage() {
           {/* Barbers */}
           <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden' }}>
             <div style={{ padding: '0.875rem 1rem 0.625rem', borderBottom: '1px solid var(--line)' }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.14em', color: 'var(--fg-3)' }}>BARBEROS</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.14em', color: 'var(--fg-3)' }}>EQUIPO</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               {barbers.map((b, i) => {

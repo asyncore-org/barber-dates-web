@@ -119,7 +119,7 @@ export function RescheduleModal({ appt, weekStart, schedule, onClose, onConfirm 
 
         {/* Barbero */}
         <div>
-          <div style={LABEL}>BARBERO</div>
+          <div style={LABEL}>EMPLEADO</div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             {activeBarbers.map(b => (
               <button

@@ -23,7 +23,7 @@ import { AppearanceSection } from '@/components/appearance'
 
 type Section = 'servicios' | 'horarios' | 'barberos' | 'fidelizacion' | 'clientes' | 'barberia' | 'apariencia'
 
-const BARBER_ROLES = ['Barbero', 'Propietario'] as const
+const BARBER_ROLES = ['Empleado', 'Propietario'] as const
 
 const SECTIONS: { id: Section; label: string; adminOnly?: boolean }[] = [
   { id: 'servicios',    label: 'Servicios'    },
@@ -364,13 +364,13 @@ export default function SettingsPage() {
     const edits = barberEdits[b.id] ?? {}
     updateBarber.mutate({ id: b.id, data: { fullName: edits.fullName ?? b.fullName, role: edits.role ?? b.role ?? undefined, phone: edits.phone ?? b.phone ?? undefined, email: edits.email ?? b.email ?? undefined, bio: edits.bio ?? b.bio ?? undefined, breakStart: edits.breakStart !== undefined ? edits.breakStart : b.breakStart, breakEnd: edits.breakEnd !== undefined ? edits.breakEnd : b.breakEnd } }, {
       onSuccess: () => { setBarberEdits(e => { const copy = { ...e }; delete copy[b.id]; return copy }); setEditingBarberId(null); clearSecError('barberos') },
-      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('barberos', 'No se pudo guardar el barbero. Revisa tu conexión.') },
+      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('barberos', 'No se pudo guardar el empleado. Revisa tu conexión.') },
     })
   }
 
   const handleToggleBarberActive = (b: Barber) => {
     updateBarber.mutate({ id: b.id, data: { isActive: !b.isActive } }, {
-      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('barberos', 'No se pudo actualizar el estado del barbero. Revisa tu conexión.') },
+      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('barberos', 'No se pudo actualizar el estado del empleado. Revisa tu conexión.') },
     })
   }
 
@@ -392,7 +392,7 @@ export default function SettingsPage() {
         const msg = e instanceof Error ? e.message : null
         setBarberCreateError(msg === 'Email no registrado'
           ? 'No se encontró ninguna cuenta con ese email. El usuario debe registrarse primero.'
-          : 'No se pudo dar de alta al barbero. Comprueba tu conexión e inténtalo de nuevo.')
+          : 'No se pudo añadir al empleado. Comprueba tu conexión e inténtalo de nuevo.')
       },
     })
   }
@@ -862,7 +862,7 @@ export default function SettingsPage() {
                       </div>
                       {d.open && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', paddingLeft: 2 }}>
-                          <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', marginRight: 2 }}>Barberos:</span>
+                          <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', marginRight: 2 }}>Empleados:</span>
                           {activeBarbers.map(b => {
                             const on = d.barberIds.includes(b.id)
                             return (
@@ -967,7 +967,7 @@ export default function SettingsPage() {
                     </div>
                     {!closureTotal && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', marginRight: 2 }}>Barberos bloqueados:</span>
+                        <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', marginRight: 2 }}>Empleados bloqueados:</span>
                         {activeBarbers.map(b => {
                           const on = closureBarberIds.includes(b.id)
                           return (
@@ -998,18 +998,18 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {/* === BARBEROS === */}
+          {/* === EQUIPO === */}
           {section === 'barberos' && (
             <div>
               <SectionTitle
-                infoTitle="GUÍA — BARBEROS"
+                infoTitle="GUÍA — EQUIPO"
                 infoItems={[
                   { icon: '👤', label: 'Lista del equipo', description: 'Aquí gestionas todos los miembros del equipo: nombre, rol, teléfono y descanso.' },
-                  { icon: '➕', label: 'Añadir barbero', description: 'Introduce el email de un usuario registrado para añadirlo al equipo como barbero.' },
-                  { icon: '⏸️', label: 'Descanso diario', description: 'Define la hora de inicio y fin del descanso de cada barbero. Esos huecos no estarán disponibles.' },
-                  { icon: '🗑️', label: 'Eliminar barbero', description: 'Al eliminar un barbero se desactiva su acceso. Las citas existentes no se cancelan automáticamente.' },
+                  { icon: '➕', label: 'Añadir empleado', description: 'Introduce el email de un usuario registrado para añadirlo al equipo.' },
+                  { icon: '⏸️', label: 'Descanso diario', description: 'Define la hora de inicio y fin del descanso. Esos huecos no estarán disponibles.' },
+                  { icon: '🗑️', label: 'Dar de baja', description: 'Al dar de baja a un empleado se desactiva su acceso. Las citas existentes no se cancelan.' },
                 ]}
-              >BARBEROS</SectionTitle>
+              >EQUIPO</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                 {barbersData.map(b => {
                   const edits = getBarberEdit(b.id)
@@ -1022,7 +1022,7 @@ export default function SettingsPage() {
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 14, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500, lineHeight: 1.2 }}>{displayName}</div>
-                          <div style={{ fontSize: 11, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', marginTop: 1 }}>{edits.role ?? b.role ?? 'Barbero'}</div>
+                          <div style={{ fontSize: 11, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', marginTop: 1 }}>{edits.role ?? b.role ?? 'Empleado'}</div>
                         </div>
                         <button
                           onClick={() => handleToggleBarberActive(b)}
@@ -1070,7 +1070,7 @@ export default function SettingsPage() {
                             <div>
                               <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Rol</label>
                               {(() => {
-                                const currentRole = String(edits.role ?? b.role ?? 'Barbero')
+                                const currentRole = String(edits.role ?? b.role ?? 'Empleado')
                                 const options = BARBER_ROLES.includes(currentRole as typeof BARBER_ROLES[number])
                                   ? BARBER_ROLES
                                   : ([...BARBER_ROLES, currentRole] as readonly string[])
@@ -1098,9 +1098,9 @@ export default function SettingsPage() {
 
                 {showBarberForm && (
                   <div style={{ background: 'var(--bg-3)', borderRadius: 10, border: '1px dashed var(--line)', padding: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <div style={{ fontSize: 13, color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontWeight: 500 }}>Dar de alta barbero</div>
+                    <div style={{ fontSize: 13, color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontWeight: 500 }}>Añadir empleado</div>
                     <div style={{ fontSize: 12, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', lineHeight: 1.5 }}>
-                      El usuario debe tener cuenta registrada. Si su rol es Cliente, se elevará automáticamente a Barbero.
+                      El usuario debe tener cuenta registrada. Se añadirá automáticamente al equipo.
                     </div>
                     <div>
                       <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Email del usuario *</label>
@@ -1139,11 +1139,11 @@ export default function SettingsPage() {
                 {!showBarberForm && (
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                     <button onClick={() => { setShowBarberForm(true); setBarberCreateError(null) }} style={{ padding: '0.5rem 0.875rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>
-                      + Añadir barbero
+                      + Añadir empleado
                     </button>
                     {user?.email && !barbersData.some(b => b.email === user.email) && (
                       <button onClick={handleAddSelfAsBarber} style={{ padding: '0.5rem 0.875rem', minHeight: 40, borderRadius: 8, border: '1px dashed var(--led-soft)', background: 'rgba(123,79,255,0.07)', color: 'var(--led-soft)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>
-                        + Añadirme como barbero
+                        + Añadirme al equipo
                       </button>
                     )}
                   </div>
@@ -1155,16 +1155,16 @@ export default function SettingsPage() {
                 infoTitle="GUÍA — OPCIONES DE RESERVA"
                 infoItems={[
                   { icon: '📆', label: 'Días de antelación', description: 'Máximo de días con los que un cliente puede reservar con anticipación (ej. 14 días = reserva 2 semanas antes).' },
-                  { icon: '💈', label: 'Elección de barbero', description: 'Activa esta opción para que el cliente pueda elegir su barbero preferido al reservar.' },
+                  { icon: '💈', label: 'Elección de empleado', description: 'Activa esta opción para que el cliente pueda elegir su empleado preferido al reservar.' },
                   { icon: '⏱️', label: 'Intervalo de slots', description: 'Cada cuántos minutos aparecen huecos disponibles en el calendario de citas.' },
                   { icon: '🔧', label: 'Buffer entre citas', description: 'Tiempo de preparación entre una cita y la siguiente (en minutos).' },
                 ]}
               >OPCIONES DE RESERVA</SectionTitle>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
                 <div>
-                  <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>Permitir elegir barbero</div>
+                  <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>Permitir elegir empleado</div>
                   <div style={{ fontSize: 11, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', marginTop: 2 }}>
-                    {allowBarberChoice ? 'Los clientes pueden seleccionar barbero al reservar' : 'El sistema asignará barbero automáticamente'}
+                    {allowBarberChoice ? 'Los clientes pueden seleccionar empleado al reservar' : 'El sistema asignará empleado automáticamente'}
                   </div>
                 </div>
                 <button
@@ -1982,7 +1982,7 @@ export default function SettingsPage() {
 
       {deleteBarberTarget && (
         <ConfirmDialog
-          title="Dar de baja a barbero"
+          title="Dar de baja a empleado"
           message={`¿Dar de baja a ${deleteBarberTarget.fullName}? Quedará inactivo y no aparecerá en el sistema de reservas. Sus citas existentes no se verán afectadas.`}
           confirmLabel="Dar de baja"
           danger

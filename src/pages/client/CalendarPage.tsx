@@ -214,7 +214,7 @@ function BarberCard({ barber, selected, onClick }: { barber: Barber | null; sele
       </div>
       <div>
         <div style={{ fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 600, color: selected ? 'var(--gold)' : 'var(--fg-0)' }}>
-          {isAny ? 'Cualquier barbero' : barber.fullName}
+          {isAny ? 'Cualquier empleado' : barber.fullName}
         </div>
         <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-3)', marginTop: 1 }}>
           {isAny ? 'Sin preferencia' : (barber as Barber & { specialty?: string }).specialty ?? ''}
@@ -445,7 +445,7 @@ export default function CalendarPage() {
         ) : !selectedDate ? (
           <p style={{ fontSize: 13, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}>Selecciona una fecha en el Paso 1.</p>
         ) : availableBarbers.length === 0 ? (
-          <p style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>No hay barberos disponibles este día.</p>
+          <p style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>No hay empleados disponibles este día.</p>
         ) : (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '0.75rem' }}>
@@ -462,7 +462,7 @@ export default function CalendarPage() {
       </AccordionStep>
 
       {allowBarberChoice && (
-        <AccordionStep num={3} title="Barbero"
+        <AccordionStep num={3} title="Empleado"
           isOpen={activeStep === 'barber'} isDone={!!selectedSlot} isLocked={!selectedSlot}
           onToggle={() => toggle('barber')}
         >
@@ -621,7 +621,7 @@ export default function CalendarPage() {
           {/* Dashed divider */}
           <div style={{ margin: `0.875rem ${p}`, borderTop: '1px dashed var(--line-2)', opacity: 0.5 }} />
 
-          {/* Barbero row */}
+          {/* Empleado row */}
           <div style={{ padding: `0 ${p}`, display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
             <div style={{
               width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
@@ -638,7 +638,7 @@ export default function CalendarPage() {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', color: 'var(--fg-3)', textTransform: 'uppercase', marginBottom: 3 }}>
-                Barbero
+                Empleado
               </div>
               <span style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: selectedSlot ? 'var(--fg-0)' : 'var(--fg-4)', fontWeight: selectedSlot ? 500 : 400 }}>
                 {selectedSlot ? (selectedBarber?.fullName ?? 'Cualquier barbero') : '—'}
@@ -768,25 +768,22 @@ export default function CalendarPage() {
       {/* ── DESKTOP: fits viewport, no scrollbar ─────────────────────────── */}
       <div className="hidden lg:flex" style={{ flexDirection: 'column', height: 'calc(100dvh - 104px)', padding: '1.25rem 0', overflow: 'hidden' }}>
         {/* Title row */}
-        <div style={{ flexShrink: 0, marginBottom: '1rem', maxWidth: '920px', width: '100%', alignSelf: 'center', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
-          <div>
+        <div style={{ flexShrink: 0, marginBottom: '1rem', maxWidth: '920px', width: '100%', alignSelf: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(20px, 2.2vw, 30px)', letterSpacing: '0.06em', color: 'var(--fg-0)', lineHeight: 1, margin: 0 }}>
               PEDIR CITA
             </h1>
-            <p style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-3)', marginTop: 4, marginBottom: 0 }}>
-              Completa cada paso para reservar tu cita
-            </p>
+            <InfoButton
+              title="GUÍA — PEDIR CITA"
+              items={[
+                { icon: '📆', label: '1. Elige el día', description: 'Selecciona un día disponible en el calendario. Los días con punto azul tienen huecos libres.' },
+                { icon: '✂️', label: '2. Servicio', description: 'Elige el servicio que deseas: corte, afeitado, etc. Verás duración y precio.' },
+                { icon: '💈', label: '3. Empleado', description: 'Selecciona tu empleado favorito o cualquiera disponible en ese horario.' },
+                { icon: '⏰', label: '4. Hora', description: 'Los huecos en gris ya están ocupados o bloqueados. Elige uno libre.' },
+                { icon: '✅', label: '5. Confirma', description: 'Revisa el resumen y pulsa "Confirmar cita" para reservar.' },
+              ]}
+            />
           </div>
-          <InfoButton
-            title="GUÍA — PEDIR CITA"
-            items={[
-              { icon: '📆', label: '1. Elige el día', description: 'Selecciona un día disponible en el calendario. Los días con punto azul tienen huecos libres.' },
-              { icon: '✂️', label: '2. Selecciona el servicio', description: 'Elige el servicio que deseas: corte, afeitado, etc. Verás duración y precio.' },
-              { icon: '💈', label: '3. Elige el barbero', description: 'Selecciona tu barbero favorito o cualquiera disponible en ese horario.' },
-              { icon: '⏰', label: '4. Elige la hora', description: 'Los huecos en gris ya están ocupados o bloqueados. Elige uno libre.' },
-              { icon: '✅', label: '5. Confirma', description: 'Revisa el resumen: servicio, barbero, fecha y precio. Pulsa "Confirmar cita" para reservar.' },
-            ]}
-          />
         </div>
         {/* Two-column grid — fills remaining height */}
         <div style={{
@@ -812,7 +809,7 @@ export default function CalendarPage() {
       {/* ── MOBILE: natural scroll ────────────────────────────────────────── */}
       <div className="flex flex-col lg:hidden" style={{ gap: '1.25rem', paddingBottom: '2rem' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.25rem', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
             <div>
               <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(22px, 6vw, 30px)', letterSpacing: '0.06em', color: 'var(--fg-0)', lineHeight: 1, margin: 0 }}>
                 PEDIR CITA
@@ -824,11 +821,11 @@ export default function CalendarPage() {
             <InfoButton
               title="GUÍA — PEDIR CITA"
               items={[
-                { icon: '📆', label: '1. Elige el día', description: 'Selecciona un día disponible. Los días con punto azul tienen huecos.' },
-                { icon: '✂️', label: '2. Selecciona el servicio', description: 'Elige el servicio que deseas: corte, afeitado, etc.' },
-                { icon: '💈', label: '3. Elige el barbero', description: 'Selecciona tu barbero preferido o cualquiera disponible.' },
-                { icon: '⏰', label: '4. Elige la hora', description: 'Los huecos grises ya están ocupados. Elige uno libre.' },
-                { icon: '✅', label: '5. Confirma', description: 'Revisa el resumen y pulsa "Confirmar cita" para reservar.' },
+                { icon: '📆', label: '1. Día', description: 'Selecciona un día disponible. Los días con punto azul tienen huecos.' },
+                { icon: '✂️', label: '2. Servicio', description: 'Elige el servicio: corte, afeitado, etc.' },
+                { icon: '💈', label: '3. Empleado', description: 'Selecciona tu empleado preferido o cualquiera disponible.' },
+                { icon: '⏰', label: '4. Hora', description: 'Los huecos grises ya están ocupados. Elige uno libre.' },
+                { icon: '✅', label: '5. Confirma', description: 'Revisa el resumen y pulsa "Confirmar cita".' },
               ]}
             />
           </div>
@@ -848,7 +845,7 @@ export default function CalendarPage() {
               { label: 'Fecha',    value: selectedDate ? fmtLong(selectedDate) : '' },
               { label: 'Hora',     value: selectedSlot ?? '' },
               { label: 'Servicio', value: selectedService?.name ?? '' },
-              { label: 'Barbero',  value: selectedBarber?.fullName ?? 'Cualquier barbero' },
+              { label: 'Empleado', value: selectedBarber?.fullName ?? 'Cualquier empleado' },
               { label: 'Duración', value: selectedService ? `${selectedService.durationMinutes} min` : '' },
               { label: 'Precio',   value: selectedService ? `${selectedService.price}€` : '' },
             ].map(({ label, value }) => (
