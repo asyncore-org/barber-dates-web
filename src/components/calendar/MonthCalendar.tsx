@@ -65,12 +65,12 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
   return (
     <div>
       {!hideNav && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.875rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
             <button onClick={prev} disabled={isAtMinMonth} className="cal-nav-btn">
               <Icon name="chevronL" size={14} />
             </button>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: 'var(--fg-0)', letterSpacing: '0.06em', minWidth: 180, textAlign: 'center' }}>
+            <span style={{ fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 600, color: 'var(--fg-0)', letterSpacing: '0.08em', minWidth: 130, textAlign: 'center', textTransform: 'uppercase' }}>
               {MONTH_NAMES[month]} {year}
             </span>
             <button onClick={next} disabled={isNextMonthBeyondMax} className="cal-nav-btn">
@@ -78,21 +78,21 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
             </button>
           </div>
           <button onClick={goToday} disabled={isAtCurrentMonth && !minNorm} className="cal-nav-btn"
-            style={{ width: 'auto', padding: '0 0.875rem', fontSize: 12, fontFamily: 'var(--font-ui)' }}>
+            style={{ width: 'auto', padding: '0 0.625rem', fontSize: 11, fontFamily: 'var(--font-ui)' }}>
             Hoy
           </button>
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 4 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 6 }}>
         {DAYS.map(d => (
-          <div key={d} style={{ textAlign: 'center', fontSize: 10, color: 'var(--fg-4)', fontWeight: 700, fontFamily: 'var(--font-ui)', padding: '0.5rem 0', letterSpacing: '0.08em' }}>
+          <div key={d} style={{ textAlign: 'center', fontSize: 10, color: 'var(--fg-4)', fontWeight: 700, fontFamily: 'var(--font-ui)', padding: '0.25rem 0', letterSpacing: '0.1em', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
             {d}
           </div>
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
         {days.map(({ day, current }, i) => {
           if (!current) return <div key={`e${i}`} />
           const date = new Date(year, month, day)
@@ -120,30 +120,26 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
               data-today={isToday || undefined}
               style={{
                 position: 'relative',
-                height: 44,
+                height: 36,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                borderRadius: 10,
-                border: isSelected
-                  ? '2px solid var(--gold)'
-                  : isToday
-                    ? '1.5px solid rgba(201,162,74,0.5)'
-                    : '1px solid transparent',
                 background: isSelected
                   ? 'var(--gold)'
                   : isToday
-                    ? 'rgba(201,162,74,0.1)'
-                    : 'var(--bg-3)',
+                    ? 'rgba(201,162,74,0.08)'
+                    : 'transparent',
+                borderRadius: 6,
+                border: isToday && !isSelected ? '1px solid rgba(201,162,74,0.3)' : 'none',
                 color: isDisabled ? 'var(--fg-4)' : isSelected ? '#000' : 'var(--fg-0)',
-                fontSize: 14,
+                fontSize: 13,
                 fontFamily: 'var(--font-ui)',
                 fontWeight: isToday || isSelected ? 700 : 400,
-                cursor: isDisabled ? 'default' : 'pointer',
-                boxShadow: isSelected ? '0 2px 12px rgba(201,162,74,0.3)' : 'none',
-                opacity: isDisabled ? (isClosed ? 0.3 : isBeyondMax ? 0.15 : 0.3) : 1,
+                cursor: isDisabled ? 'not-allowed' : 'pointer',
+                boxShadow: isSelected ? '0 2px 8px rgba(201,162,74,0.25)' : 'none',
+                opacity: isDisabled ? (isClosed ? 0.25 : isBeyondMax ? 0.15 : 0.25) : 1,
                 textDecoration: isClosed ? 'line-through' : 'none',
-                transition: 'all 0.12s',
+                transition: 'background 0.12s, color 0.12s',
               }}
             >
               {day}
@@ -151,8 +147,8 @@ export function MonthCalendar({ selected, onSelect, month, year, onMonthChange, 
                 <div style={{
                   position: 'absolute',
                   bottom: 3,
-                  width: 6,
-                  height: 6,
+                  width: 4,
+                  height: 4,
                   borderRadius: '50%',
                   background: isPartial ? 'var(--gold)' : 'var(--led)',
                 }} />
