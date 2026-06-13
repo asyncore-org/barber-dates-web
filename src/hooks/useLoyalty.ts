@@ -216,6 +216,31 @@ export function useAdminUndoRevoke() {
   })
 }
 
+/** Owner-only: delete all transaction history for a client's card. */
+export function useClearLoyaltyHistory() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (clientId: string) =>
+      repositories.loyalty().clearLoyaltyHistory(clientId),
+    onSuccess: (_d, clientId) => {
+      qc.invalidateQueries({ queryKey: queryKeys.loyalty.all() })
+      qc.invalidateQueries({ queryKey: queryKeys.loyalty.byUser(clientId) })
+      qc.invalidateQueries({ queryKey: ['loyalty', 'transactions', clientId] })
+    },
+  })
+}
+
+/** Admin lookup: find any loyalty card by its member code. */
+export function useSearchCardByCode(memberCode: string | null) {
+  return useQuery({
+    queryKey: ['loyalty', 'search-by-code', memberCode ?? ''],
+    queryFn: () => repositories.loyalty().getCardByMemberCode(memberCode!),
+    enabled: !!memberCode && memberCode.trim().length >= 4,
+    staleTime: 0,
+    retry: false,
+  })
+}
+
 /** Undoes an award — removes points as if never granted. */
 export function useAdminUndoAward() {
   const qc = useQueryClient()

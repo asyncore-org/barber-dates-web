@@ -100,7 +100,7 @@ async function getCompletedCycles(cardId: string): Promise<number> {
     .from('loyalty_transactions')
     .select('id')
     .eq('card_id', cardId)
-    .eq('type', 'manual')
+    .eq('type', 'adjustment')
     .eq('description', '__cycle_complete__')
   if (error) throw error
   return (data ?? []).length
@@ -157,7 +157,7 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
       await insforgeClient.database.from('redeemed_rewards').delete().eq('card_id', card.id)
       await insforgeClient.database
         .from('loyalty_transactions')
-        .insert({ card_id: card.id, points: 0, type: 'manual', description: '__cycle_complete__' })
+        .insert({ card_id: card.id, points: 0, type: 'adjustment', description: '__cycle_complete__' })
       return []
     }
 
@@ -181,7 +181,15 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
     const adjustedCost = cost * Math.pow(2, cycles)
     if (card.total_points < adjustedCost) throw new Error('Insufficient points')
 
-    // Progressive: mark as redeemed but DO NOT deduct points
+    // Deduct points from the card
+    const newPoints = Math.max(0, card.total_points - adjustedCost)
+    const { error: updateErr } = await insforgeClient.database
+      .from('loyalty_cards')
+      .update({ total_points: newPoints })
+      .eq('id', card.id)
+    if (updateErr) throw updateErr
+
+    // Mark as redeemed
     const { error: rrErr } = await insforgeClient.database
       .from('redeemed_rewards')
       .insert({ card_id: card.id, reward_id: rewardId })
@@ -189,7 +197,7 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
 
     const { error: txErr } = await insforgeClient.database
       .from('loyalty_transactions')
-      .insert({ card_id: card.id, points: 0, type: 'redeemed', description: `Premio canjeado: ${label}` })
+      .insert({ card_id: card.id, points: -adjustedCost, type: 'redeemed', description: `Premio canjeado: ${label}` })
     if (txErr) throw txErr
 
     // Auto-reset: if this was the last available reward, clear redeemed list immediately
@@ -203,7 +211,7 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
       await insforgeClient.database.from('redeemed_rewards').delete().eq('card_id', card.id)
       await insforgeClient.database
         .from('loyalty_transactions')
-        .insert({ card_id: card.id, points: 0, type: 'manual', description: '__cycle_complete__' })
+        .insert({ card_id: card.id, points: 0, type: 'adjustment', description: '__cycle_complete__' })
     }
   }
 
@@ -404,8 +412,19 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
 
     const { error: txErr } = await insforgeClient.database
       .from('loyalty_transactions')
-      .insert({ card_id: card.id, points, type: 'manual', description })
+      .insert({ card_id: card.id, points, type: 'adjustment', description })
     if (txErr) throw txErr
+  }
+
+  async clearLoyaltyHistory(clientId: string): Promise<void> {
+    const card = await getCardByClientId(clientId)
+    if (!card) throw new Error('No loyalty card found for client')
+
+    const { error } = await insforgeClient.database
+      .from('loyalty_transactions')
+      .delete()
+      .eq('card_id', card.id)
+    if (error) throw error
   }
 
   async adminAwardForAppointment(appointmentId: string, clientId: string, points: number): Promise<void> {
@@ -458,6 +477,22 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
       .maybeSingle()
     if (error) throw error
     return (data as ServicePointsRow | null)?.loyalty_points ?? null
+  }
+
+  async getCardByMemberCode(memberCode: string): Promise<import('@/domain/loyalty').LoyaltyCard | null> {
+    // Member codes are derived deterministically from the card UUID, so we
+    // fetch all cards and find the matching one client-side.
+    const { data, error } = await insforgeClient.database
+      .from('loyalty_cards')
+      .select(CARD_SELECT)
+      .order('created_at', { ascending: false })
+      .limit(2000)
+    if (error) throw error
+    const rows = (data ?? []) as LoyaltyCardRow[]
+    const match = rows.find(row => generateMemberCode(row.id) === memberCode.toUpperCase())
+    if (!match) return null
+    const completedCycles = await getCompletedCycles(match.id)
+    return { ...mapToLoyaltyCard(match), completedCycles }
   }
 
   async getRecentTransactions(clientId: string, limit = 10): Promise<LoyaltyTransaction[]> {

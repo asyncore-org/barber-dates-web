@@ -72,4 +72,8 @@ export interface ILoyaltyRepository {
   getRecentTransactions(clientId: string, limit?: number): Promise<LoyaltyTransaction[]>
   /** Returns service loyalty_points or null if service doesn't exist. */
   getServiceLoyaltyPoints(serviceId: string): Promise<number | null>
+  /** Finds a loyalty card by its member code (admin lookup). Returns null if not found. */
+  getCardByMemberCode(memberCode: string): Promise<LoyaltyCard | null>
+  /** Deletes all transaction history for a client's loyalty card (owner-only action). */
+  clearLoyaltyHistory(clientId: string): Promise<void>
 }
