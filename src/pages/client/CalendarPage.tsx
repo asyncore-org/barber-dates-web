@@ -736,8 +736,8 @@ export default function CalendarPage() {
           {/* ── Rewards ── */}
           {redeemableRewards.length > 0 && (
             <>
-              <div style={{ margin: `0.875rem ${p}`, borderTop: '1px dashed var(--line-2)', opacity: 0.5 }} />
-              <div style={{ padding: `0 ${p} 1rem` }}>
+              <div style={{ margin: `0.875rem ${p} 0`, borderTop: '1px dashed var(--line-2)', opacity: 0.5 }} />
+              <div style={{ padding: `0.75rem ${p} 1rem` }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                   <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', color: 'var(--fg-3)', textTransform: 'uppercase' }}>
                     Canjear recompensa
@@ -746,7 +746,7 @@ export default function CalendarPage() {
                     {loyaltyPoints} pts
                   </span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
                   {redeemableRewards.map(r => {
                     const active = selectedRewardId === r.id
                     return (
@@ -754,31 +754,33 @@ export default function CalendarPage() {
                         key={r.id}
                         onClick={() => setSelectedRewardId(active ? null : r.id)}
                         style={{
-                          display: 'flex', alignItems: 'center', gap: '0.625rem',
-                          padding: '0.5rem 0.75rem', borderRadius: 10, textAlign: 'left',
+                          display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+                          padding: '0.35rem 0.625rem', borderRadius: 20,
                           border: active ? '1.5px solid var(--gold)' : '1px solid var(--line)',
-                          background: active ? 'rgba(201,162,74,0.08)' : 'rgba(255,255,255,0.02)',
-                          cursor: 'pointer', transition: 'all 0.15s',
+                          background: active ? 'rgba(201,162,74,0.12)' : 'rgba(255,255,255,0.03)',
+                          cursor: 'pointer', transition: 'all 0.15s', maxWidth: '100%',
                         }}
                       >
                         <div style={{
-                          width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
-                          border: active ? '2px solid var(--gold)' : '1.5px solid var(--fg-4)',
-                          background: active ? 'var(--gold)' : 'transparent',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          transition: 'all 0.15s',
+                          width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+                          background: active ? 'var(--gold)' : 'var(--fg-4)',
+                          transition: 'background 0.15s',
+                        }} />
+                        <span style={{
+                          fontFamily: 'var(--font-ui)', fontSize: 11,
+                          color: active ? 'var(--gold)' : 'var(--fg-2)',
+                          fontWeight: active ? 600 : 400,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          maxWidth: 150,
                         }}>
-                          {active && (
-                            <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
-                              <path d="M2 6l3 3 5-5" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          )}
-                        </div>
-                        <span style={{ flex: 1, fontFamily: 'var(--font-ui)', fontSize: 12, color: active ? 'var(--fg-0)' : 'var(--fg-2)', fontWeight: active ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {r.label}
                         </span>
-                        <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--gold)', flexShrink: 0, fontWeight: 600 }}>
-                          {r.cost} pts
+                        <span style={{
+                          fontFamily: 'var(--font-ui)', fontSize: 10,
+                          color: active ? 'var(--gold)' : 'var(--fg-4)',
+                          flexShrink: 0, fontWeight: active ? 700 : 400,
+                        }}>
+                          · {r.cost}pts
                         </span>
                       </button>
                     )
