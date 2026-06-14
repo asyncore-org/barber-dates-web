@@ -128,8 +128,8 @@ export function LoyaltyCard({
   stamps,
   memberCode,
   rewards = [],
-  onRedeem,
-  redeemPending = false,
+  onRedeem: _onRedeem,
+  redeemPending: _redeemPending,
   fill = false,
   compact = false,
   createdAt,
@@ -196,16 +196,16 @@ export function LoyaltyCard({
   }, [])
 
   const HP  = sm ? '1rem'   : '1.5rem'
-  const VPH = sm ? '0.6rem' : '1rem'
+  const VPH = sm ? '0.4rem' : '0.65rem'
 
   // ── Chart: Progress bar (tier progression) ──────────────────────────────────
 
   const progressChart = (
     <div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.625rem', marginBottom: sm ? 12 : 18 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.625rem', marginBottom: sm ? 8 : 12 }}>
         <div className="lc7-pts" style={{
           fontFamily: 'var(--font-display)',
-          fontSize: sm ? 48 : 64,
+          fontSize: sm ? 44 : 56,
           lineHeight: 1, letterSpacing: '-0.03em', color: '#fff',
         }}>
           {points.toLocaleString('es-ES')}
@@ -316,10 +316,10 @@ export function LoyaltyCard({
 
   const simpleProgressChart = (
     <div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.625rem', marginBottom: sm ? 12 : 18 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.625rem', marginBottom: sm ? 8 : 12 }}>
         <div className="lc7-pts" style={{
           fontFamily: 'var(--font-display)',
-          fontSize: sm ? 48 : 64,
+          fontSize: sm ? 44 : 56,
           lineHeight: 1, letterSpacing: '-0.03em', color: '#fff',
         }}>
           {points.toLocaleString('es-ES')}
@@ -456,8 +456,8 @@ export function LoyaltyCard({
       <div style={{
         position: 'relative', zIndex: 2,
         paddingLeft: HP, paddingRight: HP,
-        paddingTop: sm ? '0.5rem' : '0.75rem',
-        paddingBottom: sm ? '1rem' : '1.25rem',
+        paddingTop: sm ? '0.375rem' : '0.5rem',
+        paddingBottom: sm ? '0.75rem' : '0.875rem',
       }}>
         {isSimple ? simpleProgressChart : progressChart}
       </div>
@@ -486,14 +486,6 @@ export function LoyaltyCard({
               color: 'rgba(255,255,255,0.42)', marginBottom: sm ? 5 : 7,
             }}>
               Recompensas
-              {completedCycles > 0 && (
-                <span style={{
-                  fontFamily: 'var(--font-mono, monospace)', fontSize: 7,
-                  letterSpacing: '0.08em',
-                  background: tier.bg, border: `1px solid ${hexToRgba(tier.primary, 0.35)}`,
-                  color: tier.accent, borderRadius: 4, padding: '1px 5px',
-                }}>×{cycleMult} ciclo {completedCycles}</span>
-              )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: sm ? 4 : 5 }}>
               {redeemable.map((r, i) => {
@@ -522,21 +514,6 @@ export function LoyaltyCard({
                       fontFamily: 'var(--font-mono, monospace)', fontSize: sm ? 9 : 10, flexShrink: 0,
                       color: can ? tier.accent : 'rgba(255,255,255,0.3)',
                     }}>{adjustedCost.toLocaleString('es-ES')} pts</span>
-                    {onRedeem && r.id && (
-                      <button
-                        disabled={!can || redeemPending}
-                        onClick={() => onRedeem(r.id!)}
-                        style={{
-                          flexShrink: 0, padding: sm ? '2px 8px' : '3px 10px', borderRadius: 6,
-                          border: `1px solid ${can ? hexToRgba(tier.primary, 0.45) : 'rgba(255,255,255,0.08)'}`,
-                          background: can ? tier.bg : 'transparent',
-                          color: can ? tier.accent : 'rgba(255,255,255,0.28)',
-                          fontFamily: 'var(--font-ui)', fontSize: 8, fontWeight: 700,
-                          letterSpacing: '0.1em', cursor: can ? 'pointer' : 'default',
-                          opacity: redeemPending ? 0.6 : 1,
-                        }}
-                      >CANJEAR</button>
-                    )}
                   </div>
                 )
               })}
@@ -561,7 +538,7 @@ export function LoyaltyCard({
       <div style={{
         position: 'relative', zIndex: 2,
         display: 'flex', alignItems: 'center', gap: '1rem',
-        padding: `${VPH} ${HP} calc(${VPH} + 0.5rem)`,
+        padding: `${VPH} ${HP} calc(${VPH} + 0.25rem)`,
         ...fixed,
       }}>
         <button
