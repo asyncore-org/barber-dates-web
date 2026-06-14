@@ -375,22 +375,19 @@ export default function AppointmentsPage() {
       )
     }
 
-    // Simple mode: DB rewards with cycle multiplier (cap at 5 cycles to avoid absurd values)
+    // Simple mode
     const isRepeatable = (loyaltyConfig?.rewardMode ?? 'one_time') === 'repeatable'
-    const safeCycles = Math.min(loyaltyCard?.completedCycles ?? 0, 5)
-    const cycleMult = Math.pow(2, safeCycles)
     return rewards.filter(r => r.isActive).map(r => {
       const isRedeemed = !isRepeatable && redeemedIds.includes(r.id)
-      const adjustedCost = r.cost * cycleMult
       return {
         id: r.id,
         label: r.label,
         cost: r.cost,
         redeemed: isRedeemed,
-        canRedeem: loyaltyPoints >= adjustedCost && !isRedeemed,
+        canRedeem: loyaltyPoints >= r.cost && !isRedeemed,
       }
     })
-  }, [rewards, loyaltyConfig, redeemedIds, loyaltyPoints, loyaltyCard?.completedCycles])
+  }, [rewards, loyaltyConfig, redeemedIds, loyaltyPoints])
 
   // ── UI state ─────────────────────────────────────────────────────────────────
 

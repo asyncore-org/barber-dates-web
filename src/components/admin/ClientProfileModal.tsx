@@ -161,7 +161,7 @@ export function ClientProfileModal({ clientId, clientName, onClose, hideMoney = 
                 label: r.label,
                 cost: r.cost,
                 redeemed: redeemedIds.includes(r.id),
-                canRedeem: loyaltyCard.points >= r.cost * Math.pow(2, loyaltyCard.completedCycles ?? 0) && !redeemedIds.includes(r.id),
+                canRedeem: loyaltyCard.points >= r.cost && !redeemedIds.includes(r.id),
               }))}
             />
           )}

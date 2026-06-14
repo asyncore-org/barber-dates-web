@@ -133,7 +133,7 @@ export function LoyaltyCard({
   fill = false,
   compact = false,
   createdAt,
-  completedCycles = 0,
+  completedCycles: _completedCycles = 0,
   configTiers,
   loyaltyMode = 'tiers',
   maxPoints = 500,
@@ -163,9 +163,6 @@ export function LoyaltyCard({
     .filter(t => t.min > points)
     .map(t => ({ r: t.min / activeTierMax, label: t.label }))
 
-  // Cycle cost multiplier — cap at 5 cycles to prevent absurd display values
-  const safeCycles = Math.min(completedCycles, 5)
-  const cycleMult = Math.pow(2, safeCycles)
 
   const redeemable = rewards.filter(r => !r.redeemed)
   const qrValue    = `GIO-BARBER://member/${memberCode}`
@@ -489,8 +486,7 @@ export function LoyaltyCard({
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: sm ? 4 : 5 }}>
               {redeemable.map((r, i) => {
-                const adjustedCost = r.cost * cycleMult
-                const can = points >= adjustedCost
+                const can = points >= r.cost
                 return (
                   <div key={r.id ?? i} style={{
                     display: 'flex', alignItems: 'center', gap: 8,
@@ -513,7 +509,7 @@ export function LoyaltyCard({
                     <span style={{
                       fontFamily: 'var(--font-mono, monospace)', fontSize: sm ? 9 : 10, flexShrink: 0,
                       color: can ? tier.accent : 'rgba(255,255,255,0.3)',
-                    }}>{adjustedCost.toLocaleString('es-ES')} pts</span>
+                    }}>{r.cost.toLocaleString('es-ES')} pts</span>
                   </div>
                 )
               })}
