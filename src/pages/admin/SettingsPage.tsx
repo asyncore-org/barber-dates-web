@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { ConfirmDialog, Modal, InfoButton } from '@/components/ui'
+import { ConfirmDialog, Modal, InfoButton, Icon } from '@/components/ui'
 import type { InfoItem } from '@/components/ui'
 import { MonthCalendar } from '@/components/calendar'
 import { useAuth } from '@/hooks'
@@ -776,8 +776,9 @@ export default function SettingsPage() {
                       </div>
                       <button
                         onClick={() => deleteBlock.mutate(b.id)}
-                        style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', minWidth: 32, minHeight: 32, borderRadius: 4, fontSize: 14, flexShrink: 0 }}
-                      >✕</button>
+                        title="Eliminar cierre"
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', minWidth: 32, minHeight: 32, borderRadius: 4, flexShrink: 0 }}
+                      ><Icon name="trash" size={15} /></button>
                     </div>
                   )
                 })}
@@ -883,7 +884,7 @@ export default function SettingsPage() {
                         >
                           Editar
                         </button>
-                        <button onClick={() => setDeleteBarberTarget(b)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', minWidth: 32, minHeight: 32, borderRadius: 4, fontSize: 14, flexShrink: 0 }}>✕</button>
+                        <button onClick={() => setDeleteBarberTarget(b)} title="Dar de baja empleado" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', minWidth: 32, minHeight: 32, borderRadius: 4, flexShrink: 0 }}><Icon name="trash" size={15} /></button>
                       </div>
 
                       {editingBarberId === b.id && (
