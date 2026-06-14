@@ -738,49 +738,89 @@ export default function CalendarPage() {
           {/* ── Reward picker trigger ── */}
           {redeemableRewards.length > 0 && (
             <div style={{ padding: `0 ${p} 1.25rem` }}>
-              <button
-                onClick={() => setRewardsOpen(true)}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem',
-                  padding: '0.75rem 0.875rem', borderRadius: 10, textAlign: 'left',
-                  border: selectedReward ? '1.5px solid rgba(201,162,74,0.5)' : '1px solid var(--line)',
-                  background: selectedReward ? 'rgba(201,162,74,0.07)' : 'var(--bg-3)',
-                  cursor: 'pointer', transition: 'all 0.2s',
-                }}
-              >
+              {selectedReward ? (
+                /* ── APPLIED state ── */
                 <div style={{
-                  width: 32, height: 32, borderRadius: 9, flexShrink: 0,
-                  background: selectedReward ? 'rgba(201,162,74,0.15)' : 'var(--bg-4)',
-                  border: `1px solid ${selectedReward ? 'rgba(201,162,74,0.4)' : 'var(--line)'}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
+                  display: 'flex', alignItems: 'center', gap: '0.75rem',
+                  padding: '0.75rem 0.875rem', borderRadius: 10,
+                  border: '1.5px solid rgba(201,162,74,0.5)',
+                  background: 'rgba(201,162,74,0.07)',
                 }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                    stroke={selectedReward ? 'var(--gold)' : 'var(--fg-3)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 12 20 22 4 22 4 12" /><rect x="2" y="7" width="20" height="5" /><line x1="12" y1="22" x2="12" y2="7" /><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" /><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
-                  </svg>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 2, color: selectedReward ? 'rgba(201,162,74,0.7)' : 'var(--fg-4)' }}>
-                    Recompensa
+                  <div style={{
+                    width: 32, height: 32, borderRadius: 9, flexShrink: 0,
+                    background: 'rgba(201,162,74,0.15)', border: '1px solid rgba(201,162,74,0.4)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
                   </div>
-                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: selectedReward ? 600 : 400, color: selectedReward ? 'var(--gold)' : 'var(--fg-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {selectedReward ? selectedReward.label : `${redeemableRewards.length} disponible${redeemableRewards.length !== 1 ? 's' : ''}`}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                      <span style={{
+                        fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em',
+                        textTransform: 'uppercase', color: '#000',
+                        padding: '2px 6px', borderRadius: 3, background: 'var(--gold)',
+                      }}>Aplicada</span>
+                      <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--gold)', fontWeight: 600 }}>
+                        −{selectedReward.cost} pts
+                      </span>
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: 600, color: 'var(--fg-0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {selectedReward.label}
+                    </div>
                   </div>
+                  <button
+                    onClick={() => setRewardsOpen(true)}
+                    style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-3)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', borderRadius: 4, flexShrink: 0 }}
+                  >Cambiar</button>
+                  <button
+                    onClick={() => setSelectedRewardId(null)}
+                    title="Quitar recompensa"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 6, background: 'none', border: '1px solid rgba(201,162,74,0.3)', color: 'var(--gold)', cursor: 'pointer', flexShrink: 0 }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
                 </div>
-                {selectedReward ? (
-                  <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--gold)', fontWeight: 700, flexShrink: 0 }}>
-                    −{selectedReward.cost} pts
-                  </span>
-                ) : (
-                  <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-4)', flexShrink: 0 }}>
-                    {loyaltyPoints} pts
-                  </span>
-                )}
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                  stroke={selectedReward ? 'var(--gold)' : 'var(--fg-4)'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
-              </button>
+              ) : (
+                /* ── AVAILABLE, not selected state ── */
+                <button
+                  onClick={() => setRewardsOpen(true)}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                    padding: '0.75rem 0.875rem', borderRadius: 10, textAlign: 'left',
+                    border: '1px dashed rgba(123,79,255,0.45)',
+                    background: 'rgba(123,79,255,0.04)',
+                    cursor: 'pointer', transition: 'all 0.2s',
+                  }}
+                >
+                  <div style={{
+                    width: 32, height: 32, borderRadius: 9, flexShrink: 0,
+                    background: 'rgba(123,79,255,0.1)', border: '1px solid rgba(123,79,255,0.3)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--led-soft)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 12 20 22 4 22 4 12" /><rect x="2" y="7" width="20" height="5" /><line x1="12" y1="22" x2="12" y2="7" /><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" /><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+                    </svg>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 2, color: 'var(--led-soft)' }}>
+                      {redeemableRewards.length === 1 ? '1 recompensa disponible' : `${redeemableRewards.length} recompensas disponibles`}
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-3)' }}>
+                      Pulsa para canjear
+                    </div>
+                  </div>
+                  <span style={{
+                    fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+                    textTransform: 'uppercase', color: 'var(--led-soft)', flexShrink: 0,
+                    padding: '3px 8px', borderRadius: 4,
+                    background: 'rgba(123,79,255,0.12)', border: '1px solid rgba(123,79,255,0.25)',
+                  }}>Canjear</span>
+                </button>
+              )}
             </div>
           )}
 
