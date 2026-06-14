@@ -791,22 +791,22 @@ export default function CalendarPage() {
                   style={{
                     width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem',
                     padding: '0.75rem 0.875rem', borderRadius: 10, textAlign: 'left',
-                    border: '1px dashed rgba(123,79,255,0.45)',
-                    background: 'rgba(123,79,255,0.04)',
+                    border: '1px dashed rgba(201,162,74,0.5)',
+                    background: 'rgba(201,162,74,0.05)',
                     cursor: 'pointer', transition: 'all 0.2s',
                   }}
                 >
                   <div style={{
                     width: 32, height: 32, borderRadius: 9, flexShrink: 0,
-                    background: 'rgba(123,79,255,0.1)', border: '1px solid rgba(123,79,255,0.3)',
+                    background: 'rgba(201,162,74,0.1)', border: '1px solid rgba(201,162,74,0.3)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--led-soft)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 12 20 22 4 22 4 12" /><rect x="2" y="7" width="20" height="5" /><line x1="12" y1="22" x2="12" y2="7" /><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" /><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
                     </svg>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 2, color: 'var(--led-soft)' }}>
+                    <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 2, color: 'var(--gold)' }}>
                       {redeemableRewards.length === 1 ? '1 recompensa disponible' : `${redeemableRewards.length} recompensas disponibles`}
                     </div>
                     <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-3)' }}>
@@ -815,9 +815,9 @@ export default function CalendarPage() {
                   </div>
                   <span style={{
                     fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
-                    textTransform: 'uppercase', color: 'var(--led-soft)', flexShrink: 0,
+                    textTransform: 'uppercase', color: '#000', flexShrink: 0,
                     padding: '3px 8px', borderRadius: 4,
-                    background: 'rgba(123,79,255,0.12)', border: '1px solid rgba(123,79,255,0.25)',
+                    background: 'var(--gold)',
                   }}>Canjear</span>
                 </button>
               )}
