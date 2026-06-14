@@ -13,17 +13,24 @@ const clientItems: NavItemDef[] = [
   { to: '/appointments', label: 'Mis citas', icon: 'clipboard' },
 ]
 
-const adminItems: NavItemDef[] = [
+const ownerItems: NavItemDef[] = [
+  { to: '/admin/dashboard', label: 'Agenda',   icon: 'calendar' },
+  { to: '/admin/clients',   label: 'Clientes', icon: 'award'    },
+  { to: '/admin/settings',  label: 'Config',   icon: 'settings' },
+]
+
+const barberItems: NavItemDef[] = [
   { to: '/admin/dashboard', label: 'Agenda', icon: 'calendar' },
-  { to: '/admin/settings', label: 'Config', icon: 'settings' },
+  { to: '/admin/settings',  label: 'Config', icon: 'settings' },
 ]
 
 const superAdminItems: NavItemDef[] = [
-  { to: '/calendar', label: 'Reservar', icon: 'calendar' },
-  { to: '/appointments', label: 'Citas', icon: 'clipboard' },
-  { to: '/admin/dashboard', label: 'Agenda', icon: 'clock' },
-  { to: '/admin/settings', label: 'Config', icon: 'settings' },
-  { to: '/super-admin', label: 'Admin', icon: 'users' },
+  { to: '/calendar',        label: 'Reservar',  icon: 'calendar'  },
+  { to: '/appointments',    label: 'Citas',     icon: 'clipboard' },
+  { to: '/admin/dashboard', label: 'Agenda',    icon: 'clock'     },
+  { to: '/admin/clients',   label: 'Clientes',  icon: 'award'     },
+  { to: '/admin/settings',  label: 'Config',    icon: 'settings'  },
+  { to: '/super-admin',     label: 'Admin',     icon: 'users'     },
 ]
 
 function NavItem({ to, label, icon }: NavItemDef) {
@@ -53,8 +60,9 @@ export function BottomNav() {
   if (!user) return null
 
   const items =
-    user.role === 'admin' ? superAdminItems :
-    user.role === 'owner' || user.role === 'barber' ? adminItems :
+    user.role === 'admin'  ? superAdminItems :
+    user.role === 'owner'  ? ownerItems :
+    user.role === 'barber' ? barberItems :
     clientItems
 
   return (
