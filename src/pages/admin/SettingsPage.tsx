@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { ConfirmDialog, Modal, InfoButton } from '@/components/ui'
 import type { InfoItem } from '@/components/ui'
@@ -33,10 +33,10 @@ const SECTIONS: { id: Section; label: string; adminOnly?: boolean }[] = [
 const DAY_KEYS: { key: DayKey; name: string }[] = [
   { key: 'mon', name: 'Lunes' },
   { key: 'tue', name: 'Martes' },
-  { key: 'wed', name: 'MiÃ©rcoles' },
+  { key: 'wed', name: 'Miércoles' },
   { key: 'thu', name: 'Jueves' },
   { key: 'fri', name: 'Viernes' },
-  { key: 'sat', name: 'SÃ¡bado' },
+  { key: 'sat', name: 'Sábado' },
   { key: 'sun', name: 'Domingo' },
 ]
 
@@ -77,7 +77,7 @@ function DirtyGuardDialog({ onSave, onDiscard, onCancel }: { onSave: () => void;
       }
     >
       <p style={{ margin: 0, color: 'var(--fg-1)', fontSize: 14, lineHeight: 1.6 }}>
-        Esta secciÃ³n tiene cambios sin guardar. Â¿QuÃ© quieres hacer antes de continuar?
+        Esta sección tiene cambios sin guardar. ¿Qué quieres hacer antes de continuar?
       </p>
     </Modal>
   )
@@ -92,7 +92,7 @@ function SaveBtn({ onClick, loading, isDirty }: { onClick: () => void; loading?:
         disabled={disabled}
         style={{ padding: '0.5rem 1.25rem', minHeight: 40, borderRadius: 8, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: disabled ? 'default' : 'pointer', opacity: loading ? 0.7 : isDirty === false ? 0.4 : 1 }}
       >
-        {loading ? 'Guardandoâ€¦' : 'Guardar'}
+        {loading ? 'Guardando…' : 'Guardar'}
       </button>
     </div>
   )
@@ -106,15 +106,14 @@ export default function SettingsPage() {
   const [section, setSection] = useState<Section>('servicios')
   const [pendingNavSection, setPendingNavSection] = useState<Section | null>(null)
 
-  // â”€â”€ Data hooks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Data hooks ──────────────────────────────────────────────────────────────
   const { data: servicesData = [] } = useAllServices()
   const { data: barbersData = [] } = useAllBarbers()
   const { data: schedule = DEFAULT_WEEKLY_SCHEDULE } = useWeeklySchedule()
   const { data: blocks = [] } = useScheduleBlocks()
   const { data: shopInfo } = useShopInfo()
   const { data: bookingConfig } = useBookingConfig()
-
-  // â”€â”€ Mutation hooks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Mutation hooks ──────────────────────────────────────────────────────────
   const { data: allAppointments = [] } = useAllAppointments()
   const createService    = useCreateService()
   const updateService    = useUpdateService()
@@ -129,7 +128,7 @@ export default function SettingsPage() {
   const deleteBlock      = useDeleteScheduleBlock()
   const mutateShopInfo   = useMutateShopInfo()
   const mutateBooking    = useMutateBookingConfig()
-  // â”€â”€ Services local state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Services local state ────────────────────────────────────────────────────
   const [serviceEdits, setServiceEdits] = useState<Record<string, Partial<Service>>>({})
   const services = servicesData.map(svc => ({ ...svc, ...serviceEdits[svc.id] }))
   const [deleteServiceTarget, setDeleteServiceTarget] = useState<Service | null>(null)
@@ -138,7 +137,7 @@ export default function SettingsPage() {
   const serviceHasActiveAppts = (serviceId: string) =>
     allAppointments.some(a => a.serviceId === serviceId && a.status === 'confirmed')
 
-  // â”€â”€ Barbers local state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Barbers local state ─────────────────────────────────────────────────────
   const [editingBarberId, setEditingBarberId] = useState<string | null>(null)
   const [barberEdits, setBarberEdits] = useState<Record<string, Partial<Barber>>>({})
   const [deleteBarberTarget, setDeleteBarberTarget] = useState<Barber | null>(null)
@@ -146,11 +145,11 @@ export default function SettingsPage() {
   const [newBarber, setNewBarber] = useState({ email: '' })
   const [barberCreateError, setBarberCreateError] = useState<string | null>(null)
 
-  // â”€â”€ Schedule local state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Schedule local state ────────────────────────────────────────────────────
   const [pendingSchedule, setPendingSchedule] = useState<WeeklySchedule | null>(null)
   const localSchedule = pendingSchedule ?? schedule
 
-  // â”€â”€ Closures form state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Closures form state ─────────────────────────────────────────────────────
   const [showClosureForm, setShowClosureForm] = useState(false)
   const [closureDate, setClosureDate] = useState<Date | null>(null)
   const [showDatePicker, setShowDatePicker] = useState(false)
@@ -160,7 +159,7 @@ export default function SettingsPage() {
   const [closureTotal, setClosureTotal] = useState(true)
   const [closureBarberIds, setClosureBarberIds] = useState<string[]>([])
 
-  // â”€â”€ Shop info local state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Shop info local state ───────────────────────────────────────────────────
   type ShopFields = { name: string; phone: string; email: string; instagram: string; address: string; description: string; opening_hours: string }
   const [shopEdits, setShopEdits] = useState<Partial<ShopFields>>({})
   const localShop: ShopFields = {
@@ -173,7 +172,7 @@ export default function SettingsPage() {
     opening_hours: shopEdits.opening_hours ?? shopInfo?.opening_hours ?? '',
   }
 
-  // â”€â”€ Logo upload + adjustment state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Logo upload + adjustment state ─────────────────────────────────────────
   const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null)
   const [logoPreviewUrl, setLogoPreviewUrl]   = useState<string | null>(null)
   const [logoError, setLogoError]             = useState<string | null>(null)
@@ -262,12 +261,12 @@ export default function SettingsPage() {
   const [pendingMaxDays, setPendingMaxDays] = useState<string | null>(null)
   const localMaxDays = pendingMaxDays ?? String(bookingConfig?.maxAdvanceDays ?? 14)
 
-  // â”€â”€ Section errors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Section errors ───────────────────────────────────────────────────────────
   const [sectionError, setSectionError] = useState<Partial<Record<Section, string>>>({})
   const setSecError = (sec: Section, msg: string) => setSectionError(e => ({ ...e, [sec]: msg }))
   const clearSecError = (sec: Section) => setSectionError(e => { const c = { ...e }; delete c[sec]; return c })
 
-  // â”€â”€ Handlers: services â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Handlers: services ──────────────────────────────────────────────────────
   const handleAddService = () => {
     createService.mutate({ name: 'Nuevo servicio', durationMinutes: 30, price: 15, loyaltyPoints: 10 })
   }
@@ -279,7 +278,7 @@ export default function SettingsPage() {
   const handleSaveService = (svc: Service) => {
     updateService.mutate({ id: svc.id, data: { name: svc.name, durationMinutes: svc.durationMinutes, price: svc.price, loyaltyPoints: svc.loyaltyPoints } }, {
       onSuccess: () => { setServiceEdits(e => { const copy = { ...e }; delete copy[svc.id]; return copy }); clearSecError('servicios') },
-      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('servicios', 'No se pudo guardar el servicio. Revisa tu conexiÃ³n.') },
+      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('servicios', 'No se pudo guardar el servicio. Revisa tu conexión.') },
     })
   }
 
@@ -301,7 +300,7 @@ export default function SettingsPage() {
     reactivateService.mutate(id)
   }
 
-  // â”€â”€ Handlers: barbers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Handlers: barbers ───────────────────────────────────────────────────────
   const getBarberEdit = (id: string): Partial<Barber> => barberEdits[id] ?? {}
 
   const handleBarberEditChange = (id: string, field: keyof Barber, val: string | boolean | null) => {
@@ -312,13 +311,13 @@ export default function SettingsPage() {
     const edits = barberEdits[b.id] ?? {}
     updateBarber.mutate({ id: b.id, data: { fullName: edits.fullName ?? b.fullName, role: edits.role ?? b.role ?? undefined, phone: edits.phone ?? b.phone ?? undefined, email: edits.email ?? b.email ?? undefined, bio: edits.bio ?? b.bio ?? undefined, breakStart: edits.breakStart !== undefined ? edits.breakStart : b.breakStart, breakEnd: edits.breakEnd !== undefined ? edits.breakEnd : b.breakEnd } }, {
       onSuccess: () => { setBarberEdits(e => { const copy = { ...e }; delete copy[b.id]; return copy }); setEditingBarberId(null); clearSecError('barberos') },
-      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('barberos', 'No se pudo guardar el empleado. Revisa tu conexiÃ³n.') },
+      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('barberos', 'No se pudo guardar el empleado. Revisa tu conexión.') },
     })
   }
 
   const handleToggleBarberActive = (b: Barber) => {
     updateBarber.mutate({ id: b.id, data: { isActive: !b.isActive } }, {
-      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('barberos', 'No se pudo actualizar el estado del empleado. Revisa tu conexiÃ³n.') },
+      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('barberos', 'No se pudo actualizar el estado del empleado. Revisa tu conexión.') },
     })
   }
 
@@ -326,7 +325,7 @@ export default function SettingsPage() {
     if (!deleteBarberTarget) return
     deleteBarber.mutate(deleteBarberTarget.id, {
       onSuccess: () => { setDeleteBarberTarget(null); clearSecError('barberos') },
-      onError: (e) => { if (import.meta.env.DEV) console.error(e); setDeleteBarberTarget(null); setSecError('barberos', 'No se pudo dar de baja al barbero. Revisa tu conexiÃ³n.') },
+      onError: (e) => { if (import.meta.env.DEV) console.error(e); setDeleteBarberTarget(null); setSecError('barberos', 'No se pudo dar de baja al barbero. Revisa tu conexión.') },
     })
   }
 
@@ -339,8 +338,8 @@ export default function SettingsPage() {
       onError: (e) => {
         const msg = e instanceof Error ? e.message : null
         setBarberCreateError(msg === 'Email no registrado'
-          ? 'No se encontrÃ³ ninguna cuenta con ese email. El usuario debe registrarse primero.'
-          : 'No se pudo aÃ±adir al empleado. Comprueba tu conexiÃ³n e intÃ©ntalo de nuevo.')
+          ? 'No se encontró ninguna cuenta con ese email. El usuario debe registrarse primero.'
+          : 'No se pudo añadir al empleado. Comprueba tu conexión e inténtalo de nuevo.')
       },
     })
   }
@@ -351,7 +350,7 @@ export default function SettingsPage() {
     setShowBarberForm(true)
   }
 
-  // â”€â”€ Handlers: schedule â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Handlers: schedule ──────────────────────────────────────────────────────
   const handleToggleDay = (key: DayKey) => {
     setPendingSchedule(s => { const b = s ?? schedule; return { ...b, [key]: { ...b[key], open: !b[key].open } } })
   }
@@ -371,7 +370,7 @@ export default function SettingsPage() {
   const handleSaveSchedule = () => {
     mutateSchedule.mutate(localSchedule, {
       onSuccess: () => { setPendingSchedule(null); clearSecError('horarios') },
-      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('horarios', 'No se pudo guardar el horario. Revisa tu conexiÃ³n.') },
+      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('horarios', 'No se pudo guardar el horario. Revisa tu conexión.') },
     })
   }
 
@@ -380,7 +379,7 @@ export default function SettingsPage() {
     if (pendingMaxDays !== null) handleSaveBookingConfig()
   }
 
-  // â”€â”€ Handlers: closures â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Handlers: closures ──────────────────────────────────────────────────────
   const handleAddClosure = () => {
     if (!closureDate || !closureReason.trim()) return
     const isoDate = toISODate(closureDate)
@@ -405,11 +404,11 @@ export default function SettingsPage() {
     setClosureBarberIds([])
   }
 
-  // â”€â”€ Handlers: shop info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Handlers: shop info ─────────────────────────────────────────────────────
   const handleSaveShopInfo = () => {
     mutateShopInfo.mutate(localShop, {
       onSuccess: () => { setShopEdits({}); clearSecError('barberia') },
-      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('barberia', 'No se pudo guardar la informaciÃ³n. Revisa tu conexiÃ³n.') },
+      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('barberia', 'No se pudo guardar la información. Revisa tu conexión.') },
     })
   }
 
@@ -417,17 +416,17 @@ export default function SettingsPage() {
     const n = Number(localMaxDays)
     if (n > 0) mutateBooking.mutate({ maxAdvanceDays: n, allowBarberChoice }, {
       onSuccess: () => { setPendingMaxDays(null); clearSecError('horarios') },
-      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('horarios', 'No se pudo guardar la configuraciÃ³n. Revisa tu conexiÃ³n.') },
+      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('horarios', 'No se pudo guardar la configuración. Revisa tu conexión.') },
     })
   }
 
   const handleToggleAllowBarber = () => {
     mutateBooking.mutate({ maxAdvanceDays: Number(localMaxDays), allowBarberChoice: !allowBarberChoice }, {
-      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('barberos', 'No se pudo guardar la configuraciÃ³n. Revisa tu conexiÃ³n.') },
+      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('barberos', 'No se pudo guardar la configuración. Revisa tu conexión.') },
     })
   }
 
-  // â”€â”€ Dirty state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Dirty state ──────────────────────────────────────────────────────────────
   const sectionDirty: Record<Section, boolean> = {
     servicios:  Object.keys(serviceEdits).length > 0,
     horarios:   pendingSchedule !== null || pendingMaxDays !== null,
@@ -472,7 +471,7 @@ export default function SettingsPage() {
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [anyDirty])
 
-  // â”€â”€ Sidebar style helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Sidebar style helper ─────────────────────────────────────────────────────
   const sidebarBtn = (id: Section) => ({
     display: 'flex' as const, alignItems: 'center' as const, width: '100%',
     padding: '0.6rem 0.875rem', borderRadius: 8, marginBottom: 2,
@@ -487,7 +486,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <Helmet><title>ConfiguraciÃ³n â€” {shopName}</title></Helmet>
+      <Helmet><title>Configuración — {shopName}</title></Helmet>
 
       {/* Mobile section tabs */}
       <div className="md:hidden overflow-x-auto pb-2 mb-4 -mx-4 px-4">
@@ -542,12 +541,12 @@ export default function SettingsPage() {
           {section === 'servicios' && (
             <div>
               <SectionTitle
-                infoTitle="GUÃA â€” SERVICIOS"
+                infoTitle="GUÍA — SERVICIOS"
                 infoItems={[
-                  { icon: 'âœ‚ï¸', label: 'Lista de servicios', description: 'AquÃ­ gestionas todos los servicios disponibles para reservar: nombre, precio, duraciÃ³n y puntos de fidelizaciÃ³n que otorga.' },
-                  { icon: 'âž•', label: 'AÃ±adir servicio', description: 'Pulsa "Nuevo servicio" para crear uno. Rellena el nombre, precio, duraciÃ³n y los puntos de fidelizaciÃ³n que recibirÃ¡ el cliente.' },
-                  { icon: 'âœï¸', label: 'Editar / eliminar', description: 'Haz clic en un servicio para editarlo. Puedes desactivarlo temporalmente sin eliminarlo (no aparecerÃ¡ al reservar).' },
-                  { icon: 'â­', label: 'Puntos de fidelizaciÃ³n', description: 'Los puntos asignados a cada servicio se aÃ±aden a la tarjeta del cliente cuando se completa la cita.' },
+                  { icon: '✂️', label: 'Lista de servicios', description: 'Aquí gestionas todos los servicios disponibles para reservar: nombre, precio, duración y puntos de fidelización que otorga.' },
+                  { icon: '➕', label: 'Añadir servicio', description: 'Pulsa "Nuevo servicio" para crear uno. Rellena el nombre, precio, duración y los puntos de fidelización que recibirá el cliente.' },
+                  { icon: '✏️', label: 'Editar / eliminar', description: 'Haz clic en un servicio para editarlo. Puedes desactivarlo temporalmente sin eliminarlo (no aparecerá al reservar).' },
+                  { icon: '⭐', label: 'Puntos de fidelización', description: 'Los puntos asignados a cada servicio se añaden a la tarjeta del cliente cuando se completa la cita.' },
                 ]}
               >SERVICIOS</SectionTitle>
 
@@ -556,7 +555,7 @@ export default function SettingsPage() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-ui)', fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--line)' }}>
-                      {['Nombre', 'DuraciÃ³n (min)', 'Precio (â‚¬)', 'Puntos', ''].map(h => (
+                      {['Nombre', 'Duración (min)', 'Precio (€)', 'Puntos', ''].map(h => (
                         <th key={h} style={{ textAlign: 'left', padding: '0.4rem 0.5rem', color: 'var(--fg-3)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
                       ))}
                     </tr>
@@ -641,7 +640,7 @@ export default function SettingsPage() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
                       {([
                         { field: 'durationMinutes' as const, label: 'Min' },
-                        { field: 'price' as const, label: 'â‚¬' },
+                        { field: 'price' as const, label: '€' },
                         { field: 'loyaltyPoints' as const, label: 'Pts' },
                       ]).map(({ field, label }) => (
                         <div key={field}>
@@ -659,7 +658,7 @@ export default function SettingsPage() {
                 onClick={handleAddService}
                 style={{ marginTop: '1rem', padding: '0.6rem 1rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}
               >
-                + AÃ±adir servicio
+                + Añadir servicio
               </button>
 
               {sectionError.servicios && (
@@ -673,11 +672,11 @@ export default function SettingsPage() {
           {section === 'horarios' && (
             <div>
               <SectionTitle
-                infoTitle="GUÃA â€” HORARIOS"
+                infoTitle="GUÍA — HORARIOS"
                 infoItems={[
-                  { icon: 'ðŸ•', label: 'Horario semanal', description: 'Activa o desactiva cada dÃ­a de la semana y establece la hora de apertura y cierre.' },
-                  { icon: 'ðŸš«', label: 'Cierres especiales', description: 'AÃ±ade dÃ­as concretos que estarÃ¡n cerrados (festivos, vacaciones) o bloquea franjas horarias especÃ­ficas.' },
-                  { icon: 'ðŸ’¾', label: 'Guardar cambios', description: 'Los cambios en el horario se aplican a la disponibilidad de citas de inmediato tras guardar.' },
+                  { icon: '🕐', label: 'Horario semanal', description: 'Activa o desactiva cada día de la semana y establece la hora de apertura y cierre.' },
+                  { icon: '🚫', label: 'Cierres especiales', description: 'Añade días concretos que estarán cerrados (festivos, vacaciones) o bloquea franjas horarias específicas.' },
+                  { icon: '💾', label: 'Guardar cambios', description: 'Los cambios en el horario se aplican a la disponibilidad de citas de inmediato tras guardar.' },
                 ]}
               >HORARIOS</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
@@ -702,7 +701,7 @@ export default function SettingsPage() {
                           <>
                             <input type="time" step="3600" value={d.from} onChange={e => handleTimeChange(key, 'from', e.target.value)}
                               style={{ width: 90, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.35rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }} />
-                            <span style={{ color: 'var(--fg-3)', fontSize: 13 }}>â€“</span>
+                            <span style={{ color: 'var(--fg-3)', fontSize: 13 }}>–</span>
                             <input type="time" step="3600" value={d.to} onChange={e => handleTimeChange(key, 'to', e.target.value)}
                               style={{ width: 90, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 4, padding: '0.35rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }} />
                           </>
@@ -742,7 +741,7 @@ export default function SettingsPage() {
                   <input type="number" min="1" max="365" value={localMaxDays}
                     onChange={e => setPendingMaxDays(e.target.value)}
                     style={{ width: 72, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, textAlign: 'center' }} />
-                  <span style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>dÃ­as mÃ¡x. de antelaciÃ³n</span>
+                  <span style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>días máx. de antelación</span>
                 </div>
               </div>
               <div style={{ marginTop: '1rem', marginBottom: '1.5rem' }}>
@@ -753,11 +752,11 @@ export default function SettingsPage() {
               </div>
 
               <SectionTitle
-                infoTitle="GUÃA â€” CIERRES ESPECIALES"
+                infoTitle="GUÍA — CIERRES ESPECIALES"
                 infoItems={[
-                  { icon: 'ðŸ“…', label: 'DÃ­a completo cerrado', description: 'Bloquea un dÃ­a completo: no aparecerÃ¡ como disponible al reservar. Ideal para festivos o vacaciones.' },
-                  { icon: 'â³', label: 'Franja horaria bloqueada', description: 'Bloquea un rango de horas dentro de un dÃ­a normal. Los clientes no podrÃ¡n reservar en esa franja.' },
-                  { icon: 'ðŸ”', label: 'Bloqueos recurrentes', description: 'Los bloqueos recurrentes se repiten cada semana. Ãštil para reuniones fijas o mantenimiento semanal.' },
+                  { icon: '📅', label: 'Día completo cerrado', description: 'Bloquea un día completo: no aparecerá como disponible al reservar. Ideal para festivos o vacaciones.' },
+                  { icon: '⏳', label: 'Franja horaria bloqueada', description: 'Bloquea un rango de horas dentro de un día normal. Los clientes no podrán reservar en esa franja.' },
+                  { icon: '🔁', label: 'Bloqueos recurrentes', description: 'Los bloqueos recurrentes se repiten cada semana. Útil para reuniones fijas o mantenimiento semanal.' },
                 ]}
               >CIERRES ESPECIALES</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -766,10 +765,10 @@ export default function SettingsPage() {
                   return (
                     <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{b.reason ?? 'â€”'}</div>
+                        <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{b.reason ?? '—'}</div>
                         <div style={{ fontSize: 11, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', marginTop: 2 }}>
-                          {b.blockDate ? fmtBlockDate(b.blockDate) : 'â€”'}
-                          {barberName && ` Â· ${barberName} bloqueado`}
+                          {b.blockDate ? fmtBlockDate(b.blockDate) : '—'}
+                          {barberName && ` · ${barberName} bloqueado`}
                         </div>
                       </div>
                       <div style={{ fontSize: 11, color: b.barberId === null ? 'var(--danger)' : 'var(--fg-2)', fontFamily: 'var(--font-ui)', flexShrink: 0 }}>
@@ -778,7 +777,7 @@ export default function SettingsPage() {
                       <button
                         onClick={() => deleteBlock.mutate(b.id)}
                         style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', minWidth: 32, minHeight: 32, borderRadius: 4, fontSize: 14, flexShrink: 0 }}
-                      >âœ•</button>
+                      >✕</button>
                     </div>
                   )
                 })}
@@ -791,7 +790,7 @@ export default function SettingsPage() {
                         onClick={() => setShowDatePicker(v => !v)}
                         style={{ width: '100%', textAlign: 'left', padding: '0.4rem 0.5rem', borderRadius: 6, border: '1px solid var(--line)', background: 'var(--bg-4)', color: closureDate ? 'var(--fg-0)' : 'var(--fg-3)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}
                       >
-                        {closureDate ? fmtBlockDate(toISODate(closureDate)) : 'Seleccionar fechaâ€¦'}
+                        {closureDate ? fmtBlockDate(toISODate(closureDate)) : 'Seleccionar fecha…'}
                       </button>
                       {showDatePicker && (
                         <div style={{ marginTop: 8, padding: '0.875rem', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 8 }}>
@@ -802,7 +801,7 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 4 }}>Motivo</label>
-                      <input type="text" value={closureReason} onChange={e => setClosureReason(e.target.value)} placeholder="Ej: Vacaciones, festivoâ€¦"
+                      <input type="text" value={closureReason} onChange={e => setClosureReason(e.target.value)} placeholder="Ej: Vacaciones, festivo…"
                         style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13 }} />
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -839,7 +838,7 @@ export default function SettingsPage() {
 
                 {!showClosureForm && (
                   <button onClick={() => setShowClosureForm(true)} style={{ alignSelf: 'flex-start', padding: '0.5rem 0.875rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>
-                    + AÃ±adir cierre
+                    + Añadir cierre
                   </button>
                 )}
               </div>
@@ -850,12 +849,12 @@ export default function SettingsPage() {
           {section === 'barberos' && (
             <div>
               <SectionTitle
-                infoTitle="GUÃA â€” EQUIPO"
+                infoTitle="GUÍA — EQUIPO"
                 infoItems={[
-                  { icon: 'ðŸ‘¤', label: 'Lista del equipo', description: 'AquÃ­ gestionas todos los miembros del equipo: nombre, rol, telÃ©fono y descanso.' },
-                  { icon: 'âž•', label: 'AÃ±adir empleado', description: 'Introduce el email de un usuario registrado para aÃ±adirlo al equipo.' },
-                  { icon: 'â¸ï¸', label: 'Descanso diario', description: 'Define la hora de inicio y fin del descanso. Esos huecos no estarÃ¡n disponibles.' },
-                  { icon: 'ðŸ—‘ï¸', label: 'Dar de baja', description: 'Al dar de baja a un empleado se desactiva su acceso. Las citas existentes no se cancelan.' },
+                  { icon: '👤', label: 'Lista del equipo', description: 'Aquí gestionas todos los miembros del equipo: nombre, rol, teléfono y descanso.' },
+                  { icon: '➕', label: 'Añadir empleado', description: 'Introduce el email de un usuario registrado para añadirlo al equipo.' },
+                  { icon: '⏸️', label: 'Descanso diario', description: 'Define la hora de inicio y fin del descanso. Esos huecos no estarán disponibles.' },
+                  { icon: '🗑️', label: 'Dar de baja', description: 'Al dar de baja a un empleado se desactiva su acceso. Las citas existentes no se cancelan.' },
                 ]}
               >EQUIPO</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
@@ -884,7 +883,7 @@ export default function SettingsPage() {
                         >
                           Editar
                         </button>
-                        <button onClick={() => setDeleteBarberTarget(b)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', minWidth: 32, minHeight: 32, borderRadius: 4, fontSize: 14, flexShrink: 0 }}>âœ•</button>
+                        <button onClick={() => setDeleteBarberTarget(b)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', minWidth: 32, minHeight: 32, borderRadius: 4, fontSize: 14, flexShrink: 0 }}>✕</button>
                       </div>
 
                       {editingBarberId === b.id && (
@@ -893,7 +892,7 @@ export default function SettingsPage() {
                             {([
                               { field: 'fullName' as const, label: 'Nombre', type: 'text' },
                               { field: 'email' as const, label: 'Email', type: 'email' },
-                              { field: 'phone' as const, label: 'TelÃ©fono', type: 'tel' },
+                              { field: 'phone' as const, label: 'Teléfono', type: 'tel' },
                             ]).map(({ field, label, type }) => (
                               <div key={field}>
                                 <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>{label}</label>
@@ -909,7 +908,7 @@ export default function SettingsPage() {
                                 <input type="time" value={String(edits.breakStart ?? b.breakStart ?? '')}
                                   onChange={e => handleBarberEditChange(b.id, 'breakStart', e.target.value || null)}
                                   style={{ flex: 1, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }} />
-                                <span style={{ color: 'var(--fg-3)', fontSize: 12 }}>â€“</span>
+                                <span style={{ color: 'var(--fg-3)', fontSize: 12 }}>–</span>
                                 <input type="time" value={String(edits.breakEnd ?? b.breakEnd ?? '')}
                                   onChange={e => handleBarberEditChange(b.id, 'breakEnd', e.target.value || null)}
                                   style={{ flex: 1, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }} />
@@ -946,9 +945,9 @@ export default function SettingsPage() {
 
                 {showBarberForm && (
                   <div style={{ background: 'var(--bg-3)', borderRadius: 10, border: '1px dashed var(--line)', padding: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <div style={{ fontSize: 13, color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontWeight: 500 }}>AÃ±adir empleado</div>
+                    <div style={{ fontSize: 13, color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontWeight: 500 }}>Añadir empleado</div>
                     <div style={{ fontSize: 12, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', lineHeight: 1.5 }}>
-                      El usuario debe tener cuenta registrada. Se aÃ±adirÃ¡ automÃ¡ticamente al equipo.
+                      El usuario debe tener cuenta registrada. Se añadirá automáticamente al equipo.
                     </div>
                     <div>
                       <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Email del usuario *</label>
@@ -967,7 +966,7 @@ export default function SettingsPage() {
                         disabled={!newBarber.email.trim() || addBarberByEmail.isPending}
                         style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: 'none', background: newBarber.email.trim() ? 'var(--led)' : 'var(--bg-4)', color: newBarber.email.trim() ? '#fff' : 'var(--fg-3)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: newBarber.email.trim() ? 'pointer' : 'default' }}
                       >
-                        {addBarberByEmail.isPending ? 'Procesandoâ€¦' : 'Dar de alta'}
+                        {addBarberByEmail.isPending ? 'Procesando…' : 'Dar de alta'}
                       </button>
                       <button
                         onClick={() => { setShowBarberForm(false); setNewBarber({ email: '' }); setBarberCreateError(null) }}
@@ -987,11 +986,11 @@ export default function SettingsPage() {
                 {!showBarberForm && (
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                     <button onClick={() => { setShowBarberForm(true); setBarberCreateError(null) }} style={{ padding: '0.5rem 0.875rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>
-                      + AÃ±adir empleado
+                      + Añadir empleado
                     </button>
                     {user?.email && !barbersData.some(b => b.email === user.email) && (
                       <button onClick={handleAddSelfAsBarber} style={{ padding: '0.5rem 0.875rem', minHeight: 40, borderRadius: 8, border: '1px dashed var(--led-soft)', background: 'rgba(123,79,255,0.07)', color: 'var(--led-soft)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>
-                        + AÃ±adirme al equipo
+                        + Añadirme al equipo
                       </button>
                     )}
                   </div>
@@ -1000,19 +999,19 @@ export default function SettingsPage() {
 
               <div style={{ height: 1, background: 'var(--line)', margin: '1.5rem 0' }} />
               <SectionTitle
-                infoTitle="GUÃA â€” OPCIONES DE RESERVA"
+                infoTitle="GUÍA — OPCIONES DE RESERVA"
                 infoItems={[
-                  { icon: 'ðŸ“†', label: 'DÃ­as de antelaciÃ³n', description: 'MÃ¡ximo de dÃ­as con los que un cliente puede reservar con anticipaciÃ³n (ej. 14 dÃ­as = reserva 2 semanas antes).' },
-                  { icon: 'ðŸ’ˆ', label: 'ElecciÃ³n de empleado', description: 'Activa esta opciÃ³n para que el cliente pueda elegir su empleado preferido al reservar.' },
-                  { icon: 'â±ï¸', label: 'Intervalo de slots', description: 'Cada cuÃ¡ntos minutos aparecen huecos disponibles en el calendario de citas.' },
-                  { icon: 'ðŸ”§', label: 'Buffer entre citas', description: 'Tiempo de preparaciÃ³n entre una cita y la siguiente (en minutos).' },
+                  { icon: '📆', label: 'Días de antelación', description: 'Máximo de días con los que un cliente puede reservar con anticipación (ej. 14 días = reserva 2 semanas antes).' },
+                  { icon: '💈', label: 'Elección de empleado', description: 'Activa esta opción para que el cliente pueda elegir su empleado preferido al reservar.' },
+                  { icon: '⏱️', label: 'Intervalo de slots', description: 'Cada cuántos minutos aparecen huecos disponibles en el calendario de citas.' },
+                  { icon: '🔧', label: 'Buffer entre citas', description: 'Tiempo de preparación entre una cita y la siguiente (en minutos).' },
                 ]}
               >OPCIONES DE RESERVA</SectionTitle>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
                 <div>
                   <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>Permitir elegir empleado</div>
                   <div style={{ fontSize: 11, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', marginTop: 2 }}>
-                    {allowBarberChoice ? 'Los clientes pueden seleccionar empleado al reservar' : 'El sistema asignarÃ¡ empleado automÃ¡ticamente'}
+                    {allowBarberChoice ? 'Los clientes pueden seleccionar empleado al reservar' : 'El sistema asignará empleado automáticamente'}
                   </div>
                 </div>
                 <button
@@ -1034,30 +1033,30 @@ export default function SettingsPage() {
           {section === 'apariencia' && isAdmin && (
             <div>
               <SectionTitle
-                infoTitle="GUÃA â€” APARIENCIA"
+                infoTitle="GUÍA — APARIENCIA"
                 infoItems={[
-                  { icon: 'ðŸŽ¨', label: 'Tema de colores', description: 'Selecciona el tema visual de la aplicaciÃ³n: claro, oscuro o un color de acento personalizado.' },
-                  { icon: 'ðŸ–¼ï¸', label: 'Logo', description: 'Sube una imagen o diseÃ±a un logo con formas geomÃ©tricas. Usa el zoom y la posiciÃ³n para ajustarlo.' },
+                  { icon: '🎨', label: 'Tema de colores', description: 'Selecciona el tema visual de la aplicación: claro, oscuro o un color de acento personalizado.' },
+                  { icon: '🖼️', label: 'Logo', description: 'Sube una imagen o diseña un logo con formas geométricas. Usa el zoom y la posición para ajustarlo.' },
                 ]}
               >APARIENCIA</SectionTitle>
               <AppearanceSection />
             </div>
           )}
 
-          {/* === BARBERÃA === */}
+          {/* === BARBERÍA === */}
           {section === 'barberia' && (
             <div>
               <SectionTitle
-                infoTitle="GUÃA â€” NEGOCIO"
+                infoTitle="GUÍA — NEGOCIO"
                 infoItems={[
-                  { icon: 'ðŸª', label: 'Nombre del negocio', description: 'El nombre que aparece en el tÃ­tulo de la web, en los emails y en la cabecera de la app.' },
-                  { icon: 'ðŸ“', label: 'DescripciÃ³n', description: 'Texto descriptivo del negocio. Aparece en la pÃ¡gina de reservas.' },
-                  { icon: 'ðŸ“', label: 'DirecciÃ³n', description: 'DirecciÃ³n fÃ­sica de la barberÃ­a. Se muestra en la pÃ¡gina de inicio.' },
-                  { icon: 'ðŸ“ž', label: 'TelÃ©fono', description: 'NÃºmero de contacto visible para los clientes.' },
+                  { icon: '🏪', label: 'Nombre del negocio', description: 'El nombre que aparece en el título de la web, en los emails y en la cabecera de la app.' },
+                  { icon: '📝', label: 'Descripción', description: 'Texto descriptivo del negocio. Aparece en la página de reservas.' },
+                  { icon: '📍', label: 'Dirección', description: 'Dirección física de la barbería. Se muestra en la página de inicio.' },
+                  { icon: '📞', label: 'Teléfono', description: 'Número de contacto visible para los clientes.' },
                 ]}
               >NEGOCIO</SectionTitle>
 
-              {/* â”€â”€ Tabs â”€â”€ */}
+              {/* ── Tabs ── */}
               <div style={{ display: 'flex', gap: 4, marginBottom: '1.5rem', background: 'var(--bg-3)', borderRadius: 10, padding: 4 }}>
                 {(['info', 'logo'] as const).map(tab => (
                   <button
@@ -1073,21 +1072,21 @@ export default function SettingsPage() {
                       boxShadow: logoTab === tab ? '0 1px 3px rgba(0,0,0,0.25)' : 'none',
                     }}
                   >
-                    {tab === 'info' ? 'InformaciÃ³n' : 'Logo'}
+                    {tab === 'info' ? 'Información' : 'Logo'}
                   </button>
                 ))}
               </div>
 
-              {/* â”€â”€ Tab: InformaciÃ³n â”€â”€ */}
+              {/* ── Tab: Información ── */}
               {logoTab === 'info' && (
                 <div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
                     {([
                       { key: 'name' as const, label: 'Nombre' },
-                      { key: 'phone' as const, label: 'TelÃ©fono' },
+                      { key: 'phone' as const, label: 'Teléfono' },
                       { key: 'email' as const, label: 'Email' },
                       { key: 'instagram' as const, label: 'Instagram' },
-                      { key: 'address' as const, label: 'DirecciÃ³n' },
+                      { key: 'address' as const, label: 'Dirección' },
                       { key: 'opening_hours' as const, label: 'Horario' },
                     ]).map(({ key, label }) => (
                       <div key={key} className="flex flex-col gap-1 md:grid md:grid-cols-[160px_1fr] md:items-center md:gap-3">
@@ -1097,7 +1096,7 @@ export default function SettingsPage() {
                       </div>
                     ))}
                     <div className="flex flex-col gap-1 md:grid md:grid-cols-[160px_1fr] md:items-start md:gap-3">
-                      <label style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)', paddingTop: 6 }}>DescripciÃ³n</label>
+                      <label style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)', paddingTop: 6 }}>Descripción</label>
                       <textarea value={localShop.description} onChange={e => setShopEdits(s => ({ ...s, description: e.target.value }))} rows={3}
                         style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.5rem 0.6rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, resize: 'vertical', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
                     </div>
@@ -1109,7 +1108,7 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {/* â”€â”€ Tab: Logo â”€â”€ */}
+              {/* ── Tab: Logo ── */}
               {logoTab === 'logo' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
@@ -1166,14 +1165,14 @@ export default function SettingsPage() {
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
                           <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-2)' }}>Zoom</span>
-                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--gold)', fontWeight: 600 }}>{logoScale.toFixed(1)}Ã—</span>
+                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--gold)', fontWeight: 600 }}>{logoScale.toFixed(1)}×</span>
                         </div>
                         <input type="range" min={0.5} max={3} step={0.05} value={logoScale}
                           onChange={e => setLogoScale(Number(e.target.value))}
                           style={{ width: '100%', accentColor: 'var(--gold)', cursor: 'pointer' }} />
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
-                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 9, color: 'var(--fg-4)' }}>0.5Ã—</span>
-                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 9, color: 'var(--fg-4)' }}>3Ã—</span>
+                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 9, color: 'var(--fg-4)' }}>0.5×</span>
+                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 9, color: 'var(--fg-4)' }}>3×</span>
                         </div>
                       </div>
                       {/* Botones imagen */}
@@ -1192,29 +1191,29 @@ export default function SettingsPage() {
                           {pendingLogoFile.name}
                         </p>
                       )}
-                      <p style={{ fontSize: 11, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', margin: 0 }}>PNG, JPG o WEBP Â· mÃ¡ximo 2 MB</p>
+                      <p style={{ fontSize: 11, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', margin: 0 }}>PNG, JPG o WEBP · máximo 2 MB</p>
                     </div>
                   </div>
 
                   {/* Separador */}
                   <div style={{ height: 1, background: 'var(--line)' }} />
 
-                  {/* Formas â€” grid fijo 6Ã—2 */}
+                  {/* Formas — grid fijo 6×2 */}
                   <div>
                     <p style={{ fontSize: 10, fontFamily: 'var(--font-ui)', color: 'var(--fg-4)', marginBottom: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600 }}>Forma</p>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6 }}>
                       {([
-                        { shape: 'hexagon'   as LogoShape, label: 'HexÃ¡gono'   },
-                        { shape: 'circle'    as LogoShape, label: 'CÃ­rculo'    },
+                        { shape: 'hexagon'   as LogoShape, label: 'Hexágono'   },
+                        { shape: 'circle'    as LogoShape, label: 'Círculo'    },
                         { shape: 'square'    as LogoShape, label: 'Cuadrado'   },
                         { shape: 'rounded'   as LogoShape, label: 'Redondeado' },
                         { shape: 'squircle'  as LogoShape, label: 'Squircle'   },
-                        { shape: 'pentagon'  as LogoShape, label: 'PentÃ¡gono'  },
-                        { shape: 'rectangle' as LogoShape, label: 'RectÃ¡ngulo' },
-                        { shape: 'oval'      as LogoShape, label: 'Ã“valo'      },
+                        { shape: 'pentagon'  as LogoShape, label: 'Pentágono'  },
+                        { shape: 'rectangle' as LogoShape, label: 'Rectángulo' },
+                        { shape: 'oval'      as LogoShape, label: 'Óvalo'      },
                         { shape: 'diamond'   as LogoShape, label: 'Rombo'      },
                         { shape: 'shield'    as LogoShape, label: 'Escudo'     },
-                        { shape: 'triangle'  as LogoShape, label: 'TriÃ¡ngulo'  },
+                        { shape: 'triangle'  as LogoShape, label: 'Triángulo'  },
                         { shape: 'badge'     as LogoShape, label: 'Badge'      },
                       ]).map(({ shape, label }) => {
                         const active = (pendingShape ?? shopInfo?.logo_shape ?? 'hexagon') === shape
@@ -1257,7 +1256,7 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  {/* Guardar â€” derecha */}
+                  {/* Guardar — derecha */}
                   <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10 }}>
                     {logoError && <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', margin: 0 }}>{logoError}</p>}
                     <button
@@ -1271,7 +1270,7 @@ export default function SettingsPage() {
                         opacity: (uploadLogo.isPending || mutateShopInfo.isPending) ? 0.7 : 1,
                       }}
                     >
-                      {(uploadLogo.isPending || mutateShopInfo.isPending) ? 'Guardandoâ€¦' : 'Guardar logo'}
+                      {(uploadLogo.isPending || mutateShopInfo.isPending) ? 'Guardando…' : 'Guardar logo'}
                     </button>
                   </div>
 
@@ -1287,7 +1286,7 @@ export default function SettingsPage() {
       {deleteServiceTarget && (
         <ConfirmDialog
           title="Desactivar servicio"
-          message={`Â¿Desactivar "${deleteServiceTarget.name}"? Los clientes no podrÃ¡n reservar este servicio. Las citas ya existentes no se verÃ¡n afectadas.`}
+          message={`¿Desactivar "${deleteServiceTarget.name}"? Los clientes no podrán reservar este servicio. Las citas ya existentes no se verán afectadas.`}
           confirmLabel="Desactivar"
           danger
           onConfirm={handleConfirmDeleteService}
@@ -1298,7 +1297,7 @@ export default function SettingsPage() {
       {softDeleteServiceTarget && (
         <ConfirmDialog
           title="Eliminar servicio"
-          message={`Â¿Eliminar permanentemente "${softDeleteServiceTarget.name}"? DesaparecerÃ¡ de todas las vistas. Esta acciÃ³n no se puede deshacer.`}
+          message={`¿Eliminar permanentemente "${softDeleteServiceTarget.name}"? Desaparecerá de todas las vistas. Esta acción no se puede deshacer.`}
           confirmLabel="Eliminar"
           danger
           onConfirm={handleConfirmSoftDeleteService}
@@ -1309,7 +1308,7 @@ export default function SettingsPage() {
       {deleteBarberTarget && (
         <ConfirmDialog
           title="Dar de baja a empleado"
-          message={`Â¿Dar de baja a ${deleteBarberTarget.fullName}? QuedarÃ¡ inactivo y no aparecerÃ¡ en el sistema de reservas. Sus citas existentes no se verÃ¡n afectadas.`}
+          message={`¿Dar de baja a ${deleteBarberTarget.fullName}? Quedará inactivo y no aparecerá en el sistema de reservas. Sus citas existentes no se verán afectadas.`}
           confirmLabel="Dar de baja"
           danger
           onConfirm={handleConfirmDeleteBarber}
