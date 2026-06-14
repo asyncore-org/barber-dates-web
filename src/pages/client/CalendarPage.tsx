@@ -11,6 +11,8 @@ import { useServices } from '@/hooks/useServices'
 import { useBarbers } from '@/hooks/useBarbers'
 import { useWeeklySchedule, useScheduleBlocks } from '@/hooks/useSchedule'
 import { useClientAppointments, useAllAppointments, useCreateAppointment } from '@/hooks/useAppointments'
+import { useLoyaltyCard, useRewards, useRedeemedRewardIds, useRedeemReward, useRedeemTierConfigReward } from '@/hooks/useLoyalty'
+import { useLoyaltyConfig } from '@/hooks/useShopConfig'
 import type { Service } from '@/domain/service'
 import type { Barber } from '@/domain/barber'
 
@@ -242,6 +244,12 @@ export default function CalendarPage() {
   const { data: myAppointments = [] } = useClientAppointments(user?.id)
   const { data: allAppointments = [] } = useAllAppointments()
   const createAppointment = useCreateAppointment()
+  const { data: loyaltyCard }      = useLoyaltyCard(user?.id)
+  const { data: dbRewards = [] }   = useRewards()
+  const { data: redeemedIds = [] } = useRedeemedRewardIds(user?.id)
+  const { data: loyaltyConfig }    = useLoyaltyConfig()
+  const redeemSimple               = useRedeemReward()
+  const redeemTier                 = useRedeemTierConfigReward()
 
   const [month, setMonth]   = useState(today.getMonth())
   const [year, setYear]     = useState(today.getFullYear())
@@ -253,6 +261,7 @@ export default function CalendarPage() {
   const [confirmOpen, setConfirmOpen]         = useState(false)
   const [bookingError, setBookingError]       = useState<string | null>(null)
   const [bookingBlocked, setBookingBlocked]   = useState(false)
+  const [selectedRewardId, setSelectedRewardId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!window.matchMedia('(min-width: 1024px)').matches) return
@@ -343,6 +352,22 @@ export default function CalendarPage() {
     blocks.filter(b => b.blockDate !== null && b.startTime !== null && !b.isRecurring).map(b => b.blockDate!),
     [blocks])
 
+  const loyaltyPoints = loyaltyCard?.points ?? 0
+  const redeemableRewards = useMemo(() => {
+    if (!loyaltyCard) return []
+    if (loyaltyConfig?.mode === 'tiers' && (loyaltyConfig.tiers?.length ?? 0) > 0) {
+      const sorted = [...loyaltyConfig.tiers].sort((a, b) => a.minPoints - b.minPoints)
+      return sorted
+        .filter(t => loyaltyPoints >= t.minPoints)
+        .flatMap(t => t.rewards.filter(r => !(r.isPermanent) && !redeemedIds.includes(r.id) && loyaltyPoints >= r.cost)
+          .concat(t.rewards.filter(r => r.isPermanent && loyaltyPoints >= r.cost))
+          .map(r => ({ id: r.id, label: r.label, cost: r.cost, isPermanent: r.isPermanent ?? false })))
+    }
+    return dbRewards
+      .filter(r => r.isActive && !redeemedIds.includes(r.id) && loyaltyPoints >= r.cost)
+      .map(r => ({ id: r.id, label: r.label, cost: r.cost, isPermanent: false }))
+  }, [loyaltyCard, loyaltyConfig, dbRewards, redeemedIds, loyaltyPoints])
+
   const canConfirm = !!(selectedDate && selectedSlot && selectedService && !createAppointment.isPending)
 
   // ── Handlers ────────────────────────────────────────────────────────────────
@@ -403,8 +428,19 @@ export default function CalendarPage() {
       { clientId: user.id, barberId, serviceId: selectedService.id, startTime: start.toISOString(), endTime: end.toISOString() },
       {
         onSuccess: () => {
+          if (selectedRewardId && user.id) {
+            const reward = redeemableRewards.find(r => r.id === selectedRewardId)
+            if (reward) {
+              if (loyaltyConfig?.mode === 'tiers') {
+                redeemTier.mutate({ clientId: user.id, rewardId: reward.id, cost: reward.cost, label: reward.label })
+              } else {
+                redeemSimple.mutate({ clientId: user.id, rewardId: reward.id })
+              }
+            }
+          }
           setConfirmOpen(false)
           setSelectedDate(null); setSelectedSlot(null); setSelectedService(null); setSelectedBarber(null)
+          setSelectedRewardId(null)
           setActiveStep('date')
           navigate('/appointments', { replace: true })
         },
@@ -698,6 +734,44 @@ export default function CalendarPage() {
           </div>
         </div>
 
+        {/* ── Rewards ── */}
+        {redeemableRewards.length > 0 && (
+          <div style={{ padding: `0 ${p}`, marginTop: '0.5rem' }}>
+            <div style={{ fontSize: 9, letterSpacing: '0.2em', color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+              Canjear recompensa · {loyaltyPoints} pts
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+              {redeemableRewards.map(r => {
+                const active = selectedRewardId === r.id
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => setSelectedRewardId(active ? null : r.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '0.5rem',
+                      padding: '0.45rem 0.625rem', borderRadius: 8, textAlign: 'left',
+                      border: active ? '1.5px solid var(--gold)' : '1px solid var(--line)',
+                      background: active ? 'rgba(201,162,74,0.1)' : 'var(--bg-3)',
+                      cursor: 'pointer', transition: 'all 0.15s',
+                    }}
+                  >
+                    <div style={{
+                      width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+                      border: active ? '2px solid var(--gold)' : '1.5px solid var(--line)',
+                      background: active ? 'var(--gold)' : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {active && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                    </div>
+                    <span style={{ flex: 1, fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-0)', fontWeight: active ? 600 : 400 }}>{r.label}</span>
+                    <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--gold)', flexShrink: 0 }}>{r.cost} pts</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* ── Footer ── */}
         <div style={{ flexShrink: 0, padding: `0.875rem ${p} 1.5rem`, borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
           {/* Total row: label izquierda · precio derecha */}
@@ -860,6 +934,15 @@ export default function CalendarPage() {
                 <span style={{ fontSize: 13, color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontWeight: 600 }}>★ {selectedService.loyaltyPoints} pts</span>
               </div>
             )}
+            {selectedRewardId && (() => {
+              const r = redeemableRewards.find(x => x.id === selectedRewardId)
+              return r ? (
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid var(--line)' }}>
+                  <span style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>Canjeas</span>
+                  <span style={{ fontSize: 13, color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontWeight: 600 }}>🎁 {r.label} (−{r.cost} pts)</span>
+                </div>
+              ) : null
+            })()}
           </div>
           {bookingError && (
             <p style={{ color: 'var(--danger)', fontSize: 13, fontFamily: 'var(--font-ui)', marginBottom: '0.75rem', textAlign: 'center' }}>

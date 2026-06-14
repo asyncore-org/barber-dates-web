@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef, useSyncExternalStore } from 'reac
 import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
 import { Icon } from '@/components/ui'
-import { AgendaListView, NewAppointmentModal, RescheduleModal, ClientProfileModal, AppointmentLoyaltyControls } from '@/components/admin'
+import { AgendaListView, NewAppointmentModal, RescheduleModal, ClientProfileModal, AppointmentLoyaltyControls, AppointmentClientRewards } from '@/components/admin'
 import type { WeekAppt, RescheduleUpdate, NewAppointmentData } from '@/components/admin'
 import { useBarbers } from '@/hooks/useBarbers'
 import { useAllServices } from '@/hooks/useServices'
@@ -1029,13 +1029,16 @@ export default function DashboardPage() {
 
               {/* Loyalty controls */}
               {selectedApptFull && (
-                <div style={{ padding: '0.875rem 1.25rem', borderTop: '1px solid var(--line)' }}>
+                <div style={{ padding: '0.875rem 1.25rem', borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
                   <AppointmentLoyaltyControls
                     appointmentId={selectedApptFull.id}
                     clientId={selectedApptFull.clientId}
                     serviceId={selectedApptFull.serviceId}
                     endTime={selectedApptFull.endTime}
                   />
+                  <div style={{ borderTop: '1px solid var(--line)', paddingTop: '0.875rem' }}>
+                    <AppointmentClientRewards clientId={selectedApptFull.clientId} />
+                  </div>
                 </div>
               )}
 

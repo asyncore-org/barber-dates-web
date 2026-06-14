@@ -427,6 +427,38 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
     if (error) throw error
   }
 
+  async redeemTierConfigReward(clientId: string, rewardId: string, cost: number, label: string): Promise<void> {
+    const card = await getCardByClientId(clientId)
+    if (!card) throw new Error('No loyalty card found for client')
+
+    const { data: existing } = await insforgeClient.database
+      .from('redeemed_rewards')
+      .select('reward_id')
+      .eq('card_id', card.id)
+      .eq('reward_id', rewardId)
+      .maybeSingle()
+    if (existing) throw new Error('Already redeemed')
+
+    if (card.total_points < cost) throw new Error('Insufficient points')
+
+    const newPoints = Math.max(0, card.total_points - cost)
+    const { error: updateErr } = await insforgeClient.database
+      .from('loyalty_cards')
+      .update({ total_points: newPoints })
+      .eq('id', card.id)
+    if (updateErr) throw updateErr
+
+    const { error: rrErr } = await insforgeClient.database
+      .from('redeemed_rewards')
+      .insert({ card_id: card.id, reward_id: rewardId })
+    if (rrErr) throw rrErr
+
+    const { error: txErr } = await insforgeClient.database
+      .from('loyalty_transactions')
+      .insert({ card_id: card.id, points: -cost, type: 'redeemed', description: `Premio canjeado: ${label}` })
+    if (txErr) throw txErr
+  }
+
   async adminAwardForAppointment(appointmentId: string, clientId: string, points: number): Promise<void> {
     let card = await getCardByClientId(clientId)
 

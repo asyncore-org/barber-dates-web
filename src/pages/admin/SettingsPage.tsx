@@ -1314,8 +1314,8 @@ export default function SettingsPage() {
                                             <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
                                               <input value={r.label} onChange={e => handleUpdateTierReward(tier.id, r.id, 'label', e.target.value)} placeholder="Nombre"
                                                 style={{ flex: 1, minWidth: 0, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.3rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 11, outline: 'none' }} />
-                                              <input type="number" value={r.cost} min={1} onChange={e => handleUpdateTierReward(tier.id, r.id, 'cost', Number(e.target.value))}
-                                                style={{ width: 56, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.3rem 0.35rem', color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontSize: 11, outline: 'none', textAlign: 'center', flexShrink: 0 }} />
+                                              <input type="number" value={r.cost} min={1} onChange={e => { const v = parseInt(e.target.value, 10); if (v > 0) handleUpdateTierReward(tier.id, r.id, 'cost', v) }} onBlur={e => { if (!e.target.value || Number(e.target.value) < 1) handleUpdateTierReward(tier.id, r.id, 'cost', 1) }}
+                                                style={{ width: 64, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.3rem 0.35rem', color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontSize: 11, outline: 'none', textAlign: 'center', flexShrink: 0 }} />
                                               <span style={{ fontSize: 9, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', flexShrink: 0 }}>pts</span>
                                               <button onClick={() => handleDeleteTierReward(tier.id, r.id)}
                                                 style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 12, padding: 0, minWidth: 20, minHeight: 20, flexShrink: 0, opacity: 0.7 }}>✕</button>
@@ -1364,7 +1364,7 @@ export default function SettingsPage() {
                           <div>
                             <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: '0.35rem' }}>Puntos máximos</label>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <input type="number" value={localMaxPoints} min={1} onChange={e => patchCard({ maxPoints: Number(e.target.value) })}
+                              <input type="number" value={localMaxPoints} min={1} onChange={e => { const v = parseInt(e.target.value, 10); if (v > 0) patchCard({ maxPoints: v }) }} onBlur={e => { if (!e.target.value || Number(e.target.value) < 1) patchCard({ maxPoints: 1 }) }}
                                 style={{ width: 110, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 7, padding: '0.5rem 0.625rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 700, outline: 'none', textAlign: 'center' }} />
                               <span style={{ fontSize: 12, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}>pts</span>
                             </div>
@@ -1401,7 +1401,7 @@ export default function SettingsPage() {
                                       <div>
                                         <label style={{ fontSize: 10, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Pts</label>
                                         <input type="number" value={rewardEdits[r.id]?.cost ?? r.cost}
-                                          onChange={e => setRewardEdits(ed => ({ ...ed, [r.id]: { label: ed[r.id]?.label ?? r.label, cost: Number(e.target.value) } }))}
+                                          onChange={e => { const v = parseInt(e.target.value, 10); if (!isNaN(v) && v > 0) setRewardEdits(ed => ({ ...ed, [r.id]: { label: ed[r.id]?.label ?? r.label, cost: v } })) }}
                                           style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.35rem 0.45rem', color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontSize: 12, outline: 'none', textAlign: 'center' }} />
                                       </div>
                                     </div>

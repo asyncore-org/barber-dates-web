@@ -255,6 +255,19 @@ export function useAdminUndoAward() {
   })
 }
 
+/** Redeem a tier config reward (ID from shop_config JSON, not DB rewards table). */
+export function useRedeemTierConfigReward() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ clientId, rewardId, cost, label }: { clientId: string; rewardId: string; cost: number; label: string }) =>
+      repositories.loyalty().redeemTierConfigReward(clientId, rewardId, cost, label),
+    onSuccess: (_data, { clientId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.loyalty.redeemed(clientId) })
+      qc.invalidateQueries({ queryKey: queryKeys.loyalty.byUser(clientId) })
+    },
+  })
+}
+
 /** Admin manual points adjustment (add or subtract). */
 export function useManualAdjustPoints() {
   const qc = useQueryClient()
