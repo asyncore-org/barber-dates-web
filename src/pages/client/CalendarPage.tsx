@@ -447,7 +447,7 @@ export default function CalendarPage() {
         onError: () => setBookingError('No se pudo guardar la cita. Inténtalo de nuevo.'),
       },
     )
-  }, [selectedDate, selectedSlot, selectedService, user, selectedBarber, availableBarbers, createAppointment, navigate])
+  }, [selectedDate, selectedSlot, selectedService, user, selectedBarber, availableBarbers, createAppointment, navigate, selectedRewardId, redeemableRewards, loyaltyConfig, redeemTier, redeemSimple])
 
   // ── Shared step content ──────────────────────────────────────────────────────
 
