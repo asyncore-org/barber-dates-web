@@ -40,7 +40,8 @@ export default function ClientsPage() {
   const [pendingLoyaltyCard, setPendingLoyaltyCard] = useState<PendingCard | null>(null)
   const [expandedTierId, setExpandedTierId] = useState<string | null>(null)
   const [simPoints, setSimPoints] = useState(0)
-  const [configError, setConfigError] = useState<string | null>(null)
+  const [configError, setConfigError]   = useState<string | null>(null)
+  const [configSaved, setConfigSaved]   = useState(false)
 
   const localMode       = pendingLoyaltyCard?.mode       ?? loyaltyConfig?.mode       ?? 'tiers'
   const localTiers      = pendingLoyaltyCard?.tiers      ?? (loyaltyConfig?.tiers?.length ? loyaltyConfig.tiers : DEFAULT_LOYALTY_TIERS)
@@ -87,8 +88,11 @@ export default function ClientsPage() {
     updateLoyaltyConfig.mutate(
       { mode: localMode, tiers: localTiers, maxPoints: localMaxPoints, rewardMode: localRewardMode },
       {
-        onSuccess: () => { setPendingLoyaltyCard(null); setConfigError(null) },
-        onError:   (e) => { if (import.meta.env.DEV) console.error(e); setConfigError('No se pudo guardar la configuración.') },
+        onSuccess: () => {
+          setPendingLoyaltyCard(null); setConfigError(null)
+          setConfigSaved(true); setTimeout(() => setConfigSaved(false), 3500)
+        },
+        onError: (e) => { if (import.meta.env.DEV) console.error(e); setConfigError('No se pudo guardar la configuración.') },
       },
     )
   }
@@ -227,6 +231,31 @@ export default function ClientsPage() {
                     </button>
                   ))}
                 </div>
+
+                {/* Saved-mode indicator — always visible */}
+                {loyaltyConfig && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ fontSize: 10, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)' }}>Guardado:</span>
+                    <span style={{
+                      fontSize: 10, fontFamily: 'var(--font-ui)', fontWeight: 600,
+                      padding: '2px 8px', borderRadius: 4,
+                      background: 'var(--bg-3)', border: '1px solid var(--line)',
+                      color: tiersDirty && localMode !== loyaltyConfig.mode ? 'var(--fg-3)' : 'var(--fg-1)',
+                      textDecoration: tiersDirty && localMode !== loyaltyConfig.mode ? 'line-through' : 'none',
+                    }}>
+                      {loyaltyConfig.mode === 'tiers' ? 'Por Niveles' : 'Puntos Simples'}
+                    </span>
+                    {tiersDirty && localMode !== loyaltyConfig.mode && (
+                      <>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                        <span style={{ fontSize: 10, fontFamily: 'var(--font-ui)', fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: 'rgba(201,162,74,0.12)', border: '1px solid rgba(201,162,74,0.4)', color: 'var(--gold)' }}>
+                          {localMode === 'tiers' ? 'Por Niveles' : 'Puntos Simples'}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
+
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   {tiersDirty && (
                     <span style={{ fontSize: 9, color: 'var(--gold)', fontFamily: 'var(--font-ui)', background: 'rgba(201,162,74,0.1)', border: '1px solid rgba(201,162,74,0.3)', borderRadius: 4, padding: '2px 7px', fontWeight: 700, letterSpacing: '0.08em' }}>
@@ -463,7 +492,13 @@ export default function ClientsPage() {
 
               {/* Editor footer */}
               <div style={{ flexShrink: 0, padding: '0.75rem 1.25rem', borderTop: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.625rem' }}>
-                {configError && <span style={{ fontSize: 11, color: 'var(--danger)', fontFamily: 'var(--font-ui)', marginRight: 'auto' }}>{configError}</span>}
+                {configError  && <span style={{ fontSize: 11, color: 'var(--danger)', fontFamily: 'var(--font-ui)', marginRight: 'auto' }}>{configError}</span>}
+                {configSaved  && !configError && (
+                  <span style={{ fontSize: 11, color: 'var(--ok)', fontFamily: 'var(--font-ui)', marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Configuración guardada correctamente
+                  </span>
+                )}
                 {tiersDirty && (
                   <button onClick={() => setPendingLoyaltyCard(null)}
                     style={{ padding: '0.45rem 0.875rem', minHeight: 36, borderRadius: 7, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 12, cursor: 'pointer' }}>
@@ -497,7 +532,6 @@ export default function ClientsPage() {
                   loyaltyMode={localMode}
                   configTiers={localMode === 'tiers' ? localTiers : undefined}
                   maxPoints={localMode === 'simple' ? localMaxPoints : undefined}
-                  compact
                 />
                 <p style={{ fontSize: 10, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', textAlign: 'center', marginTop: '0.75rem', letterSpacing: '0.04em' }}>
                   Cambia «Simula» para ver diferentes niveles
