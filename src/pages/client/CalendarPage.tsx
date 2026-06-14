@@ -735,56 +735,38 @@ export default function CalendarPage() {
             )}
           </div>
 
-          {/* ── Rewards dropdown ── */}
+          {/* ── Reward picker trigger ── */}
           {redeemableRewards.length > 0 && (
             <div style={{ padding: `0 ${p} 1.25rem` }}>
-
-              {/* Trigger button */}
               <button
-                onClick={() => setRewardsOpen(o => !o)}
+                onClick={() => setRewardsOpen(true)}
                 style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: '0.625rem',
-                  padding: '0.7rem 0.875rem',
-                  borderRadius: rewardsOpen ? '10px 10px 0 0' : 10,
-                  border: selectedReward
-                    ? `1.5px solid rgba(201,162,74,${rewardsOpen ? '0.6' : '0.45'})`
-                    : `1px solid ${rewardsOpen ? 'rgba(201,162,74,0.4)' : 'var(--line)'}`,
-                  background: selectedReward
-                    ? `rgba(201,162,74,${rewardsOpen ? '0.1' : '0.07'})`
-                    : rewardsOpen ? 'rgba(201,162,74,0.05)' : 'var(--bg-3)',
-                  cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left',
+                  width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                  padding: '0.75rem 0.875rem', borderRadius: 10, textAlign: 'left',
+                  border: selectedReward ? '1.5px solid rgba(201,162,74,0.5)' : '1px solid var(--line)',
+                  background: selectedReward ? 'rgba(201,162,74,0.07)' : 'var(--bg-3)',
+                  cursor: 'pointer', transition: 'all 0.2s',
                 }}
               >
-                {/* Icon */}
                 <div style={{
-                  width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-                  background: selectedReward ? 'rgba(201,162,74,0.18)' : 'var(--bg-4)',
+                  width: 32, height: 32, borderRadius: 9, flexShrink: 0,
+                  background: selectedReward ? 'rgba(201,162,74,0.15)' : 'var(--bg-4)',
                   border: `1px solid ${selectedReward ? 'rgba(201,162,74,0.4)' : 'var(--line)'}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'all 0.2s',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
                 }}>
-                  {selectedReward ? (
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 12 20 22 4 22 4 12" /><rect x="2" y="7" width="20" height="5" /><line x1="12" y1="22" x2="12" y2="7" /><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" /><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
-                    </svg>
-                  ) : (
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 12 20 22 4 22 4 12" /><rect x="2" y="7" width="20" height="5" /><line x1="12" y1="22" x2="12" y2="7" /><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" /><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
-                    </svg>
-                  )}
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke={selectedReward ? 'var(--gold)' : 'var(--fg-3)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 12 20 22 4 22 4 12" /><rect x="2" y="7" width="20" height="5" /><line x1="12" y1="22" x2="12" y2="7" /><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" /><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+                  </svg>
                 </div>
-
-                {/* Label */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', color: selectedReward ? 'rgba(201,162,74,0.7)' : 'var(--fg-4)', textTransform: 'uppercase', marginBottom: 2 }}>
+                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 2, color: selectedReward ? 'rgba(201,162,74,0.7)' : 'var(--fg-4)' }}>
                     Recompensa
                   </div>
-                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: selectedReward ? 'var(--gold)' : 'var(--fg-3)', fontWeight: selectedReward ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {selectedReward ? selectedReward.label : `${redeemableRewards.length} disponible${redeemableRewards.length > 1 ? 's' : ''}`}
+                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: selectedReward ? 600 : 400, color: selectedReward ? 'var(--gold)' : 'var(--fg-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {selectedReward ? selectedReward.label : `${redeemableRewards.length} disponible${redeemableRewards.length !== 1 ? 's' : ''}`}
                   </div>
                 </div>
-
-                {/* Pts badge */}
                 {selectedReward ? (
                   <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--gold)', fontWeight: 700, flexShrink: 0 }}>
                     −{selectedReward.cost} pts
@@ -794,115 +776,11 @@ export default function CalendarPage() {
                     {loyaltyPoints} pts
                   </span>
                 )}
-
-                {/* Chevron */}
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={selectedReward ? 'var(--gold)' : 'var(--fg-4)'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                  style={{ flexShrink: 0, transform: rewardsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                  stroke={selectedReward ? 'var(--gold)' : 'var(--fg-4)'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                   <path d="M6 9l6 6 6-6" />
                 </svg>
               </button>
-
-              {/* Panel */}
-              {rewardsOpen && (
-                <div style={{
-                  border: '1px solid rgba(201,162,74,0.35)', borderTop: 'none',
-                  borderRadius: '0 0 10px 10px', overflow: 'hidden',
-                  background: 'rgba(10,8,6,0.6)',
-                }}>
-                  {/* Points available bar */}
-                  <div style={{
-                    padding: '0.5rem 0.875rem',
-                    borderBottom: '1px solid rgba(201,162,74,0.12)',
-                    background: 'rgba(201,162,74,0.05)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  }}>
-                    <span style={{ fontFamily: 'var(--font-ui)', fontSize: 9, letterSpacing: '0.15em', color: 'var(--fg-4)', textTransform: 'uppercase' }}>
-                      Saldo disponible
-                    </span>
-                    <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--gold)', fontWeight: 700 }}>
-                      {loyaltyPoints} pts
-                    </span>
-                  </div>
-
-                  {/* Reward rows */}
-                  {redeemableRewards.map((r, i) => {
-                    const active = selectedRewardId === r.id
-                    return (
-                      <button
-                        key={r.id}
-                        onClick={() => {
-                          setSelectedRewardId(active ? null : r.id)
-                          setRewardsOpen(false)
-                        }}
-                        style={{
-                          width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem',
-                          padding: '0.75rem 0.875rem', textAlign: 'left', cursor: 'pointer',
-                          borderTop: i > 0 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                          background: active
-                            ? 'linear-gradient(90deg, rgba(201,162,74,0.15) 0%, rgba(201,162,74,0.04) 100%)'
-                            : 'transparent',
-                          borderLeft: active ? '3px solid var(--gold)' : '3px solid transparent',
-                          transition: 'background 0.15s',
-                        }}
-                      >
-                        {/* Radio */}
-                        <div style={{
-                          width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
-                          border: active ? '2px solid var(--gold)' : '1.5px solid var(--fg-4)',
-                          background: active ? 'var(--gold)' : 'transparent',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          transition: 'all 0.15s',
-                        }}>
-                          {active && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#000' }} />}
-                        </div>
-
-                        {/* Info */}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: active ? 'var(--fg-0)' : 'var(--fg-1)', fontWeight: active ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {r.label}
-                          </div>
-                          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, color: active ? 'rgba(201,162,74,0.6)' : 'var(--fg-4)', marginTop: 2, letterSpacing: '0.05em' }}>
-                            {r.isPermanent ? 'Permanente · uso múltiple' : 'Un solo uso'}
-                          </div>
-                        </div>
-
-                        {/* Cost */}
-                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: active ? 'var(--gold)' : 'var(--fg-2)', fontWeight: active ? 700 : 500 }}>
-                            {r.cost} pts
-                          </div>
-                          {active && (
-                            <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, color: 'rgba(201,162,74,0.6)', marginTop: 1 }}>
-                              ✓ elegida
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    )
-                  })}
-
-                  {/* Deselect footer */}
-                  {selectedRewardId && (
-                    <button
-                      onClick={() => { setSelectedRewardId(null); setRewardsOpen(false) }}
-                      style={{
-                        width: '100%', padding: '0.5rem 0.875rem',
-                        borderTop: '1px solid rgba(255,255,255,0.06)',
-                        background: 'transparent', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem',
-                        fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-4)',
-                        letterSpacing: '0.05em',
-                        transition: 'color 0.15s',
-                      }}
-                    >
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M18 6L6 18M6 6l12 12" />
-                      </svg>
-                      Sin recompensa
-                    </button>
-                  )}
-                </div>
-              )}
             </div>
           )}
 
@@ -1046,6 +924,99 @@ export default function CalendarPage() {
         {summaryCard(false)}
       </div>
 
+
+      {/* ── Reward picker modal ─────────────────────────────────────────────── */}
+      {rewardsOpen && (
+        <Modal onClose={() => setRewardsOpen(false)} title="Canjear recompensa">
+          {/* Saldo bar */}
+          <div style={{
+            margin: '-18px -20px 18px', padding: '10px 20px',
+            background: 'rgba(201,162,74,0.06)',
+            borderBottom: '1px solid rgba(201,162,74,0.15)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-3)' }}>
+              Tu saldo disponible
+            </span>
+            <span style={{ fontFamily: 'var(--font-ui)', fontSize: 15, color: 'var(--gold)', fontWeight: 700 }}>
+              {loyaltyPoints} pts
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {redeemableRewards.map(r => {
+              const active = selectedRewardId === r.id
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => { setSelectedRewardId(active ? null : r.id); setRewardsOpen(false) }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.875rem',
+                    padding: '0.875rem 1rem', borderRadius: 12, textAlign: 'left',
+                    border: active ? '1.5px solid var(--gold)' : '1px solid var(--line)',
+                    background: active
+                      ? 'linear-gradient(105deg, rgba(201,162,74,0.12) 0%, rgba(201,162,74,0.04) 100%)'
+                      : 'var(--bg-3)',
+                    cursor: 'pointer', transition: 'all 0.15s',
+                    borderLeft: active ? '4px solid var(--gold)' : '4px solid transparent',
+                  }}
+                >
+                  {/* Radio */}
+                  <div style={{
+                    width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                    border: active ? '2px solid var(--gold)' : '1.5px solid var(--fg-4)',
+                    background: active ? 'var(--gold)' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.15s',
+                  }}>
+                    {active && <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#000' }} />}
+                  </div>
+
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: active ? 'var(--fg-0)' : 'var(--fg-1)', fontWeight: active ? 600 : 400, marginBottom: 3 }}>
+                      {r.label}
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: active ? 'rgba(201,162,74,0.65)' : 'var(--fg-4)', letterSpacing: '0.04em' }}>
+                      {r.isPermanent ? 'Permanente · uso múltiple' : 'Un solo uso'}
+                    </div>
+                  </div>
+
+                  {/* Cost */}
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontFamily: 'var(--font-ui)', fontSize: 14, color: active ? 'var(--gold)' : 'var(--fg-2)', fontWeight: active ? 700 : 500 }}>
+                      {r.cost} pts
+                    </div>
+                    {active && (
+                      <div style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'rgba(201,162,74,0.7)', marginTop: 2 }}>
+                        ✓ seleccionada
+                      </div>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
+
+            {/* Quitar selección */}
+            {selectedRewardId && (
+              <button
+                onClick={() => { setSelectedRewardId(null); setRewardsOpen(false) }}
+                style={{
+                  marginTop: 4, padding: '0.75rem', borderRadius: 10,
+                  border: '1px dashed rgba(255,255,255,0.1)', background: 'transparent',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                  fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-4)',
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+                Sin recompensa
+              </button>
+            )}
+          </div>
+        </Modal>
+      )}
 
       {/* ── Confirmation modal ───────────────────────────────────────────────── */}
       {confirmOpen && (
