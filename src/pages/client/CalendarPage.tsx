@@ -262,6 +262,7 @@ export default function CalendarPage() {
   const [bookingError, setBookingError]       = useState<string | null>(null)
   const [bookingBlocked, setBookingBlocked]   = useState(false)
   const [selectedRewardId, setSelectedRewardId] = useState<string | null>(null)
+  const [rewardsOpen, setRewardsOpen] = useState(false)
 
   useEffect(() => {
     if (!window.matchMedia('(min-width: 1024px)').matches) return
@@ -536,210 +537,386 @@ export default function CalendarPage() {
   // ── Summary card ─────────────────────────────────────────────────────────────
 
   const summaryCard = (fullHeight: boolean) => {
-    const p = fullHeight ? '1.25rem' : '1rem'
+    const p = fullHeight ? '1.5rem' : '1.25rem'
     const stepDone = allowBarberChoice
       ? [!!selectedDate, !!selectedSlot, !!selectedSlot, !!selectedService]
       : [!!selectedDate, !!selectedSlot, !!selectedService]
+    const progressPct = (stepDone.filter(Boolean).length / stepDone.length) * 100
     const dateDay = selectedDate?.getDate()
     const dateDayName = selectedDate?.toLocaleDateString('es-ES', { weekday: 'long' }).toUpperCase()
     const dateMonthYear = selectedDate?.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase()
     const barberInitials = selectedBarber ? getInitials(selectedBarber.fullName) : '✦'
+    const selectedReward = redeemableRewards.find(r => r.id === selectedRewardId) ?? null
 
     return (
       <div style={{
         background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 16,
-        display: 'flex', flexDirection: 'column', overflow: 'hidden',
-        ...(fullHeight ? { height: '100%' } : {}),
+        display: 'flex', flexDirection: 'column',
+        ...(fullHeight ? { height: '100%', overflow: 'hidden' } : {}),
       }}>
 
-        {/* Gold accent top line */}
-        <div style={{ height: 2, background: 'linear-gradient(90deg, var(--gold) 0%, rgba(201,162,74,0.12) 100%)', flexShrink: 0 }} />
-
-        {/* ── Header: label + step dots ── */}
-        <div style={{ padding: `0.875rem ${p} 0.75rem`, borderBottom: '1px solid var(--line)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--gold)' }}>
+        {/* ── Header: label + barra de progreso ── */}
+        <div style={{ padding: `1.1rem ${p} 1rem`, borderBottom: '1px solid var(--line)', flexShrink: 0 }}>
+          <p style={{ fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 700, letterSpacing: '0.18em', color: 'var(--gold)', margin: '0 0 0.75rem' }}>
             RESUMEN
-          </span>
-          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            {stepDone.map((done, i) => (
-              <div key={i} style={{
-                height: 4, borderRadius: 2,
-                width: done ? 18 : 6,
-                background: done ? 'var(--gold)' : 'rgba(255,255,255,0.1)',
-                transition: 'all 0.35s ease',
-              }} />
-            ))}
+          </p>
+          <div style={{ height: 3, borderRadius: 2, background: 'var(--bg-4)', overflow: 'hidden' }}>
+            <div style={{
+              height: '100%', borderRadius: 2,
+              background: 'linear-gradient(90deg, rgba(201,162,74,0.7), var(--gold))',
+              width: `${progressPct}%`,
+              transition: 'width 0.35s ease',
+            }} />
           </div>
         </div>
 
         {/* ── Body ── */}
         <div style={{ ...(fullHeight ? { flex: 1, minHeight: 0, overflowY: 'auto', scrollbarWidth: 'none' as const } : {}) }}>
 
-          {/* ── Date + Time block ── */}
+          {/* Date ticket stub */}
           <div style={{ padding: `1rem ${p} 0` }}>
             {selectedDate ? (
               <div style={{
-                display: 'flex', alignItems: 'center', gap: '0.875rem',
-                padding: '0.75rem 1rem', borderRadius: 12,
-                background: 'rgba(201,162,74,0.05)',
-                border: '1px solid rgba(201,162,74,0.2)',
+                borderRadius: 11, border: '1px solid rgba(201,162,74,0.3)',
+                background: 'rgba(201,162,74,0.04)', overflow: 'hidden',
               }}>
-                <div style={{ textAlign: 'center', lineHeight: 1, minWidth: 36 }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: 'var(--fg-0)', letterSpacing: '0.02em', lineHeight: 1 }}>
-                    {dateDay}
-                  </div>
-                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, color: 'var(--fg-4)', letterSpacing: '0.08em', marginTop: 3, textTransform: 'uppercase' }}>
-                    {dateDayName?.slice(0, 3)}
-                  </div>
-                </div>
-                <div style={{ width: 1, height: 30, background: 'rgba(201,162,74,0.25)', flexShrink: 0 }} />
-                <div style={{ flex: 1, lineHeight: 1 }}>
-                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-4)', letterSpacing: '0.05em', marginBottom: 5, textTransform: 'uppercase' }}>
-                    {dateMonthYear}
-                  </div>
-                  {selectedSlot ? (
-                    <span style={{ fontFamily: 'var(--font-ui)', fontSize: 15, fontWeight: 700, color: 'var(--gold)', letterSpacing: '0.04em' }}>
-                      {selectedSlot}
+                <div style={{ display: 'flex', alignItems: 'stretch' }}>
+                  <div style={{
+                    width: 64, flexShrink: 0,
+                    background: 'rgba(201,162,74,0.12)',
+                    borderRight: '1px dashed rgba(201,162,74,0.35)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '0.875rem 0',
+                  }}>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: 44, color: 'var(--fg-0)', lineHeight: 1, letterSpacing: '0.02em' }}>
+                      {dateDay}
                     </span>
-                  ) : (
-                    <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-4)' }}>
-                      Elige hora →
-                    </span>
+                  </div>
+                  <div style={{ flex: 1, padding: '0.75rem 0.875rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 3 }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, color: 'var(--fg-0)', letterSpacing: '0.07em', lineHeight: 1 }}>
+                      {dateDayName}
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-3)', letterSpacing: '0.06em' }}>
+                      {dateMonthYear}
+                    </div>
+                    {selectedSlot ? (
+                      <span style={{
+                        display: 'inline-block', marginTop: 4,
+                        fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: 700,
+                        color: 'var(--gold)', background: 'rgba(201,162,74,0.15)',
+                        border: '1px solid rgba(201,162,74,0.3)',
+                        borderRadius: 6, padding: '0.15rem 0.5rem', width: 'fit-content',
+                      }}>
+                        {selectedSlot}
+                      </span>
+                    ) : (
+                      <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-4)', marginTop: 4 }}>
+                        Elige hora →
+                      </span>
+                    )}
+                  </div>
+                  {selectedSlot && (
+                    <div style={{ padding: '0 0.75rem', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                      <div style={{
+                        width: 22, height: 22, borderRadius: '50%', background: 'var(--ok)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                          <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </div>
+                    </div>
                   )}
                 </div>
-                {selectedSlot && (
-                  <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--ok)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
-                      <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </div>
-                )}
               </div>
             ) : (
               <div style={{
-                display: 'flex', alignItems: 'center', gap: '0.75rem',
-                padding: '0.625rem 0.875rem', borderRadius: 12,
-                border: '1px dashed var(--line)', background: 'var(--bg-3)',
+                borderRadius: 11, border: '1px dashed var(--line)',
+                padding: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                background: 'var(--bg-3)',
               }}>
-                <div style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--bg-4)', border: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--fg-4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <div style={{
+                  width: 36, height: 36, borderRadius: 9, flexShrink: 0,
+                  background: 'var(--bg-4)', border: '1px solid var(--line)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--fg-4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="3" y1="10" x2="21" y2="10" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="16" y1="2" x2="16" y2="6" />
                   </svg>
                 </div>
                 <div>
-                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 600, letterSpacing: '0.1em', color: 'var(--fg-4)', textTransform: 'uppercase', marginBottom: 3 }}>Fecha y hora</div>
-                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-4)' }}>Selecciona en el Paso 1</div>
+                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', color: 'var(--fg-4)', textTransform: 'uppercase', marginBottom: 3 }}>
+                    Fecha y hora
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-4)' }}>
+                    Selecciona en el Paso 1
+                  </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* ── Empleado + Servicio — compact pair ── */}
-          <div style={{ padding: `0.875rem ${p} 0`, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          {/* Dashed divider */}
+          <div style={{ margin: `0.875rem ${p}`, borderTop: '1px dashed var(--line-2)', opacity: 0.5 }} />
 
-            {/* Employee row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-              <div style={{
-                width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-                background: selectedSlot ? (selectedBarber ? 'rgba(123,79,255,0.18)' : 'rgba(201,162,74,0.12)') : 'var(--bg-4)',
-                border: `1.5px solid ${selectedSlot ? (selectedBarber ? 'rgba(123,79,255,0.4)' : 'rgba(201,162,74,0.35)') : 'var(--line)'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 700,
-                color: selectedSlot ? (selectedBarber ? 'var(--led-soft)' : 'var(--gold)') : 'var(--fg-4)',
-                transition: 'all 0.2s',
-              }}>
-                {selectedSlot ? barberInitials : '?'}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', color: 'var(--fg-4)', textTransform: 'uppercase', marginBottom: 2 }}>
-                  Empleado
-                </div>
-                <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: selectedSlot ? 'var(--fg-0)' : 'var(--fg-4)', fontWeight: selectedSlot ? 500 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {selectedSlot ? (selectedBarber?.fullName ?? 'Cualquier barbero') : '—'}
-                </div>
-              </div>
+          {/* Empleado row */}
+          <div style={{ padding: `0 ${p}`, display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+              background: selectedSlot
+                ? (selectedBarber ? 'rgba(123,79,255,0.18)' : 'rgba(201,162,74,0.12)')
+                : 'var(--bg-4)',
+              border: `1.5px solid ${selectedSlot ? (selectedBarber ? 'rgba(123,79,255,0.4)' : 'rgba(201,162,74,0.35)') : 'var(--line)'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: 700,
+              color: selectedSlot ? (selectedBarber ? 'var(--led-soft)' : 'var(--gold)') : 'var(--fg-4)',
+              transition: 'all 0.2s',
+            }}>
+              {selectedSlot ? barberInitials : '?'}
             </div>
-
-            {/* Service row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-              <div style={{
-                width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-                background: selectedService ? 'var(--bg-3)' : 'var(--bg-4)',
-                border: `1px ${selectedService ? 'solid var(--line)' : 'dashed var(--line)'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={selectedService ? 'var(--fg-2)' : 'var(--fg-4)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" />
-                </svg>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', color: 'var(--fg-3)', textTransform: 'uppercase', marginBottom: 3 }}>
+                Empleado
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', color: 'var(--fg-4)', textTransform: 'uppercase', marginBottom: 2 }}>
-                  Servicio
-                </div>
-                <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: selectedService ? 'var(--fg-0)' : 'var(--fg-4)', fontWeight: selectedService ? 500 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {selectedService ? selectedService.name : `Selecciona en el Paso ${allowBarberChoice ? 4 : 3}`}
-                </div>
-              </div>
-              {selectedService && (
-                <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-3)', flexShrink: 0 }}>
-                  {selectedService.durationMinutes}′
-                </span>
-              )}
+              <span style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: selectedSlot ? 'var(--fg-0)' : 'var(--fg-4)', fontWeight: selectedSlot ? 500 : 400 }}>
+                {selectedSlot ? (selectedBarber?.fullName ?? 'Cualquier barbero') : '—'}
+              </span>
             </div>
           </div>
 
-          {/* ── Rewards — horizontal card carousel ── */}
-          {redeemableRewards.length > 0 && (
-            <div style={{ marginTop: '1rem' }}>
-              <div style={{ padding: `0 ${p}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 12 20 22 4 22 4 12" /><rect x="2" y="7" width="20" height="5" /><line x1="12" y1="22" x2="12" y2="7" /><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" /><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+          {/* Dashed divider */}
+          <div style={{ margin: `0.875rem ${p}`, borderTop: '1px dashed var(--line-2)', opacity: 0.5 }} />
+
+          {/* Servicio row */}
+          <div style={{ padding: `0 ${p} 1rem` }}>
+            {selectedService ? (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+                  background: 'var(--bg-3)', border: '1px solid var(--line)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--fg-2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" />
                   </svg>
-                  <span style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', color: 'var(--fg-3)', textTransform: 'uppercase' }}>
-                    Recompensas
-                  </span>
                 </div>
-                <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--gold)', fontWeight: 700 }}>
-                  {loyaltyPoints} pts
-                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', color: 'var(--fg-3)', textTransform: 'uppercase', marginBottom: 3 }}>
+                    Servicio
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 14, color: 'var(--fg-0)', fontWeight: 600, lineHeight: 1.3 }}>
+                    {selectedService.name}
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-3)', marginTop: 3 }}>
+                    {selectedService.durationMinutes} min
+                  </div>
+                </div>
               </div>
-              <div style={{ overflowX: 'auto', scrollbarWidth: 'none' as const, display: 'flex', gap: '0.5rem', paddingLeft: p, paddingRight: p, paddingBottom: '1rem' }}>
-                {redeemableRewards.map(r => {
-                  const active = selectedRewardId === r.id
-                  return (
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+                  background: 'var(--bg-4)', border: '1px dashed var(--line)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--fg-4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" />
+                  </svg>
+                </div>
+                <div>
+                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', color: 'var(--fg-4)', textTransform: 'uppercase', marginBottom: 3 }}>
+                    Servicio
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-4)' }}>
+                    Selecciona en el Paso {allowBarberChoice ? 4 : 3}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Rewards dropdown ── */}
+          {redeemableRewards.length > 0 && (
+            <div style={{ padding: `0 ${p} 1.25rem` }}>
+
+              {/* Trigger button */}
+              <button
+                onClick={() => setRewardsOpen(o => !o)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: '0.625rem',
+                  padding: '0.7rem 0.875rem',
+                  borderRadius: rewardsOpen ? '10px 10px 0 0' : 10,
+                  border: selectedReward
+                    ? `1.5px solid rgba(201,162,74,${rewardsOpen ? '0.6' : '0.45'})`
+                    : `1px solid ${rewardsOpen ? 'rgba(201,162,74,0.4)' : 'var(--line)'}`,
+                  background: selectedReward
+                    ? `rgba(201,162,74,${rewardsOpen ? '0.1' : '0.07'})`
+                    : rewardsOpen ? 'rgba(201,162,74,0.05)' : 'var(--bg-3)',
+                  cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left',
+                }}
+              >
+                {/* Icon */}
+                <div style={{
+                  width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                  background: selectedReward ? 'rgba(201,162,74,0.18)' : 'var(--bg-4)',
+                  border: `1px solid ${selectedReward ? 'rgba(201,162,74,0.4)' : 'var(--line)'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.2s',
+                }}>
+                  {selectedReward ? (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 12 20 22 4 22 4 12" /><rect x="2" y="7" width="20" height="5" /><line x1="12" y1="22" x2="12" y2="7" /><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" /><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+                    </svg>
+                  ) : (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 12 20 22 4 22 4 12" /><rect x="2" y="7" width="20" height="5" /><line x1="12" y1="22" x2="12" y2="7" /><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" /><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+                    </svg>
+                  )}
+                </div>
+
+                {/* Label */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', color: selectedReward ? 'rgba(201,162,74,0.7)' : 'var(--fg-4)', textTransform: 'uppercase', marginBottom: 2 }}>
+                    Recompensa
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: selectedReward ? 'var(--gold)' : 'var(--fg-3)', fontWeight: selectedReward ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {selectedReward ? selectedReward.label : `${redeemableRewards.length} disponible${redeemableRewards.length > 1 ? 's' : ''}`}
+                  </div>
+                </div>
+
+                {/* Pts badge */}
+                {selectedReward ? (
+                  <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--gold)', fontWeight: 700, flexShrink: 0 }}>
+                    −{selectedReward.cost} pts
+                  </span>
+                ) : (
+                  <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-4)', flexShrink: 0 }}>
+                    {loyaltyPoints} pts
+                  </span>
+                )}
+
+                {/* Chevron */}
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={selectedReward ? 'var(--gold)' : 'var(--fg-4)'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ flexShrink: 0, transform: rewardsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+
+              {/* Panel */}
+              {rewardsOpen && (
+                <div style={{
+                  border: '1px solid rgba(201,162,74,0.35)', borderTop: 'none',
+                  borderRadius: '0 0 10px 10px', overflow: 'hidden',
+                  background: 'rgba(10,8,6,0.6)',
+                }}>
+                  {/* Points available bar */}
+                  <div style={{
+                    padding: '0.5rem 0.875rem',
+                    borderBottom: '1px solid rgba(201,162,74,0.12)',
+                    background: 'rgba(201,162,74,0.05)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  }}>
+                    <span style={{ fontFamily: 'var(--font-ui)', fontSize: 9, letterSpacing: '0.15em', color: 'var(--fg-4)', textTransform: 'uppercase' }}>
+                      Saldo disponible
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--gold)', fontWeight: 700 }}>
+                      {loyaltyPoints} pts
+                    </span>
+                  </div>
+
+                  {/* Reward rows */}
+                  {redeemableRewards.map((r, i) => {
+                    const active = selectedRewardId === r.id
+                    return (
+                      <button
+                        key={r.id}
+                        onClick={() => {
+                          setSelectedRewardId(active ? null : r.id)
+                          setRewardsOpen(false)
+                        }}
+                        style={{
+                          width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                          padding: '0.75rem 0.875rem', textAlign: 'left', cursor: 'pointer',
+                          borderTop: i > 0 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                          background: active
+                            ? 'linear-gradient(90deg, rgba(201,162,74,0.15) 0%, rgba(201,162,74,0.04) 100%)'
+                            : 'transparent',
+                          borderLeft: active ? '3px solid var(--gold)' : '3px solid transparent',
+                          transition: 'background 0.15s',
+                        }}
+                      >
+                        {/* Radio */}
+                        <div style={{
+                          width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                          border: active ? '2px solid var(--gold)' : '1.5px solid var(--fg-4)',
+                          background: active ? 'var(--gold)' : 'transparent',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          transition: 'all 0.15s',
+                        }}>
+                          {active && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#000' }} />}
+                        </div>
+
+                        {/* Info */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: active ? 'var(--fg-0)' : 'var(--fg-1)', fontWeight: active ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {r.label}
+                          </div>
+                          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, color: active ? 'rgba(201,162,74,0.6)' : 'var(--fg-4)', marginTop: 2, letterSpacing: '0.05em' }}>
+                            {r.isPermanent ? 'Permanente · uso múltiple' : 'Un solo uso'}
+                          </div>
+                        </div>
+
+                        {/* Cost */}
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: active ? 'var(--gold)' : 'var(--fg-2)', fontWeight: active ? 700 : 500 }}>
+                            {r.cost} pts
+                          </div>
+                          {active && (
+                            <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, color: 'rgba(201,162,74,0.6)', marginTop: 1 }}>
+                              ✓ elegida
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
+
+                  {/* Deselect footer */}
+                  {selectedRewardId && (
                     <button
-                      key={r.id}
-                      onClick={() => setSelectedRewardId(active ? null : r.id)}
+                      onClick={() => { setSelectedRewardId(null); setRewardsOpen(false) }}
                       style={{
-                        flexShrink: 0, width: 108, display: 'flex', flexDirection: 'column', gap: 5,
-                        padding: '0.625rem 0.75rem', borderRadius: 10, textAlign: 'left',
-                        border: active ? '1.5px solid var(--gold)' : '1px solid var(--line)',
-                        background: active ? 'rgba(201,162,74,0.1)' : 'var(--bg-3)',
-                        cursor: 'pointer', transition: 'all 0.15s',
+                        width: '100%', padding: '0.5rem 0.875rem',
+                        borderTop: '1px solid rgba(255,255,255,0.06)',
+                        background: 'transparent', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem',
+                        fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-4)',
+                        letterSpacing: '0.05em',
+                        transition: 'color 0.15s',
                       }}
                     >
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: active ? 'var(--gold)' : 'var(--fg-4)', transition: 'background 0.15s' }} />
-                      <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, lineHeight: 1.35, color: active ? 'var(--fg-0)' : 'var(--fg-2)', fontWeight: active ? 600 : 400, maxHeight: 30, overflow: 'hidden' }}>
-                        {r.label}
-                      </div>
-                      <div style={{ marginTop: 'auto', fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--gold)', fontWeight: 700 }}>
-                        {r.cost} pts
-                      </div>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                      </svg>
+                      Sin recompensa
                     </button>
-                  )
-                })}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
         </div>
 
         {/* ── Footer ── */}
-        <div style={{ flexShrink: 0, padding: `0.875rem ${p} 1.25rem`, borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div style={{ flexShrink: 0, padding: `0.875rem ${p} 1.5rem`, borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+          {/* Total row: label izquierda · precio derecha */}
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
             <div>
-              <p style={{ fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 600, letterSpacing: '0.14em', color: 'var(--fg-4)', marginBottom: '0.2rem', textTransform: 'uppercase' }}>
+              <p style={{
+                fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 600, letterSpacing: '0.14em',
+                color: 'var(--fg-4)', marginBottom: '0.2rem', textTransform: 'uppercase',
+              }}>
                 Total
               </p>
               {selectedService && (
@@ -753,11 +930,15 @@ export default function CalendarPage() {
                 </div>
               )}
             </div>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(30px, 3vw, 42px)', color: selectedService ? 'var(--gold)' : 'var(--fg-4)', lineHeight: 1, transition: 'color 0.2s' }}>
+            <span style={{
+              fontFamily: 'var(--font-display)', fontSize: 'clamp(30px, 3vw, 42px)',
+              color: selectedService ? 'var(--gold)' : 'var(--fg-4)', lineHeight: 1, transition: 'color 0.2s',
+            }}>
               {selectedService ? `${selectedService.price}€` : '—'}
             </span>
           </div>
 
+          {/* Botón solo visible cuando todo está completo */}
           {canConfirm ? (
             <button
               onClick={() => setConfirmOpen(true)}
@@ -776,7 +957,10 @@ export default function CalendarPage() {
               </svg>
             </button>
           ) : (
-            <p style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-4)', textAlign: 'center', margin: 0, letterSpacing: '0.03em' }}>
+            <p style={{
+              fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-4)',
+              textAlign: 'center', margin: 0, letterSpacing: '0.03em',
+            }}>
               Completa todos los pasos para reservar
             </p>
           )}
