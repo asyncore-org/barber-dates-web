@@ -30,20 +30,20 @@ export function TopBar() {
 
   const role = user?.role
   const clientLinks = [
-    { to: '/calendar',     label: 'Pedir cita', icon: 'scissors'  as const },
+    { to: '/calendar',     label: 'Pedir cita', icon: 'calendar'  as const },
     { to: '/appointments', label: 'Mis citas',  icon: 'clipboard' as const },
   ]
   const ownerLinks = [
-    { to: '/admin/dashboard', label: 'Agenda',        icon: 'calendar' as const },
+    { to: '/admin/dashboard', label: 'Agenda',        icon: 'clock'    as const },
     { to: '/admin/clients',   label: 'Clientes',      icon: 'users'    as const },
     { to: '/admin/settings',  label: 'Configuración', icon: 'settings' as const },
   ]
   const barberLinks = [
-    { to: '/admin/dashboard', label: 'Agenda',        icon: 'calendar' as const },
+    { to: '/admin/dashboard', label: 'Agenda',        icon: 'clock'    as const },
     { to: '/admin/settings',  label: 'Configuración', icon: 'settings' as const },
   ]
   const adminLinks = [
-    { to: '/calendar',     label: 'Pedir cita', icon: 'scissors'  as const },
+    { to: '/calendar',     label: 'Pedir cita', icon: 'calendar'  as const },
     { to: '/appointments', label: 'Mis citas',  icon: 'clipboard' as const },
     ...ownerLinks,
     { to: '/super-admin',  label: 'Admin',      icon: 'sparkle'   as const },
