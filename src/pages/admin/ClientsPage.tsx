@@ -1,23 +1,19 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { InfoButton, Icon } from '@/components/ui'
-import { useAuth } from '@/hooks'
 import { useLoyaltyConfig, DEFAULT_LOYALTY_TIERS } from '@/hooks/useShopConfig'
 import {
   useAllRewards, useCreateReward, useUpdateReward, useDeleteReward,
   useUpdateLoyaltyConfig, useSearchCardByCode, useManualAdjustPoints,
-  useRecentTransactions, useClearLoyaltyHistory,
 } from '@/hooks/useLoyalty'
 import { LoyaltyCard, QRScannerModal } from '@/components/loyalty'
 import type { Reward } from '@/domain/loyalty'
-import type { LoyaltyTierConfig, LoyaltyTierReward } from '@/domain/shop'
+import type { LoyaltyTierConfig, LoyaltyTierReward, LoyaltyRewardType } from '@/domain/shop'
 import { useShopContext } from '@/context/ShopContext'
 
 type Tab = 'fidelizacion' | 'clientes'
 
 export default function ClientsPage() {
-  const { user } = useAuth()
-  const isOwner = user?.role === 'owner' || user?.role === 'admin'
   const { name: shopName } = useShopContext()
 
   const [tab, setTab] = useState<Tab>('fidelizacion')
@@ -33,28 +29,33 @@ export default function ClientsPage() {
 
   // ── Rewards state ───────────────────────────────────────────────────────────
   const [editingRewardId, setEditingRewardId] = useState<string | null>(null)
-  const [rewardEdits, setRewardEdits] = useState<Record<string, { label: string; cost: number }>>({})
+  const [rewardEdits, setRewardEdits] = useState<Record<string, { label: string; cost: number; rewardType: LoyaltyRewardType; rewardValue?: number }>>({})
 
   // ── Loyalty card config state ───────────────────────────────────────────────
-  type PendingCard = { mode: 'tiers' | 'simple'; tiers: LoyaltyTierConfig[]; maxPoints: number; rewardMode: 'one_time' | 'repeatable' }
+  type SimpleRewardMeta = Record<string, { rewardType: LoyaltyRewardType; rewardValue?: number }>
+  type PendingCard = { mode: 'tiers' | 'simple'; tiers: LoyaltyTierConfig[]; maxPoints: number; rewardMode: 'one_time' | 'repeatable'; simpleColor: string; simpleRewardMeta: SimpleRewardMeta }
   const [pendingLoyaltyCard, setPendingLoyaltyCard] = useState<PendingCard | null>(null)
   const [expandedTierId, setExpandedTierId] = useState<string | null>(null)
   const [simPoints, setSimPoints] = useState(0)
   const [configError, setConfigError]   = useState<string | null>(null)
   const [configSaved, setConfigSaved]   = useState(false)
 
-  const localMode       = pendingLoyaltyCard?.mode       ?? loyaltyConfig?.mode       ?? 'tiers'
-  const localTiers      = pendingLoyaltyCard?.tiers      ?? (loyaltyConfig?.tiers?.length ? loyaltyConfig.tiers : DEFAULT_LOYALTY_TIERS)
-  const localMaxPoints  = pendingLoyaltyCard?.maxPoints  ?? loyaltyConfig?.maxPoints  ?? 500
-  const localRewardMode = pendingLoyaltyCard?.rewardMode ?? loyaltyConfig?.rewardMode ?? 'one_time'
-  const tiersDirty      = pendingLoyaltyCard !== null
+  const localMode            = pendingLoyaltyCard?.mode            ?? loyaltyConfig?.mode            ?? 'tiers'
+  const localTiers           = pendingLoyaltyCard?.tiers           ?? (loyaltyConfig?.tiers?.length ? loyaltyConfig.tiers : DEFAULT_LOYALTY_TIERS)
+  const localMaxPoints       = pendingLoyaltyCard?.maxPoints       ?? loyaltyConfig?.maxPoints       ?? 500
+  const localRewardMode      = pendingLoyaltyCard?.rewardMode      ?? loyaltyConfig?.rewardMode      ?? 'one_time'
+  const localSimpleColor     = pendingLoyaltyCard?.simpleColor     ?? loyaltyConfig?.simpleColor     ?? '#7b4fff'
+  const localSimpleRewardMeta: SimpleRewardMeta = pendingLoyaltyCard?.simpleRewardMeta ?? loyaltyConfig?.simpleRewardMeta ?? {}
+  const tiersDirty           = pendingLoyaltyCard !== null
 
   const patchCard = (patch: Partial<PendingCard>) =>
     setPendingLoyaltyCard(prev => ({
-      mode:       prev?.mode       ?? localMode,
-      tiers:      prev?.tiers      ?? localTiers,
-      maxPoints:  prev?.maxPoints  ?? localMaxPoints,
-      rewardMode: prev?.rewardMode ?? localRewardMode,
+      mode:             prev?.mode             ?? localMode,
+      tiers:            prev?.tiers            ?? localTiers,
+      maxPoints:        prev?.maxPoints        ?? localMaxPoints,
+      rewardMode:       prev?.rewardMode       ?? localRewardMode,
+      simpleColor:      prev?.simpleColor      ?? localSimpleColor,
+      simpleRewardMeta: prev?.simpleRewardMeta ?? localSimpleRewardMeta,
       ...patch,
     }))
 
@@ -62,22 +63,26 @@ export default function ClientsPage() {
   const [cardSearchInput, setCardSearchInput] = useState('')
   const [cardSearchQuery, setCardSearchQuery] = useState<string | null>(null)
   const { data: foundCard, isFetching: cardSearchFetching, isError: cardSearchError } = useSearchCardByCode(cardSearchQuery)
-  const { data: foundCardTxs = [] } = useRecentTransactions(foundCard?.clientId, 8)
   const manualAdjust = useManualAdjustPoints()
-  const clearHistory = useClearLoyaltyHistory()
-  const [adjPoints, setAdjPoints]       = useState('')
-  const [adjDesc, setAdjDesc]           = useState('')
-  const [adjError, setAdjError]         = useState<string | null>(null)
-  const [adjSuccess, setAdjSuccess]     = useState(false)
-  const [clearConfirm, setClearConfirm] = useState(false)
-  const [qrScanOpen, setQrScanOpen]     = useState(false)
+  const [adjPoints, setAdjPoints] = useState('')
+  const [adjError, setAdjError]   = useState<string | null>(null)
+  const [adjSuccess, setAdjSuccess] = useState(false)
+  const [qrScanOpen, setQrScanOpen] = useState(false)
 
   // ── Handlers: rewards ────────────────────────────────────────────────────────
   const handleSaveReward = (r: Reward) => {
     const edits = rewardEdits[r.id]
+    const newType  = edits?.rewardType  ?? localSimpleRewardMeta[r.id]?.rewardType  ?? 'gift'
+    const newValue = edits?.rewardValue ?? localSimpleRewardMeta[r.id]?.rewardValue
+    const newMeta: SimpleRewardMeta = { ...localSimpleRewardMeta, [r.id]: { rewardType: newType, rewardValue: newValue } }
     updateRewardMut.mutate({ id: r.id, data: { label: edits?.label ?? r.label, cost: edits?.cost ?? r.cost } }, {
-      onSuccess: () => { setRewardEdits(e => { const c = { ...e }; delete c[r.id]; return c }); setEditingRewardId(null) },
-      onError:   (e) => { if (import.meta.env.DEV) console.error(e) },
+      onSuccess: () => {
+        setRewardEdits(e => { const c = { ...e }; delete c[r.id]; return c })
+        setEditingRewardId(null)
+        updateLoyaltyConfig.mutate({ simpleRewardMeta: newMeta })
+        setPendingLoyaltyCard(null)
+      },
+      onError: (e) => { if (import.meta.env.DEV) console.error(e) },
     })
   }
 
@@ -86,7 +91,7 @@ export default function ClientsPage() {
   // ── Handlers: loyalty config ─────────────────────────────────────────────────
   const handleSaveLoyaltyCardConfig = () => {
     updateLoyaltyConfig.mutate(
-      { mode: localMode, tiers: localTiers, maxPoints: localMaxPoints, rewardMode: localRewardMode },
+      { mode: localMode, tiers: localTiers, maxPoints: localMaxPoints, rewardMode: localRewardMode, simpleColor: localSimpleColor, simpleRewardMeta: localSimpleRewardMeta },
       {
         onSuccess: () => {
           setPendingLoyaltyCard(null); setConfigError(null)
@@ -120,7 +125,7 @@ export default function ClientsPage() {
     patchCard({ tiers: localTiers.map(x => x.id === tierId ? { ...x, rewards: x.rewards.filter(r => r.id !== rewardId) } : x) })
   }
 
-  const handleUpdateTierReward = (tierId: string, rewardId: string, field: 'label' | 'cost' | 'isPermanent', value: string | number | boolean) => {
+  const handleUpdateTierReward = (tierId: string, rewardId: string, field: 'label' | 'cost' | 'isPermanent' | 'rewardType' | 'rewardValue', value: string | number | boolean) => {
     patchCard({ tiers: localTiers.map(x => x.id === tierId ? { ...x, rewards: x.rewards.map(r => r.id === rewardId ? { ...r, [field]: value } : r) } : x) })
   }
 
@@ -129,14 +134,13 @@ export default function ClientsPage() {
     if (!foundCard) return
     const pts = parseInt(adjPoints, 10)
     if (isNaN(pts) || pts === 0) { setAdjError('Introduce un número distinto de cero'); return }
-    if (!adjDesc.trim()) { setAdjError('Añade una descripción del motivo'); return }
     setAdjError(null)
     manualAdjust.mutate(
-      { clientId: foundCard.clientId, points: pts, description: adjDesc.trim() },
+      { clientId: foundCard.clientId, points: pts, description: pts > 0 ? `+${pts} pts (ajuste manual)` : `${pts} pts (ajuste manual)` },
       {
         onSuccess: () => {
-          setAdjPoints(''); setAdjDesc(''); setAdjSuccess(true)
-          setTimeout(() => setAdjSuccess(false), 3000)
+          setAdjPoints(''); setAdjSuccess(true)
+          setTimeout(() => setAdjSuccess(false), 2500)
           setCardSearchQuery(null)
           setTimeout(() => setCardSearchQuery(cardSearchInput.trim() || null), 50)
         },
@@ -145,22 +149,24 @@ export default function ClientsPage() {
     )
   }
 
-  const handleClearHistory = () => {
-    if (!foundCard) return
-    clearHistory.mutate(foundCard.clientId, {
-      onSuccess: () => {
-        setClearConfirm(false)
-        setCardSearchQuery(null)
-        setTimeout(() => setCardSearchQuery(cardSearchInput.trim() || null), 50)
-      },
-      onError: (e) => {
-        setClearConfirm(false)
-        setAdjError(`Error al limpiar historial: ${e instanceof Error ? e.message : String(e)}`)
-      },
-    })
-  }
+  // ── Responsive CSS injection ────────────────────────────────────────────────
+  useEffect(() => {
+    const id = 'cp-page-styles'
+    if (document.getElementById(id)) return
+    const el = document.createElement('style')
+    el.id = id
+    el.textContent = `
+      .cp-results { display: grid; gap: 0.875rem; align-items: start; }
+      @media (min-width: 640px)  { .cp-results { grid-template-columns: 1fr 320px; } }
+      @media (min-width: 900px)  { .cp-results { grid-template-columns: 1fr 360px; } }
+      @media (min-width: 1100px) { .cp-results { grid-template-columns: 1fr 400px; } }
+      .cp-stats { display: grid; gap: 0.5rem; grid-template-columns: repeat(3, 1fr); }
+      .cp-presets { display: grid; gap: 0.375rem; grid-template-columns: repeat(3, 1fr); }
+    `
+    document.head.appendChild(el)
+  }, [])
 
-  // ── Shared styles ────────────────────────────────────────────────────────────
+  // ── Shared styles ───────────────────────────────────────────────────────────
   const card = {
     background: 'var(--bg-2)',
     border: '1px solid var(--line)',
@@ -348,40 +354,78 @@ export default function ClientsPage() {
                                     <p style={{ fontSize: 11, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', margin: '0 0 0.4rem' }}>Sin recompensas aún</p>
                                   )}
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.4rem' }}>
-                                    {tier.rewards.map(r => (
-                                      <div key={r.id} style={{ background: 'var(--bg-2)', borderRadius: 7, border: '1px solid var(--line)', padding: '0.4rem 0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                                          <input value={r.label} onChange={e => handleUpdateTierReward(tier.id, r.id, 'label', e.target.value)} placeholder="Nombre"
-                                            style={{ flex: 1, minWidth: 0, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 5, padding: '0.28rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 11, outline: 'none' }} />
-                                          <input type="number" value={r.cost} min={1}
-                                            onChange={e => { const v = parseInt(e.target.value, 10); if (v > 0) handleUpdateTierReward(tier.id, r.id, 'cost', v) }}
-                                            onBlur={e => { if (!e.target.value || Number(e.target.value) < 1) handleUpdateTierReward(tier.id, r.id, 'cost', 1) }}
-                                            style={{ width: 60, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 5, padding: '0.28rem', color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontSize: 11, outline: 'none', textAlign: 'center', flexShrink: 0 }} />
-                                          <span style={{ fontSize: 9, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', flexShrink: 0 }}>pts</span>
-                                          <button onClick={() => handleDeleteTierReward(tier.id, r.id)}
-                                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', opacity: 0.6, minWidth: 20, minHeight: 20, flexShrink: 0 }}>
-                                            <Icon name="x" size={12} />
-                                          </button>
+                                    {tier.rewards.map(r => {
+                                      const rType  = r.rewardType  ?? 'gift'
+                                      const rValue = r.rewardValue
+                                      const TIER_REWARD_TYPES: { value: LoyaltyRewardType; label: string; border: string; bg: string; color: string }[] = [
+                                        { value: 'price',      label: '€ Precio', border: 'rgba(201,162,74,0.5)',  bg: 'rgba(201,162,74,0.1)',  color: 'var(--gold)' },
+                                        { value: 'percentage', label: '% Desc.',  border: 'rgba(123,79,255,0.5)',  bg: 'rgba(123,79,255,0.08)', color: 'var(--led)' },
+                                        { value: 'gift',       label: '♦ Regalo', border: 'rgba(96,180,120,0.5)', bg: 'rgba(96,180,120,0.1)',  color: 'var(--ok)' },
+                                      ]
+                                      return (
+                                        <div key={r.id} style={{ background: 'var(--bg-2)', borderRadius: 7, border: '1px solid var(--line)', padding: '0.4rem 0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                            <input value={r.label} onChange={e => handleUpdateTierReward(tier.id, r.id, 'label', e.target.value)} placeholder="Nombre"
+                                              style={{ flex: 1, minWidth: 0, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 5, padding: '0.28rem 0.4rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 11, outline: 'none' }} />
+                                            <input type="number" value={r.cost} min={1}
+                                              onChange={e => { const v = parseInt(e.target.value, 10); if (v > 0) handleUpdateTierReward(tier.id, r.id, 'cost', v) }}
+                                              onBlur={e => { if (!e.target.value || Number(e.target.value) < 1) handleUpdateTierReward(tier.id, r.id, 'cost', 1) }}
+                                              style={{ width: 60, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 5, padding: '0.28rem', color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontSize: 11, outline: 'none', textAlign: 'center', flexShrink: 0 }} />
+                                            <span style={{ fontSize: 9, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', flexShrink: 0 }}>pts</span>
+                                            <button onClick={() => handleDeleteTierReward(tier.id, r.id)}
+                                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', opacity: 0.6, minWidth: 20, minHeight: 20, flexShrink: 0 }}>
+                                              <Icon name="x" size={12} />
+                                            </button>
+                                          </div>
+                                          <div style={{ display: 'flex', gap: 3 }}>
+                                            {(['false', 'true'] as const).map(val => {
+                                              const isPerm = val === 'true'
+                                              const active = (r.isPermanent ?? false) === isPerm
+                                              return (
+                                                <button key={val} onClick={() => handleUpdateTierReward(tier.id, r.id, 'isPermanent', isPerm)} style={{
+                                                  padding: '2px 8px', borderRadius: 4, cursor: 'pointer',
+                                                  border: `1px solid ${active ? (isPerm ? 'rgba(201,162,74,0.5)' : 'rgba(96,180,120,0.5)') : 'var(--line)'}`,
+                                                  background: active ? (isPerm ? 'rgba(201,162,74,0.1)' : 'rgba(96,180,120,0.1)') : 'transparent',
+                                                  color: active ? (isPerm ? 'var(--gold)' : 'var(--ok)') : 'var(--fg-4)',
+                                                  fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: active ? 700 : 400,
+                                                }}>
+                                                  {isPerm ? '★ Permanente' : '↺ Un uso'}
+                                                </button>
+                                              )
+                                            })}
+                                          </div>
+                                          {/* Tipo de recompensa */}
+                                          <div style={{ display: 'flex', gap: 3, paddingTop: 2 }}>
+                                            {TIER_REWARD_TYPES.map(t => {
+                                              const active = rType === t.value
+                                              return (
+                                                <button key={t.value} onClick={() => handleUpdateTierReward(tier.id, r.id, 'rewardType', t.value)} style={{
+                                                  flex: 1, padding: '2px 4px', borderRadius: 4, cursor: 'pointer',
+                                                  border: `1px solid ${active ? t.border : 'var(--line)'}`,
+                                                  background: active ? t.bg : 'transparent',
+                                                  color: active ? t.color : 'var(--fg-4)',
+                                                  fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: active ? 700 : 400,
+                                                  transition: 'all 0.1s',
+                                                }}>
+                                                  {t.label}
+                                                </button>
+                                              )
+                                            })}
+                                          </div>
+                                          {(rType === 'price' || rType === 'percentage') && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingTop: 2 }}>
+                                              <input type="number" min={0} value={rValue ?? ''}
+                                                placeholder="0"
+                                                onChange={e => { const v = parseFloat(e.target.value); handleUpdateTierReward(tier.id, r.id, 'rewardValue', isNaN(v) ? 0 : v) }}
+                                                style={{ width: 72, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 5, padding: '0.22rem 0.3rem', color: rType === 'price' ? 'var(--gold)' : 'var(--led)', fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 700, outline: 'none', textAlign: 'center' }} />
+                                              <span style={{ fontSize: 9, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)' }}>
+                                                {rType === 'price' ? '€ descuento' : '% descuento'}
+                                              </span>
+                                            </div>
+                                          )}
                                         </div>
-                                        <div style={{ display: 'flex', gap: 3 }}>
-                                          {(['false', 'true'] as const).map(val => {
-                                            const isPerm = val === 'true'
-                                            const active = (r.isPermanent ?? false) === isPerm
-                                            return (
-                                              <button key={val} onClick={() => handleUpdateTierReward(tier.id, r.id, 'isPermanent', isPerm)} style={{
-                                                padding: '2px 8px', borderRadius: 4, cursor: 'pointer',
-                                                border: `1px solid ${active ? (isPerm ? 'rgba(201,162,74,0.5)' : 'rgba(96,180,120,0.5)') : 'var(--line)'}`,
-                                                background: active ? (isPerm ? 'rgba(201,162,74,0.1)' : 'rgba(96,180,120,0.1)') : 'transparent',
-                                                color: active ? (isPerm ? 'var(--gold)' : 'var(--ok)') : 'var(--fg-4)',
-                                                fontFamily: 'var(--font-ui)', fontSize: 9, fontWeight: active ? 700 : 400,
-                                              }}>
-                                                {isPerm ? '★ Permanente' : '↺ Un uso'}
-                                              </button>
-                                            )
-                                          })}
-                                        </div>
-                                      </div>
-                                    ))}
+                                      )
+                                    })}
                                   </div>
                                   <button onClick={() => handleAddTierReward(tier.id)}
                                     style={{ padding: '0.2rem 0.6rem', minHeight: 26, borderRadius: 5, border: '1px dashed var(--line)', background: 'transparent', color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', fontSize: 10, cursor: 'pointer' }}>
@@ -403,91 +447,160 @@ export default function ClientsPage() {
                 )}
 
                 {/* SIMPLE MODE */}
-                {localMode === 'simple' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.875rem' }}>
-                      <div>
-                        <label style={{ ...label10, display: 'block', marginBottom: '0.4rem' }}>Puntos máximos</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <input type="number" value={localMaxPoints} min={1}
-                            onChange={e => { const v = parseInt(e.target.value, 10); if (v > 0) patchCard({ maxPoints: v }) }}
-                            onBlur={e => { if (!e.target.value || Number(e.target.value) < 1) patchCard({ maxPoints: 1 }) }}
-                            style={{ width: 120, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 7, padding: '0.5rem 0.625rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 16, fontWeight: 700, outline: 'none', textAlign: 'center' }} />
-                          <span style={{ fontSize: 12, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}>pts</span>
-                        </div>
-                      </div>
-                      <div>
-                        <label style={{ ...label10, display: 'block', marginBottom: '0.4rem' }}>Canjeo de recompensas</label>
-                        <div style={{ display: 'flex', gap: 3, background: 'var(--bg-3)', borderRadius: 7, padding: 3 }}>
-                          {(['one_time', 'repeatable'] as const).map(mode => (
-                            <button key={mode} onClick={() => patchCard({ rewardMode: mode })} style={{
-                              flex: 1, padding: '0.4rem', borderRadius: 5, cursor: 'pointer', border: 'none',
-                              background: localRewardMode === mode ? 'var(--bg-1)' : 'transparent',
-                              boxShadow: localRewardMode === mode ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
-                              fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: localRewardMode === mode ? 600 : 400,
-                              color: localRewardMode === mode ? 'var(--fg-0)' : 'var(--fg-3)', transition: 'all 0.1s',
-                            }}>
-                              {mode === 'one_time' ? 'Una vez' : 'Repetible'}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
+                {localMode === 'simple' && (() => {
+                  const REWARD_TYPES: { value: LoyaltyRewardType; label: string; accentColor: string; borderActive: string; bgActive: string }[] = [
+                    { value: 'price',      label: '€ Precio',   accentColor: 'var(--gold)',   borderActive: 'rgba(201,162,74,0.5)',  bgActive: 'rgba(201,162,74,0.1)' },
+                    { value: 'percentage', label: '% Desc.',     accentColor: 'var(--led)',    borderActive: 'rgba(123,79,255,0.5)',  bgActive: 'rgba(123,79,255,0.08)' },
+                    { value: 'gift',       label: '♦ Regalo',   accentColor: 'var(--ok)',     borderActive: 'rgba(96,180,120,0.5)', bgActive: 'rgba(96,180,120,0.1)' },
+                  ]
+                  const getRewardType = (id: string): LoyaltyRewardType =>
+                    rewardEdits[id]?.rewardType ?? localSimpleRewardMeta[id]?.rewardType ?? 'gift'
+                  const getRewardValue = (id: string): number | undefined =>
+                    rewardEdits[id]?.rewardValue ?? localSimpleRewardMeta[id]?.rewardValue
+                  const patchRewardEdit = (id: string, patch: Partial<typeof rewardEdits[string]>, r: Reward) =>
+                    setRewardEdits(ed => ({ ...ed, [id]: { label: ed[id]?.label ?? r.label, cost: ed[id]?.cost ?? r.cost, rewardType: ed[id]?.rewardType ?? getRewardType(id), rewardValue: ed[id]?.rewardValue ?? getRewardValue(id), ...patch } }))
 
-                    <div>
-                      <div style={{ ...label10, marginBottom: '0.5rem' }}>Recompensas</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                        {rewardsData.map(r => (
-                          editingRewardId === r.id ? (
-                            <div key={r.id} style={{ background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--led)', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px', gap: '0.4rem' }}>
-                                <div>
-                                  <label style={{ ...label10, display: 'block', marginBottom: 3 }}>Nombre</label>
-                                  <input value={rewardEdits[r.id]?.label ?? r.label}
-                                    onChange={e => setRewardEdits(ed => ({ ...ed, [r.id]: { label: e.target.value, cost: ed[r.id]?.cost ?? r.cost } }))}
-                                    style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }} />
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      {/* Color de tarjeta */}
+                      <div>
+                        <label style={{ ...label10, display: 'block', marginBottom: '0.4rem' }}>Color de tarjeta</label>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <input type="color" value={localSimpleColor} onChange={e => patchCard({ simpleColor: e.target.value })}
+                            style={{ width: 38, height: 38, padding: 3, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg-3)', cursor: 'pointer', flexShrink: 0 }} />
+                          <input value={localSimpleColor} onChange={e => patchCard({ simpleColor: e.target.value })}
+                            style={{ width: 100, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 7, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-mono, monospace)', fontSize: 12, outline: 'none' }} />
+                          <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                            {['#7b4fff', '#c9a24a', '#607890', '#60b478', '#c04040', '#4080c0', '#c07840', '#808080'].map(c => (
+                              <button key={c} onClick={() => patchCard({ simpleColor: c })}
+                                style={{ width: 22, height: 22, borderRadius: '50%', background: c, border: `2px solid ${localSimpleColor === c ? '#fff' : 'transparent'}`, cursor: 'pointer', flexShrink: 0, boxShadow: localSimpleColor === c ? `0 0 0 1px ${c}` : 'none' }} />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.875rem' }}>
+                        <div>
+                          <label style={{ ...label10, display: 'block', marginBottom: '0.4rem' }}>Puntos máximos</label>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <input type="number" value={localMaxPoints} min={1}
+                              onChange={e => { const v = parseInt(e.target.value, 10); if (v > 0) patchCard({ maxPoints: v }) }}
+                              onBlur={e => { if (!e.target.value || Number(e.target.value) < 1) patchCard({ maxPoints: 1 }) }}
+                              style={{ width: 120, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 7, padding: '0.5rem 0.625rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 16, fontWeight: 700, outline: 'none', textAlign: 'center' }} />
+                            <span style={{ fontSize: 12, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}>pts</span>
+                          </div>
+                        </div>
+                        <div>
+                          <label style={{ ...label10, display: 'block', marginBottom: '0.4rem' }}>Canjeo de recompensas</label>
+                          <div style={{ display: 'flex', gap: 3, background: 'var(--bg-3)', borderRadius: 7, padding: 3 }}>
+                            {(['one_time', 'repeatable'] as const).map(mode => (
+                              <button key={mode} onClick={() => patchCard({ rewardMode: mode })} style={{
+                                flex: 1, padding: '0.4rem', borderRadius: 5, cursor: 'pointer', border: 'none',
+                                background: localRewardMode === mode ? 'var(--bg-1)' : 'transparent',
+                                boxShadow: localRewardMode === mode ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
+                                fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: localRewardMode === mode ? 600 : 400,
+                                color: localRewardMode === mode ? 'var(--fg-0)' : 'var(--fg-3)', transition: 'all 0.1s',
+                              }}>
+                                {mode === 'one_time' ? 'Una vez' : 'Repetible'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div style={{ ...label10, marginBottom: '0.5rem' }}>Recompensas</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                          {rewardsData.map(r => {
+                            const currentType = getRewardType(r.id)
+                            const currentValue = getRewardValue(r.id)
+                            const typeInfo = REWARD_TYPES.find(t => t.value === currentType)!
+                            return editingRewardId === r.id ? (
+                              <div key={r.id} style={{ background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--led)', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px', gap: '0.4rem' }}>
+                                  <div>
+                                    <label style={{ ...label10, display: 'block', marginBottom: 3 }}>Nombre</label>
+                                    <input value={rewardEdits[r.id]?.label ?? r.label}
+                                      onChange={e => patchRewardEdit(r.id, { label: e.target.value }, r)}
+                                      style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }} />
+                                  </div>
+                                  <div>
+                                    <label style={{ ...label10, display: 'block', marginBottom: 3 }}>Puntos</label>
+                                    <input type="number" value={rewardEdits[r.id]?.cost ?? r.cost}
+                                      onChange={e => { const v = parseInt(e.target.value, 10); if (!isNaN(v) && v > 0) patchRewardEdit(r.id, { cost: v }, r) }}
+                                      style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem', color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 700, outline: 'none', textAlign: 'center' }} />
+                                  </div>
                                 </div>
+                                {/* Tipo de recompensa */}
                                 <div>
-                                  <label style={{ ...label10, display: 'block', marginBottom: 3 }}>Puntos</label>
-                                  <input type="number" value={rewardEdits[r.id]?.cost ?? r.cost}
-                                    onChange={e => { const v = parseInt(e.target.value, 10); if (!isNaN(v) && v > 0) setRewardEdits(ed => ({ ...ed, [r.id]: { label: ed[r.id]?.label ?? r.label, cost: v } })) }}
-                                    style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem', color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 700, outline: 'none', textAlign: 'center' }} />
+                                  <label style={{ ...label10, display: 'block', marginBottom: 4 }}>Tipo de recompensa</label>
+                                  <div style={{ display: 'flex', gap: 3 }}>
+                                    {REWARD_TYPES.map(t => {
+                                      const active = currentType === t.value
+                                      return (
+                                        <button key={t.value} onClick={() => patchRewardEdit(r.id, { rewardType: t.value }, r)} style={{
+                                          flex: 1, padding: '0.3rem 0.4rem', borderRadius: 5, cursor: 'pointer',
+                                          border: `1px solid ${active ? t.borderActive : 'var(--line)'}`,
+                                          background: active ? t.bgActive : 'transparent',
+                                          color: active ? t.accentColor : 'var(--fg-4)',
+                                          fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: active ? 700 : 400,
+                                          transition: 'all 0.1s',
+                                        }}>
+                                          {t.label}
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+                                  {(currentType === 'price' || currentType === 'percentage') && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.375rem' }}>
+                                      <input type="number" min={0} value={currentValue ?? ''}
+                                        placeholder="0"
+                                        onChange={e => { const v = parseFloat(e.target.value); patchRewardEdit(r.id, { rewardValue: isNaN(v) ? undefined : v }, r) }}
+                                        style={{ width: 90, background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 5, padding: '0.3rem 0.4rem', color: typeInfo.accentColor, fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 700, outline: 'none', textAlign: 'center' }} />
+                                      <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}>
+                                        {currentType === 'price' ? '€ de descuento' : '% de descuento'}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem' }}>
+                                  <button onClick={() => { setEditingRewardId(null); setRewardEdits(e => { const c = { ...e }; delete c[r.id]; return c }) }}
+                                    style={{ padding: '0.35rem 0.875rem', borderRadius: 6, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+                                  <button onClick={() => handleSaveReward(r)} disabled={updateRewardMut.isPending}
+                                    style={{ padding: '0.35rem 1rem', borderRadius: 6, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: updateRewardMut.isPending ? 0.5 : 1 }}>
+                                    {updateRewardMut.isPending ? 'Guardando…' : 'Guardar'}
+                                  </button>
                                 </div>
                               </div>
-                              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem' }}>
-                                <button onClick={() => { setEditingRewardId(null); setRewardEdits(e => { const c = { ...e }; delete c[r.id]; return c }) }}
-                                  style={{ padding: '0.35rem 0.875rem', borderRadius: 6, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
-                                <button onClick={() => handleSaveReward(r)} disabled={!rewardEdits[r.id] || updateRewardMut.isPending}
-                                  style={{ padding: '0.35rem 1rem', borderRadius: 6, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: (!rewardEdits[r.id] || updateRewardMut.isPending) ? 0.5 : 1 }}>
-                                  {updateRewardMut.isPending ? 'Guardando…' : 'Guardar'}
+                            ) : (
+                              <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
+                                <span style={{ flex: 1, fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{r.label}</span>
+                                <span style={{ fontSize: 9, fontFamily: 'var(--font-ui)', fontWeight: 700, padding: '2px 6px', borderRadius: 4, border: `1px solid ${typeInfo.borderActive}`, background: typeInfo.bgActive, color: typeInfo.accentColor, flexShrink: 0 }}>
+                                  {currentType === 'price' ? `€${currentValue ?? ''}` : currentType === 'percentage' ? `${currentValue ?? ''}%` : '♦'}
+                                </span>
+                                <span style={{ fontSize: 12, color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontWeight: 600, flexShrink: 0 }}>{r.cost} pts</span>
+                                <button onClick={() => { setEditingRewardId(r.id); patchRewardEdit(r.id, {}, r) }}
+                                  style={{ padding: '0.25rem 0.625rem', minHeight: 28, borderRadius: 5, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 11, cursor: 'pointer', flexShrink: 0 }}>
+                                  Editar
+                                </button>
+                                <button onClick={() => deleteReward.mutate(r.id)}
+                                  title="Eliminar recompensa"
+                                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', opacity: 0.65, minWidth: 28, minHeight: 28, flexShrink: 0 }}>
+                                  <Icon name="trash" size={14} />
                                 </button>
                               </div>
-                            </div>
-                          ) : (
-                            <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0.5rem 0.75rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
-                              <span style={{ flex: 1, fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{r.label}</span>
-                              <span style={{ fontSize: 12, color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontWeight: 600, flexShrink: 0 }}>{r.cost} pts</span>
-                              <button onClick={() => setEditingRewardId(r.id)}
-                                style={{ padding: '0.25rem 0.625rem', minHeight: 28, borderRadius: 5, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 11, cursor: 'pointer', flexShrink: 0 }}>
-                                Editar
-                              </button>
-                              <button onClick={() => deleteReward.mutate(r.id)}
-                                title="Eliminar recompensa"
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', opacity: 0.65, minWidth: 28, minHeight: 28, flexShrink: 0 }}>
-                                <Icon name="trash" size={14} />
-                              </button>
-                            </div>
-                          )
-                        ))}
+                            )
+                          })}
+                        </div>
+                        <button onClick={handleAddReward}
+                          style={{ marginTop: '0.4rem', padding: '0.4rem 0.75rem', minHeight: 34, borderRadius: 6, border: '1px dashed var(--line)', background: 'transparent', color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <Icon name="plus" size={13} />
+                          Añadir recompensa
+                        </button>
                       </div>
-                      <button onClick={handleAddReward}
-                        style={{ marginTop: '0.4rem', padding: '0.4rem 0.75rem', minHeight: 34, borderRadius: 6, border: '1px dashed var(--line)', background: 'transparent', color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <Icon name="plus" size={13} />
-                        Añadir recompensa
-                      </button>
                     </div>
-                  </div>
-                )}
+                  )
+                })()}
               </div>
 
               {/* Editor footer */}
@@ -532,6 +645,7 @@ export default function ClientsPage() {
                   loyaltyMode={localMode}
                   configTiers={localMode === 'tiers' ? localTiers : undefined}
                   maxPoints={localMode === 'simple' ? localMaxPoints : undefined}
+                  simpleColor={localMode === 'simple' ? localSimpleColor : undefined}
                 />
                 <p style={{ fontSize: 10, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', textAlign: 'center', marginTop: '0.75rem', letterSpacing: '0.04em' }}>
                   Cambia «Simula» para ver diferentes niveles
@@ -565,13 +679,13 @@ export default function ClientsPage() {
                   style={{ flex: 1, background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 8, padding: '0.6rem 0.875rem', color: 'var(--fg-0)', fontFamily: 'var(--font-mono, monospace)', fontSize: 13, letterSpacing: '0.1em', outline: 'none' }}
                 />
                 <button
-                  onClick={() => { setAdjPoints(''); setAdjDesc(''); setAdjError(null); setAdjSuccess(false); setCardSearchQuery(cardSearchInput.trim() || null) }}
+                  onClick={() => { setAdjPoints(''); setAdjError(null); setAdjSuccess(false); setCardSearchQuery(cardSearchInput.trim() || null) }}
                   disabled={cardSearchFetching || !cardSearchInput.trim()}
                   style={{ padding: '0.6rem 1.375rem', minWidth: 88, borderRadius: 8, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 600, cursor: cardSearchInput.trim() ? 'pointer' : 'default', opacity: (!cardSearchInput.trim() || cardSearchFetching) ? 0.5 : 1, flexShrink: 0 }}>
                   {cardSearchFetching ? '…' : 'Buscar'}
                 </button>
                 {cardSearchQuery && (
-                  <button onClick={() => { setCardSearchQuery(null); setCardSearchInput(''); setAdjPoints(''); setAdjDesc(''); setAdjError(null) }}
+                  <button onClick={() => { setCardSearchQuery(null); setCardSearchInput(''); setAdjPoints(''); setAdjError(null) }}
                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 7, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-3)', cursor: 'pointer', flexShrink: 0 }}>
                     <Icon name="x" size={14} />
                   </button>
@@ -599,120 +713,159 @@ export default function ClientsPage() {
                   </svg>
                   <p style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--fg-3)', margin: 0 }}>No se encontró ninguna tarjeta con ese código</p>
                 </div>
-              ) : (
-                <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.875rem' }}>
+              ) : (() => {
+                const adjVal = parseInt(adjPoints, 10)
+                const adjValid = adjPoints.trim() !== '' && !isNaN(adjVal) && adjVal !== 0
+                const adjNeg = adjValid && adjVal < 0
+                return (
+                  <div className="cp-results" style={{ flex: 1 }}>
 
-                  {/* LEFT: loyalty card */}
-                  <div style={{ ...card, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', overflow: 'hidden' }}>
-                    <LoyaltyCard
-                      points={foundCard.points} target={500}
-                      stamps={foundCard.totalVisits}
-                      memberCode={foundCard.memberCode ?? ''}
-                      createdAt={foundCard.createdAt}
-                      completedCycles={foundCard.completedCycles}
-                      loyaltyMode={loyaltyConfig?.mode}
-                      configTiers={loyaltyConfig?.tiers?.length ? loyaltyConfig.tiers : undefined}
-                      maxPoints={loyaltyConfig?.maxPoints}
-                      compact
-                    />
-                    {/* Stat chips */}
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      {[
-                        { label: 'Puntos', value: foundCard.points.toLocaleString('es-ES'), color: 'var(--gold)' },
-                        { label: 'Visitas', value: String(foundCard.totalVisits), color: 'var(--fg-1)' },
-                        { label: 'Miembro desde', value: new Date(foundCard.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }), color: 'var(--fg-1)' },
-                      ].map(({ label, value, color }) => (
-                        <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '0.4rem 0.75rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)', minWidth: 0, flex: 1 }}>
-                          <span style={{ ...label10 }}>{label}</span>
-                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 600, color }}>{value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* RIGHT: actions */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto' }}>
-
-                    {/* Adjust points */}
-                    <div style={{ ...card, padding: '1rem', flexShrink: 0 }}>
-                      <div style={{ ...label10, marginBottom: '0.75rem' }}>Ajustar puntos</div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: '0.5rem', marginBottom: '0.625rem' }}>
-                        <div>
-                          <label style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-3)', display: 'block', marginBottom: 3 }}>Puntos</label>
-                          <input type="number" value={adjPoints} onChange={e => { setAdjPoints(e.target.value); setAdjError(null) }} placeholder="+50 o −20"
-                            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-3)', border: `1px solid ${adjError ? 'var(--danger)' : 'var(--line)'}`, borderRadius: 7, padding: '0.5rem 0.5rem', color: adjPoints.startsWith('-') ? 'var(--danger)' : 'var(--gold)', fontFamily: 'var(--font-mono, monospace)', fontSize: 15, fontWeight: 700, outline: 'none', textAlign: 'center' }} />
-                        </div>
-                        <div>
-                          <label style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-3)', display: 'block', marginBottom: 3 }}>Motivo</label>
-                          <input value={adjDesc} onChange={e => { setAdjDesc(e.target.value); setAdjError(null) }} placeholder="Ej: Corrección manual, promoción…"
-                            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-3)', border: `1px solid ${adjError ? 'var(--danger)' : 'var(--line)'}`, borderRadius: 7, padding: '0.5rem 0.625rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }} />
-                        </div>
+                    {/* LEFT: card + stats */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                      <div style={{ ...card, padding: '1.25rem' }}>
+                        <LoyaltyCard
+                          points={foundCard.points} target={500}
+                          stamps={foundCard.totalVisits}
+                          memberCode={foundCard.memberCode ?? ''}
+                          createdAt={foundCard.createdAt}
+                          completedCycles={foundCard.completedCycles}
+                          loyaltyMode={loyaltyConfig?.mode}
+                          configTiers={loyaltyConfig?.tiers?.length ? loyaltyConfig.tiers : undefined}
+                          maxPoints={loyaltyConfig?.maxPoints}
+                        />
                       </div>
-                      {adjError   && <p style={{ color: 'var(--danger)', fontSize: 11, fontFamily: 'var(--font-ui)', margin: '0 0 0.5rem' }}>{adjError}</p>}
-                      {adjSuccess && <p style={{ color: 'var(--ok)', fontSize: 11, fontFamily: 'var(--font-ui)', margin: '0 0 0.5rem' }}>✓ Puntos ajustados correctamente</p>}
-                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <button onClick={handleAdjustPoints} disabled={manualAdjust.isPending || !adjPoints.trim() || !adjDesc.trim()}
-                          style={{ padding: '0.45rem 1.375rem', minHeight: 36, borderRadius: 7, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 600, cursor: (adjPoints.trim() && adjDesc.trim()) ? 'pointer' : 'default', opacity: (manualAdjust.isPending || !adjPoints.trim() || !adjDesc.trim()) ? 0.4 : 1 }}>
-                          {manualAdjust.isPending ? 'Aplicando…' : 'Aplicar ajuste'}
-                        </button>
+                      <div className="cp-stats">
+                        {([
+                          { label: 'Puntos', value: foundCard.points.toLocaleString('es-ES'), color: 'var(--gold)' },
+                          { label: 'Visitas', value: String(foundCard.totalVisits), color: 'var(--fg-1)' },
+                          { label: 'Miembro desde', value: new Date(foundCard.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }), color: 'var(--fg-1)' },
+                        ] as const).map(({ label, value, color }) => (
+                          <div key={label} style={{ ...card, padding: '0.625rem 0.875rem' }}>
+                            <div style={{ ...label10, marginBottom: 4 }}>{label}</div>
+                            <div style={{ fontFamily: 'var(--font-ui)', fontSize: 15, fontWeight: 700, color }}>{value}</div>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
-                    {/* Transaction history */}
-                    {foundCardTxs.length > 0 && (
-                      <div style={{ ...card, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                        <div style={{ flexShrink: 0, padding: '0.75rem 1rem', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span style={label10}>Historial</span>
-                          {isOwner && (
-                            clearConfirm ? (
-                              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}>¿Seguro?</span>
-                                <button onClick={handleClearHistory} disabled={clearHistory.isPending}
-                                  style={{ padding: '0.25rem 0.625rem', borderRadius: 5, border: 'none', background: 'var(--danger)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                                  {clearHistory.isPending ? '…' : 'Sí, limpiar'}
-                                </button>
-                                <button onClick={() => setClearConfirm(false)}
-                                  style={{ padding: '0.25rem 0.5rem', borderRadius: 5, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', fontSize: 11, cursor: 'pointer' }}>Cancelar</button>
-                              </div>
-                            ) : (
-                              <button onClick={() => setClearConfirm(true)}
-                                style={{ padding: '0.25rem 0.625rem', borderRadius: 5, border: '1px solid rgba(192,64,64,0.3)', background: 'rgba(192,64,64,0.06)', color: 'var(--danger)', fontFamily: 'var(--font-ui)', fontSize: 11, cursor: 'pointer' }}>
-                                Limpiar todo
-                              </button>
-                            )
-                          )}
+                    {/* RIGHT: adjust points */}
+                    <div style={{ ...card, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+                      {/* Current balance */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <div style={{ ...label10, marginBottom: 5 }}>Balance actual</div>
+                          <div style={{ fontFamily: 'var(--font-display)', fontSize: 32, lineHeight: 1, color: 'var(--gold)', letterSpacing: '-0.02em' }}>
+                            {foundCard.points.toLocaleString('es-ES')}
+                            <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-4)', marginLeft: 6, fontWeight: 400, letterSpacing: 0 }}>pts</span>
+                          </div>
                         </div>
-                        <div style={{ overflowY: 'auto' }}>
-                          {foundCardTxs.map((tx, i) => {
-                            const isPos = tx.points > 0
-                            const isNeg = tx.points < 0
+                        {adjValid && (
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ ...label10, marginBottom: 5 }}>Nuevo balance</div>
+                            <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, lineHeight: 1, color: adjNeg ? 'var(--danger)' : 'var(--ok)', letterSpacing: '-0.02em' }}>
+                              {Math.max(0, foundCard.points + adjVal).toLocaleString('es-ES')}
+                              <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-4)', marginLeft: 5, fontWeight: 400 }}>pts</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{ height: 1, background: 'var(--line)' }} />
+
+                      {/* Input stepper */}
+                      <div>
+                        <div style={{ ...label10, marginBottom: '0.5rem' }}>Ajuste de puntos</div>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
+                          <button
+                            onClick={() => { setAdjPoints(p => String((parseInt(p, 10) || 0) - 10)); setAdjError(null) }}
+                            style={{ width: 42, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg-3)', color: 'var(--danger)', fontFamily: 'var(--font-ui)', fontSize: 18, fontWeight: 700, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            −
+                          </button>
+                          <input
+                            type="number" value={adjPoints}
+                            onChange={e => { setAdjPoints(e.target.value); setAdjError(null) }}
+                            placeholder="0"
+                            style={{
+                              flex: 1, minWidth: 0, boxSizing: 'border-box', height: 50,
+                              background: 'var(--bg-3)',
+                              border: `2px solid ${adjError ? 'var(--danger)' : adjValid ? (adjNeg ? 'rgba(192,64,64,0.45)' : 'rgba(201,162,74,0.45)') : 'var(--line)'}`,
+                              borderRadius: 8, padding: '0 0.5rem',
+                              color: adjNeg ? 'var(--danger)' : adjValid ? 'var(--gold)' : 'var(--fg-2)',
+                              fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700,
+                              outline: 'none', textAlign: 'center', transition: 'border-color 0.15s',
+                            }}
+                          />
+                          <button
+                            onClick={() => { setAdjPoints(p => String((parseInt(p, 10) || 0) + 10)); setAdjError(null) }}
+                            style={{ width: 42, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg-3)', color: 'var(--ok)', fontFamily: 'var(--font-ui)', fontSize: 18, fontWeight: 700, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Quick presets */}
+                      <div>
+                        <div style={{ ...label10, marginBottom: '0.5rem' }}>Accesos rápidos</div>
+                        <div className="cp-presets">
+                          {([-50, -20, -10, 10, 20, 50] as const).map(v => {
+                            const neg = v < 0
+                            const active = adjVal === v
                             return (
-                              <div key={tx.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.575rem 1rem', borderBottom: i < foundCardTxs.length - 1 ? '1px solid var(--line)' : undefined }}>
-                                <div style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isPos ? 'rgba(50,180,100,0.1)' : isNeg ? 'rgba(192,64,64,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${isPos ? 'rgba(50,180,100,0.25)' : isNeg ? 'rgba(192,64,64,0.2)' : 'var(--line)'}` }}>
-                                  <span style={{ fontSize: 10, fontWeight: 700, color: isPos ? 'var(--ok)' : isNeg ? 'var(--danger)' : 'var(--fg-4)' }}>
-                                    {isPos ? '+' : isNeg ? '−' : '○'}
-                                  </span>
-                                </div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.description}</div>
-                                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--fg-4)', marginTop: 1 }}>
-                                    {new Date(tx.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                  </div>
-                                </div>
-                                {tx.points !== 0 && (
-                                  <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 12, fontWeight: 700, flexShrink: 0, color: isPos ? 'var(--ok)' : 'var(--danger)' }}>
-                                    {isPos ? '+' : ''}{tx.points.toLocaleString('es-ES')}
-                                  </span>
-                                )}
-                              </div>
+                              <button key={v}
+                                onClick={() => { setAdjPoints(String(v)); setAdjError(null) }}
+                                style={{
+                                  padding: '0.45rem 0', borderRadius: 7, cursor: 'pointer',
+                                  border: `1px solid ${active ? (neg ? 'rgba(192,64,64,0.5)' : 'rgba(201,162,74,0.5)') : 'var(--line)'}`,
+                                  background: active ? (neg ? 'rgba(192,64,64,0.1)' : 'rgba(201,162,74,0.08)') : 'var(--bg-3)',
+                                  color: neg ? 'var(--danger)' : 'var(--gold)',
+                                  fontFamily: 'var(--font-mono, monospace)', fontSize: 12, fontWeight: 700,
+                                  transition: 'all 0.1s',
+                                }}>
+                                {v > 0 ? `+${v}` : v}
+                              </button>
                             )
                           })}
                         </div>
                       </div>
-                    )}
+
+                      {/* Feedback */}
+                      {adjError && (
+                        <p style={{ color: 'var(--danger)', fontSize: 11, fontFamily: 'var(--font-ui)', margin: 0 }}>{adjError}</p>
+                      )}
+                      {adjSuccess && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--ok)', fontFamily: 'var(--font-ui)', fontSize: 11 }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          Puntos aplicados correctamente
+                        </div>
+                      )}
+
+                      {/* Apply button */}
+                      <button
+                        onClick={handleAdjustPoints}
+                        disabled={manualAdjust.isPending || !adjValid}
+                        style={{
+                          width: '100%', padding: '0.7rem', minHeight: 44, borderRadius: 8, border: 'none',
+                          background: adjValid ? (adjNeg ? 'var(--danger)' : 'var(--led)') : 'var(--bg-3)',
+                          color: adjValid ? '#fff' : 'var(--fg-4)',
+                          fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 600,
+                          cursor: adjValid ? 'pointer' : 'default',
+                          opacity: manualAdjust.isPending ? 0.6 : 1,
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        {manualAdjust.isPending
+                          ? 'Aplicando…'
+                          : adjValid
+                            ? adjNeg
+                              ? `Restar ${Math.abs(adjVal).toLocaleString('es-ES')} pts`
+                              : `Añadir ${adjVal.toLocaleString('es-ES')} pts`
+                            : 'Selecciona una cantidad'}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )
+                )
+              })()
             )}
 
             {/* Initial empty state */}
@@ -737,7 +890,7 @@ export default function ClientsPage() {
                 onScan={code => {
                   setQrScanOpen(false)
                   setCardSearchInput(code)
-                  setAdjPoints(''); setAdjDesc(''); setAdjError(null); setAdjSuccess(false)
+                  setAdjPoints(''); setAdjError(null); setAdjSuccess(false)
                   setCardSearchQuery(code)
                 }}
                 onClose={() => setQrScanOpen(false)}
