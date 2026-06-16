@@ -51,7 +51,7 @@ const SELECT_FIELDS =
   'id, client_id, barber_id, service_id, start_time, end_time, status, notes, created_at, final_price'
 
 const SELECT_FIELDS_WITH_CLIENT =
-  'id, client_id, barber_id, service_id, start_time, end_time, status, notes, created_at, profiles(full_name)'
+  'id, client_id, barber_id, service_id, start_time, end_time, status, notes, created_at, final_price, profiles(full_name)'
 
 export class InsForgeAppointmentRepository implements IAppointmentRepository {
   async getForClient(clientId: string): Promise<Appointment[]> {

@@ -280,6 +280,7 @@ export default function DashboardPage() {
           service: svc?.name ?? 'Servicio',
           barberId: a.barberId,
           color: APPT_COLORS[barberIdx >= 0 ? barberIdx % 3 : i % 3],
+          finalPrice: a.finalPrice ?? undefined,
         }
         if (!map.has(key)) map.set(key, [])
         map.get(key)!.push(appt)
