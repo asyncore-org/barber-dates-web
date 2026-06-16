@@ -24,12 +24,17 @@ export interface BookingConfig {
   bufferMinutes: number
 }
 
+export type LoyaltyRewardType = 'price' | 'percentage' | 'gift'
+
 export interface LoyaltyTierReward {
   id: string
   label: string
   cost: number
   /** true = permanente (siempre disponible en el nivel); false = un solo uso (se consume al canjear) */
   isPermanent?: boolean
+  rewardType?: LoyaltyRewardType
+  /** € for 'price', % for 'percentage'. Not used for 'gift'. */
+  rewardValue?: number
 }
 
 export interface LoyaltyTierConfig {
@@ -51,6 +56,10 @@ export interface LoyaltyConfig {
   tiers: LoyaltyTierConfig[]
   /** Max points cap for mode === 'simple'. */
   maxPoints: number
+  /** Card color for mode === 'simple'. */
+  simpleColor?: string
+  /** Type metadata for simple-mode rewards (keyed by reward DB id). */
+  simpleRewardMeta?: Record<string, { rewardType: LoyaltyRewardType; rewardValue?: number }>
 }
 
 export const DEFAULT_BOOKING_CONFIG: BookingConfig = {
