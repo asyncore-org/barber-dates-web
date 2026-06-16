@@ -16,6 +16,8 @@ export interface Appointment {
   status: AppointmentStatus
   notes: string | null
   createdAt: string
+  /** Actual price paid after loyalty discount. null/undefined = no discount (use service.price). */
+  finalPrice?: number | null
 }
 
 export interface CreateAppointmentData {
@@ -25,6 +27,8 @@ export interface CreateAppointmentData {
   startTime: string
   endTime: string
   notes?: string
+  /** Price after loyalty discount. Omit if no discount applied. */
+  finalPrice?: number
 }
 
 /** Pure function — returns true if cancellation is still allowed (Art. 4 rule 2) */
