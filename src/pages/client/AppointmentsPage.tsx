@@ -277,9 +277,20 @@ function AppointmentHistory({ userId, services, barbers, fill }: {
                           </span>
                         ) : (
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--fg-0)', letterSpacing: '0.02em' }}>
-                              {svc ? `${svc.price}€` : '—'}
-                            </div>
+                            {h.finalPrice != null && svc && h.finalPrice !== svc.price ? (
+                              <>
+                                <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-3)', textDecoration: 'line-through', letterSpacing: '0.02em' }}>
+                                  {svc.price}€
+                                </div>
+                                <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--gold)', letterSpacing: '0.02em' }}>
+                                  {h.finalPrice}€
+                                </div>
+                              </>
+                            ) : (
+                              <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--fg-0)', letterSpacing: '0.02em' }}>
+                                {svc ? `${svc.price}€` : '—'}
+                              </div>
+                            )}
                             {svc && (
                               <div style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--gold)', marginTop: 1 }}>
                                 +{svc.loyaltyPoints} pts
@@ -509,13 +520,23 @@ export default function AppointmentsPage() {
           { label: 'Servicio',   value: nextService.name },
           { label: 'Empleado',   value: nextBarber.fullName },
           { label: 'Duración',  value: `${nextService.durationMinutes} min` },
-          { label: 'Precio',    value: `${nextService.price}€` },
         ].map(({ label, value }) => (
           <div key={label}>
             <div style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
             <div style={{ fontSize: 14, color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontWeight: 600, marginTop: 2 }}>{value}</div>
           </div>
         ))}
+        <div>
+          <div style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Precio</div>
+          {next.finalPrice != null && next.finalPrice !== nextService.price ? (
+            <div style={{ marginTop: 2 }}>
+              <span style={{ fontSize: 12, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textDecoration: 'line-through', marginRight: 6 }}>{nextService.price}€</span>
+              <span style={{ fontSize: 14, color: 'var(--gold)', fontFamily: 'var(--font-ui)', fontWeight: 700 }}>{next.finalPrice}€</span>
+            </div>
+          ) : (
+            <div style={{ fontSize: 14, color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontWeight: 600, marginTop: 2 }}>{nextService.price}€</div>
+          )}
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: '0.75rem' }}>
