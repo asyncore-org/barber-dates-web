@@ -129,6 +129,7 @@ export default function DashboardPage() {
           service: svc?.name ?? 'Servicio',
           barberId: a.barberId,
           color: APPT_COLORS[barberIdx >= 0 ? barberIdx % 3 : i % 3],
+          finalPrice: a.finalPrice ?? undefined,
         } satisfies WeekAppt]
       })
   }, [dbAppointments, weekStart, services, barbers])
@@ -243,13 +244,12 @@ export default function DashboardPage() {
         const d = new Date(a.startTime)
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` === todayStr
       })
-      .reduce((sum, a) => sum + (services.find(s => s.id === a.serviceId)?.price ?? 0), 0)
+      .reduce((sum, a) => sum + (a.finalPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0), 0)
   }, [dbAppointments, services])
 
   const weekRevenue = useMemo(() => {
     return appointments.reduce((sum, a) => {
-      const svc = services.find(s => s.name === a.service)
-      return sum + (svc?.price ?? 0)
+      return sum + (a.finalPrice ?? services.find(s => s.name === a.service)?.price ?? 0)
     }, 0)
   }, [appointments, services])
 
