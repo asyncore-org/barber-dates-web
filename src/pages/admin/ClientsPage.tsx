@@ -79,8 +79,14 @@ export default function ClientsPage() {
       onSuccess: () => {
         setRewardEdits(e => { const c = { ...e }; delete c[r.id]; return c })
         setEditingRewardId(null)
-        updateLoyaltyConfig.mutate({ simpleRewardMeta: newMeta })
-        setPendingLoyaltyCard(null)
+        // Sync simpleRewardMeta to DB. If there are pending card changes, keep them intact
+        // by patching only simpleRewardMeta rather than resetting the full pending state.
+        updateLoyaltyConfig.mutate({ simpleRewardMeta: newMeta }, {
+          onSuccess: () => {
+            if (pendingLoyaltyCard) patchCard({ simpleRewardMeta: newMeta })
+          },
+          onError: () => setConfigError('No se pudo guardar el tipo de recompensa.'),
+        })
       },
       onError: (e) => { if (import.meta.env.DEV) console.error(e) },
     })
