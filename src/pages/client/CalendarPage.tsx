@@ -362,14 +362,30 @@ export default function CalendarPage() {
         .filter(t => loyaltyPoints >= t.minPoints)
         .flatMap(t => t.rewards.filter(r => !(r.isPermanent) && !redeemedIds.includes(r.id) && loyaltyPoints >= r.cost)
           .concat(t.rewards.filter(r => r.isPermanent && loyaltyPoints >= r.cost))
-          .map(r => ({ id: r.id, label: r.label, cost: r.cost, isPermanent: r.isPermanent ?? false })))
+          .map(r => ({ id: r.id, label: r.label, cost: r.cost, isPermanent: r.isPermanent ?? false, rewardType: r.rewardType ?? 'gift' as const, rewardValue: r.rewardValue })))
     }
     return dbRewards
       .filter(r => r.isActive && !redeemedIds.includes(r.id) && loyaltyPoints >= r.cost)
-      .map(r => ({ id: r.id, label: r.label, cost: r.cost, isPermanent: false }))
+      .map(r => {
+        const meta = loyaltyConfig?.simpleRewardMeta?.[r.id]
+        return { id: r.id, label: r.label, cost: r.cost, isPermanent: false, rewardType: meta?.rewardType ?? 'gift' as const, rewardValue: meta?.rewardValue }
+      })
   }, [loyaltyCard, loyaltyConfig, dbRewards, redeemedIds, loyaltyPoints])
 
   const canConfirm = !!(selectedDate && selectedSlot && selectedService && !createAppointment.isPending)
+
+  // ── Discount calculation ────────────────────────────────────────────────────
+  const selectedRewardForDiscount = redeemableRewards.find(r => r.id === selectedRewardId) ?? null
+  const basePrice = selectedService?.price ?? 0
+  const discountedPrice = useMemo(() => {
+    if (!selectedRewardForDiscount || !selectedService) return basePrice
+    if (selectedRewardForDiscount.rewardType === 'price')
+      return Math.max(0, basePrice - (selectedRewardForDiscount.rewardValue ?? 0))
+    if (selectedRewardForDiscount.rewardType === 'percentage')
+      return Math.max(0, basePrice - Math.round(basePrice * (selectedRewardForDiscount.rewardValue ?? 0) / 100))
+    return basePrice
+  }, [selectedRewardForDiscount, basePrice, selectedService])
+  const hasDiscount = selectedRewardForDiscount !== null && discountedPrice !== basePrice
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -426,7 +442,7 @@ export default function CalendarPage() {
     const end = new Date(start.getTime() + selectedService.durationMinutes * 60_000)
     const barberId = selectedBarber?.id ?? availableBarbers[0]?.id ?? ''
     createAppointment.mutate(
-      { clientId: user.id, barberId, serviceId: selectedService.id, startTime: start.toISOString(), endTime: end.toISOString() },
+      { clientId: user.id, barberId, serviceId: selectedService.id, startTime: start.toISOString(), endTime: end.toISOString(), finalPrice: hasDiscount ? discountedPrice : undefined },
       {
         onSuccess: () => {
           if (selectedRewardId && user.id) {
@@ -848,12 +864,19 @@ export default function CalendarPage() {
                 </div>
               )}
             </div>
-            <span style={{
-              fontFamily: 'var(--font-display)', fontSize: 'clamp(30px, 3vw, 42px)',
-              color: selectedService ? 'var(--gold)' : 'var(--fg-4)', lineHeight: 1, transition: 'color 0.2s',
-            }}>
-              {selectedService ? `${selectedService.price}€` : '—'}
-            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+              {hasDiscount && selectedService && (
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--fg-4)', lineHeight: 1, textDecoration: 'line-through' }}>
+                  {selectedService.price}€
+                </span>
+              )}
+              <span style={{
+                fontFamily: 'var(--font-display)', fontSize: 'clamp(30px, 3vw, 42px)',
+                color: selectedService ? (hasDiscount ? 'var(--ok)' : 'var(--gold)') : 'var(--fg-4)', lineHeight: 1, transition: 'color 0.2s',
+              }}>
+                {selectedService ? `${discountedPrice}€` : '—'}
+              </span>
+            </div>
           </div>
 
           {/* Botón solo visible cuando todo está completo */}
@@ -1075,6 +1098,14 @@ export default function CalendarPage() {
                 <span style={{ fontSize: 13, color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontWeight: 500 }}>{value}</span>
               </div>
             ))}
+            {hasDiscount && selectedService && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 13, color: 'var(--ok)', fontFamily: 'var(--font-ui)' }}>Descuento</span>
+                <span style={{ fontSize: 13, color: 'var(--ok)', fontFamily: 'var(--font-ui)', fontWeight: 600 }}>
+                  −{selectedService.price - discountedPrice}€ → <strong>{discountedPrice}€</strong>
+                </span>
+              </div>
+            )}
             {selectedService && (
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid var(--line)' }}>
                 <span style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>Ganarás</span>
