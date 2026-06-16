@@ -28,6 +28,8 @@ interface LoyaltyCardProps {
   loyaltyMode?: 'tiers' | 'simple'
   /** Max points cap for mode 'simple'. */
   maxPoints?: number
+  /** Card accent color for mode 'simple'. */
+  simpleColor?: string
 }
 
 // ── Tier system ───────────────────────────────────────────────────────────────
@@ -137,6 +139,7 @@ export function LoyaltyCard({
   configTiers,
   loyaltyMode = 'tiers',
   maxPoints = 500,
+  simpleColor = '#7b4fff',
 }: LoyaltyCardProps) {
   const sm = compact
   const isSimple = loyaltyMode === 'simple'
@@ -149,6 +152,11 @@ export function LoyaltyCard({
   const activeTierMax = activeTiers[activeTiers.length - 1].min
 
   const tier = getTierFrom(activeTiers, points)
+
+  // In simple mode, derive colors from the configured simpleColor instead of tier progression
+  const displayTier: TierDef = isSimple
+    ? { label: 'PUNTOS', min: 0, primary: simpleColor, accent: lightenHex(simpleColor), c1: darkenHex(simpleColor), bg: hexToRgba(simpleColor, 0.15) }
+    : tier
 
   // Tier progression (progress bar) — tiers mode
   const tierPct      = Math.min(Math.round((points / activeTierMax) * 100), 100)
@@ -169,13 +177,13 @@ export function LoyaltyCard({
 
   // CSS custom properties for tier colors (used in CSS keyframe animations)
   const tierVars: Record<string, string> = {
-    '--lc-edge': `linear-gradient(90deg, transparent 0%, ${tier.c1} 8%, ${tier.primary} 28%, ${tier.accent} 50%, ${tier.primary} 72%, ${tier.c1} 92%, transparent 100%)`,
-    '--lc-glo1': hexToRgba(tier.primary, 0.38),
-    '--lc-glo2': hexToRgba(tier.primary, 0.14),
-    '--lc-glo3': hexToRgba(tier.primary, 0.72),
-    '--lc-glo4': hexToRgba(tier.accent,  0.32),
-    '--lc-bds':  hexToRgba(tier.primary, 0.22),
-    '--lc-bds2': hexToRgba(tier.primary, 0.06),
+    '--lc-edge': `linear-gradient(90deg, transparent 0%, ${displayTier.c1} 8%, ${displayTier.primary} 28%, ${displayTier.accent} 50%, ${displayTier.primary} 72%, ${displayTier.c1} 92%, transparent 100%)`,
+    '--lc-glo1': hexToRgba(displayTier.primary, 0.38),
+    '--lc-glo2': hexToRgba(displayTier.primary, 0.14),
+    '--lc-glo3': hexToRgba(displayTier.primary, 0.72),
+    '--lc-glo4': hexToRgba(displayTier.accent,  0.32),
+    '--lc-bds':  hexToRgba(displayTier.primary, 0.22),
+    '--lc-bds2': hexToRgba(displayTier.primary, 0.06),
   }
 
   const registeredStr = createdAt
@@ -210,7 +218,7 @@ export function LoyaltyCard({
         <div style={{
           fontFamily: 'var(--font-ui)', fontSize: sm ? 9 : 10,
           letterSpacing: '0.32em', textTransform: 'uppercase',
-          color: hexToRgba(tier.accent, 0.85), paddingBottom: 4,
+          color: hexToRgba(displayTier.accent, 0.85), paddingBottom: 4,
         }}>PUNTOS</div>
       </div>
 
@@ -223,9 +231,9 @@ export function LoyaltyCard({
           <div style={{
             position: 'absolute', top: 0, left: 0, bottom: 0,
             width: `${tierPct}%`, borderRadius: 6,
-            background: `linear-gradient(90deg, ${tier.c1} 0%, ${tier.primary} 55%, ${tier.accent} 100%)`,
+            background: `linear-gradient(90deg, ${displayTier.c1} 0%, ${displayTier.primary} 55%, ${displayTier.accent} 100%)`,
             transition: 'width 1.4s cubic-bezier(0.4,0,0.2,1) 0.22s',
-            boxShadow: `0 0 18px ${hexToRgba(tier.primary, 0.55)}`,
+            boxShadow: `0 0 18px ${hexToRgba(displayTier.primary, 0.55)}`,
           }} />
         </div>
         {futureTierMarks.map(m => (
@@ -244,18 +252,18 @@ export function LoyaltyCard({
               left: `clamp(2%, ${tierPct}%, 96%)`,
               transform: 'translateX(-50%)',
               fontFamily: 'var(--font-ui)', fontSize: 7, letterSpacing: '0.12em',
-              color: tier.accent, whiteSpace: 'nowrap', fontWeight: 700,
-              textShadow: `0 0 8px ${hexToRgba(tier.primary, 0.6)}`,
+              color: displayTier.accent, whiteSpace: 'nowrap', fontWeight: 700,
+              textShadow: `0 0 8px ${hexToRgba(displayTier.primary, 0.6)}`,
               pointerEvents: 'none',
             }}>
-              {tier.label}
+              {displayTier.label}
             </div>
             {/* Active nod */}
             <div style={{
               position: 'absolute', top: 6, left: `${tierPct}%`,
               width: 18, height: 18, borderRadius: '50%', background: '#fff',
               transform: 'translate(-50%, -50%)',
-              boxShadow: `0 0 0 4px ${hexToRgba(tier.primary, 0.3)}, 0 0 22px ${tier.primary}`, zIndex: 2,
+              boxShadow: `0 0 0 4px ${hexToRgba(displayTier.primary, 0.3)}, 0 0 22px ${displayTier.primary}`, zIndex: 2,
             }} />
           </>
         )}
@@ -270,7 +278,7 @@ export function LoyaltyCard({
             left: `${Math.min(futureTierMarks[0].r * 100, 88)}%`,
             transform: 'translateX(-50%)',
             fontFamily: 'var(--font-ui)', fontSize: 7.5, letterSpacing: '0.08em',
-            color: hexToRgba(tier.accent, 0.85), whiteSpace: 'nowrap', fontWeight: 700,
+            color: hexToRgba(displayTier.accent, 0.85), whiteSpace: 'nowrap', fontWeight: 700,
           }}>
             {futureTierMarks[0].label}
           </span>
@@ -280,7 +288,7 @@ export function LoyaltyCard({
           <span style={{
             position: 'absolute', right: 0,
             fontFamily: 'var(--font-ui)', fontSize: 7.5, letterSpacing: '0.08em',
-            color: futureTierMarks.length === 1 ? hexToRgba(tier.accent, 0.85) : 'rgba(255,255,255,0.28)',
+            color: futureTierMarks.length === 1 ? hexToRgba(displayTier.accent, 0.85) : 'rgba(255,255,255,0.28)',
             whiteSpace: 'nowrap',
             fontWeight: futureTierMarks.length === 1 ? 700 : 400,
           }}>
@@ -298,7 +306,7 @@ export function LoyaltyCard({
           {stamps} {stamps === 1 ? 'visita' : 'visitas'}
         </span>
         <span style={{
-          color: ptsToNext > 0 ? hexToRgba(tier.accent, 0.75) : tier.accent,
+          color: ptsToNext > 0 ? hexToRgba(displayTier.accent, 0.75) : displayTier.accent,
           fontWeight: 500, letterSpacing: '0.02em',
         }}>
           {ptsToNext > 0
@@ -324,7 +332,7 @@ export function LoyaltyCard({
         <div style={{
           fontFamily: 'var(--font-ui)', fontSize: sm ? 9 : 10,
           letterSpacing: '0.32em', textTransform: 'uppercase',
-          color: hexToRgba(tier.accent, 0.85), paddingBottom: 4,
+          color: hexToRgba(displayTier.accent, 0.85), paddingBottom: 4,
         }}>PUNTOS</div>
       </div>
 
@@ -337,9 +345,9 @@ export function LoyaltyCard({
           <div style={{
             position: 'absolute', top: 0, left: 0, bottom: 0,
             width: `${simplePct}%`, borderRadius: 6,
-            background: `linear-gradient(90deg, ${tier.c1} 0%, ${tier.primary} 55%, ${tier.accent} 100%)`,
+            background: `linear-gradient(90deg, ${displayTier.c1} 0%, ${displayTier.primary} 55%, ${displayTier.accent} 100%)`,
             transition: 'width 1.4s cubic-bezier(0.4,0,0.2,1) 0.22s',
-            boxShadow: `0 0 18px ${hexToRgba(tier.primary, 0.55)}`,
+            boxShadow: `0 0 18px ${hexToRgba(displayTier.primary, 0.55)}`,
           }} />
         </div>
         {simplePct > 2 && simplePct < 100 && (
@@ -347,7 +355,7 @@ export function LoyaltyCard({
             position: 'absolute', top: 6, left: `${simplePct}%`,
             width: 18, height: 18, borderRadius: '50%', background: '#fff',
             transform: 'translate(-50%, -50%)',
-            boxShadow: `0 0 0 4px ${hexToRgba(tier.primary, 0.3)}, 0 0 22px ${tier.primary}`, zIndex: 2,
+            boxShadow: `0 0 0 4px ${hexToRgba(displayTier.primary, 0.3)}, 0 0 22px ${displayTier.primary}`, zIndex: 2,
           }} />
         )}
       </div>
@@ -360,7 +368,7 @@ export function LoyaltyCard({
         <span style={{ color: 'rgba(255,255,255,0.55)', letterSpacing: '0.04em' }}>
           {stamps} {stamps === 1 ? 'visita' : 'visitas'}
         </span>
-        <span style={{ color: hexToRgba(tier.accent, 0.75), fontWeight: 500 }}>
+        <span style={{ color: hexToRgba(displayTier.accent, 0.75), fontWeight: 500 }}>
           {simplePct >= 100
             ? '✓ Máximo alcanzado'
             : `${(maxPoints - points).toLocaleString('es-ES')} pts para el máximo`}
@@ -378,11 +386,11 @@ export function LoyaltyCard({
       position: 'relative',
       borderRadius: 22,
       overflow: 'hidden',
-      background: `radial-gradient(ellipse 75% 55% at 88% 12%, ${hexToRgba(tier.primary, 0.18)} 0%, transparent 70%), ${tier.c1}`,
-      border: `1px solid ${hexToRgba(tier.primary, 0.48)}`,
+      background: `radial-gradient(ellipse 75% 55% at 88% 12%, ${hexToRgba(displayTier.primary, 0.18)} 0%, transparent 70%), ${displayTier.c1}`,
+      border: `1px solid ${hexToRgba(displayTier.primary, 0.48)}`,
       boxShadow:
-        `inset 0 1px 0 ${hexToRgba(tier.accent, 0.22)}, ` +
-        `inset 0 0 0 1px ${hexToRgba(tier.primary, 0.14)}, ` +
+        `inset 0 1px 0 ${hexToRgba(displayTier.accent, 0.22)}, ` +
+        `inset 0 0 0 1px ${hexToRgba(displayTier.primary, 0.14)}, ` +
         '0 20px 56px rgba(0,0,0,0.9)',
       width: '100%',
       ...(fill ? {
@@ -398,19 +406,19 @@ export function LoyaltyCard({
       <div className="lc7-orb" style={{
         position: 'absolute', top: -80, right: -80,
         width: 280, height: 280, borderRadius: '50%',
-        background: `radial-gradient(circle, ${hexToRgba(tier.primary, 0.16)} 0%, transparent 70%)`,
+        background: `radial-gradient(circle, ${hexToRgba(displayTier.primary, 0.16)} 0%, transparent 70%)`,
         pointerEvents: 'none', zIndex: 0,
       }} />
       <div className="lc7-orb2" style={{
         position: 'absolute', bottom: -60, left: -60,
         width: 240, height: 240, borderRadius: '50%',
-        background: `radial-gradient(circle, ${hexToRgba(tier.accent, 0.1)} 0%, transparent 70%)`,
+        background: `radial-gradient(circle, ${hexToRgba(displayTier.accent, 0.1)} 0%, transparent 70%)`,
         pointerEvents: 'none', zIndex: 0,
       }} />
 
 
       {/* ── Top bar ── */}
-      <div style={{ height: 3, background: `linear-gradient(90deg, ${tier.c1} 0%, ${tier.primary} 30%, ${tier.accent} 55%, ${tier.primary} 80%, ${tier.c1} 100%)`, zIndex: 2, ...fixed }} />
+      <div style={{ height: 3, background: `linear-gradient(90deg, ${displayTier.c1} 0%, ${displayTier.primary} 30%, ${displayTier.accent} 55%, ${displayTier.primary} 80%, ${displayTier.c1} 100%)`, zIndex: 2, ...fixed }} />
 
       {/* ── Header ── */}
       <div style={{
@@ -428,24 +436,24 @@ export function LoyaltyCard({
           <div style={{
             fontFamily: 'var(--font-ui)', fontSize: sm ? 8 : 8.5,
             letterSpacing: '0.22em', textTransform: 'uppercase',
-            color: hexToRgba(tier.accent, 0.72), marginTop: sm ? 4 : 6,
+            color: hexToRgba(displayTier.accent, 0.72), marginTop: sm ? 4 : 6,
           }}>LOYALTY CLUB</div>
         </div>
 
         <div style={{
           display: 'flex', alignItems: 'center', gap: 5,
           padding: sm ? '4px 10px' : '5px 13px', borderRadius: 20,
-          background: tier.bg, border: `1px solid ${hexToRgba(tier.primary, 0.35)}`,
+          background: displayTier.bg, border: `1px solid ${hexToRgba(displayTier.primary, 0.35)}`,
         }}>
           <div style={{
             width: 6, height: 6, borderRadius: '50%',
-            background: tier.primary, boxShadow: `0 0 8px ${hexToRgba(tier.primary, 0.95)}`,
+            background: displayTier.primary, boxShadow: `0 0 8px ${hexToRgba(displayTier.primary, 0.95)}`,
           }} />
           <span style={{
             fontFamily: 'var(--font-ui)',
             fontSize: sm ? 10 : 11, fontWeight: 700,
-            letterSpacing: '0.18em', color: tier.accent,
-          }}>{isSimple ? 'PUNTOS' : tier.label}</span>
+            letterSpacing: '0.18em', color: displayTier.accent,
+          }}>{isSimple ? 'PUNTOS' : displayTier.label}</span>
         </div>
       </div>
 
@@ -492,13 +500,13 @@ export function LoyaltyCard({
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: sm ? '0.3rem 0.55rem' : '0.4rem 0.65rem',
                     borderRadius: 9,
-                    background: can ? tier.bg : 'rgba(255,255,255,0.02)',
-                    border: `1px solid ${can ? hexToRgba(tier.primary, 0.22) : 'rgba(255,255,255,0.07)'}`,
+                    background: can ? displayTier.bg : 'rgba(255,255,255,0.02)',
+                    border: `1px solid ${can ? hexToRgba(displayTier.primary, 0.22) : 'rgba(255,255,255,0.07)'}`,
                   }}>
                     <div style={{
                       width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                      background: can ? tier.primary : 'rgba(255,255,255,0.15)',
-                      boxShadow: can ? `0 0 8px ${hexToRgba(tier.primary, 0.7)}` : 'none',
+                      background: can ? displayTier.primary : 'rgba(255,255,255,0.15)',
+                      boxShadow: can ? `0 0 8px ${hexToRgba(displayTier.primary, 0.7)}` : 'none',
                     }} />
                     <span style={{
                       flex: 1, fontFamily: 'var(--font-ui)',
@@ -508,7 +516,7 @@ export function LoyaltyCard({
                     }}>{r.label}</span>
                     <span style={{
                       fontFamily: 'var(--font-mono, monospace)', fontSize: sm ? 9 : 10, flexShrink: 0,
-                      color: can ? tier.accent : 'rgba(255,255,255,0.3)',
+                      color: can ? displayTier.accent : 'rgba(255,255,255,0.3)',
                     }}>{r.cost.toLocaleString('es-ES')} pts</span>
                   </div>
                 )
@@ -551,7 +559,7 @@ export function LoyaltyCard({
           <div style={{
             fontFamily: 'var(--font-mono, monospace)',
             fontSize: sm ? 11 : 13, fontWeight: 700,
-            letterSpacing: '0.14em', color: tier.accent,
+            letterSpacing: '0.14em', color: displayTier.accent,
             marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>{memberCode}</div>
           <div style={{
@@ -562,7 +570,7 @@ export function LoyaltyCard({
           {registeredStr && (
             <div style={{
               fontFamily: 'var(--font-ui)', fontSize: 7.5,
-              color: hexToRgba(tier.accent, 0.45), marginTop: 4,
+              color: hexToRgba(displayTier.accent, 0.45), marginTop: 4,
               letterSpacing: '0.04em',
             }}>Desde {registeredStr}</div>
           )}
@@ -578,7 +586,7 @@ export function LoyaltyCard({
               }}>Máximo</div>
               <div style={{
                 fontFamily: 'var(--font-ui)', fontSize: sm ? 11 : 13, fontWeight: 700,
-                letterSpacing: '0.18em', color: tier.accent,
+                letterSpacing: '0.18em', color: displayTier.accent,
               }}>{maxPoints.toLocaleString('es-ES')} pts</div>
             </>
           ) : (
@@ -590,8 +598,8 @@ export function LoyaltyCard({
               }}>Nivel</div>
               <div style={{
                 fontFamily: 'var(--font-ui)', fontSize: sm ? 11 : 13, fontWeight: 700,
-                letterSpacing: '0.18em', color: tier.accent,
-              }}>{tier.label}</div>
+                letterSpacing: '0.18em', color: displayTier.accent,
+              }}>{displayTier.label}</div>
               {ptsToNext > 0 && (
                 <div style={{
                   fontFamily: 'var(--font-ui)', fontSize: 7,
@@ -604,7 +612,7 @@ export function LoyaltyCard({
       </div>
 
       {/* ── Bottom bar ── */}
-      <div style={{ height: 3, background: `linear-gradient(90deg, ${tier.c1} 0%, ${tier.primary} 30%, ${tier.accent} 55%, ${tier.primary} 80%, ${tier.c1} 100%)`, zIndex: 2, ...fixed }} />
+      <div style={{ height: 3, background: `linear-gradient(90deg, ${displayTier.c1} 0%, ${displayTier.primary} 30%, ${displayTier.accent} 55%, ${displayTier.primary} 80%, ${displayTier.c1} 100%)`, zIndex: 2, ...fixed }} />
 
       {/* ── QR expand modal ── */}
       {qrExpanded && (
@@ -614,19 +622,19 @@ export function LoyaltyCard({
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ background: tier.c1, borderRadius: 20, padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', border: `1px solid ${hexToRgba(tier.primary, 0.5)}`, boxShadow: `0 0 60px ${hexToRgba(tier.primary, 0.3)}, 0 24px 64px rgba(0,0,0,0.8)`, maxWidth: 320, width: '100%' }}
+            style={{ background: displayTier.c1, borderRadius: 20, padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', border: `1px solid ${hexToRgba(displayTier.primary, 0.5)}`, boxShadow: `0 0 60px ${hexToRgba(displayTier.primary, 0.3)}, 0 24px 64px rgba(0,0,0,0.8)`, maxWidth: 320, width: '100%' }}
           >
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.12em', color: tier.accent }}>GIO BARBER LOYALTY</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.12em', color: displayTier.accent }}>GIO BARBER LOYALTY</div>
             <div style={{ padding: 12, borderRadius: 12, background: '#fff' }}>
               <QRCodeSVG value={qrValue} size={220} level="H" marginSize={0} />
             </div>
             <div>
-              <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 16, fontWeight: 700, letterSpacing: '0.18em', color: tier.accent, textAlign: 'center' }}>{memberCode}</div>
+              <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 16, fontWeight: 700, letterSpacing: '0.18em', color: displayTier.accent, textAlign: 'center' }}>{memberCode}</div>
               <div style={{ fontFamily: 'var(--font-ui)', fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.14em', textTransform: 'uppercase', textAlign: 'center', marginTop: 4 }}>Código de miembro</div>
             </div>
             <button
               onClick={() => setQrExpanded(false)}
-              style={{ padding: '0.6rem 2rem', borderRadius: 8, border: `1px solid ${hexToRgba(tier.primary, 0.4)}`, background: 'transparent', color: 'rgba(255,255,255,0.65)', fontFamily: 'var(--font-ui)', fontSize: 12, cursor: 'pointer' }}
+              style={{ padding: '0.6rem 2rem', borderRadius: 8, border: `1px solid ${hexToRgba(displayTier.primary, 0.4)}`, background: 'transparent', color: 'rgba(255,255,255,0.65)', fontFamily: 'var(--font-ui)', fontSize: 12, cursor: 'pointer' }}
             >Cerrar</button>
           </div>
         </div>
