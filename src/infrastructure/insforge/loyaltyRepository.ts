@@ -143,25 +143,14 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
     const card = await getCardByClientId(clientId)
     if (!card) return []
 
-    const [{ data: activeRewards }, { data: redeemed, error }] = await Promise.all([
+    const [{ error: rewardsErr }, { data: redeemed, error }] = await Promise.all([
       insforgeClient.database.from('rewards').select('id').eq('is_active', true),
       insforgeClient.database.from('redeemed_rewards').select('reward_id').eq('card_id', card.id),
     ])
+    if (rewardsErr) throw rewardsErr
     if (error) throw error
 
-    const rows = (redeemed ?? []) as RedeemedRewardRow[]
-    const totalActive = (activeRewards ?? []).length
-
-    // Auto-reset: if all rewards have been redeemed, clear so client can redeem again
-    if (totalActive > 0 && rows.length >= totalActive) {
-      await insforgeClient.database.from('redeemed_rewards').delete().eq('card_id', card.id)
-      await insforgeClient.database
-        .from('loyalty_transactions')
-        .insert({ card_id: card.id, points: 0, type: 'adjustment', description: '__cycle_complete__' })
-      return []
-    }
-
-    return rows.map(r => r.reward_id)
+    return ((redeemed ?? []) as RedeemedRewardRow[]).map(r => r.reward_id)
   }
 
   async redeemReward(clientId: string, rewardId: string): Promise<void> {
@@ -262,23 +251,31 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
       .maybeSingle()
     if (!earned) return
 
-    const earnedPoints = (earned as TransactionRow).points
-    const newPoints = Math.max(0, card.total_points - earnedPoints)
-
-    // Delete the earned transaction so history stays clean
-    const { error: delErr } = await insforgeClient.database
+    // Idempotency: skip if already revoked (adjustment row already exists)
+    const { data: existingAdj } = await insforgeClient.database
       .from('loyalty_transactions')
-      .delete()
-      .eq('id', (earned as TransactionRow).id)
-    if (delErr) throw delErr
-
-    // Also remove any legacy adjustment tx for this appointment
-    await insforgeClient.database
-      .from('loyalty_transactions')
-      .delete()
+      .select('id')
       .eq('card_id', card.id)
       .eq('appointment_id', appointmentId)
       .eq('type', 'adjustment')
+      .maybeSingle()
+    if (existingAdj) return
+
+    const earnedPoints = (earned as TransactionRow).points
+    const newPoints = Math.max(0, card.total_points - earnedPoints)
+
+    // Insert adjustment row so getLoyaltyStatusForAppointment returns 'revoked'
+    // and undoRevokePoints can restore the points correctly
+    const { error: txErr } = await insforgeClient.database
+      .from('loyalty_transactions')
+      .insert({
+        card_id: card.id,
+        appointment_id: appointmentId,
+        points: -earnedPoints,
+        type: 'adjustment',
+        description: 'Puntos revocados',
+      })
+    if (txErr) throw txErr
 
     const { error: updateErr } = await insforgeClient.database
       .from('loyalty_cards')
@@ -402,11 +399,10 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
     if (!card) throw new Error('No loyalty card found for client')
 
     const newPoints = Math.max(0, card.total_points + points)
-    const newVisits = points > 0 ? card.total_visits + 1 : card.total_visits
 
     const { error: updateErr } = await insforgeClient.database
       .from('loyalty_cards')
-      .update({ total_points: newPoints, total_visits: newVisits })
+      .update({ total_points: newPoints })
       .eq('id', card.id)
     if (updateErr) throw updateErr
 
@@ -428,6 +424,33 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
   }
 
   async deleteTransaction(transactionId: string): Promise<void> {
+    const { data: tx, error: readErr } = await insforgeClient.database
+      .from('loyalty_transactions')
+      .select('id, points, card_id')
+      .eq('id', transactionId)
+      .maybeSingle()
+    if (readErr) throw readErr
+    if (!tx) return
+
+    const row = tx as { id: string; points: number; card_id: string }
+    if (row.points !== 0) {
+      const { data: card, error: cardErr } = await insforgeClient.database
+        .from('loyalty_cards')
+        .select('id, total_points')
+        .eq('id', row.card_id)
+        .maybeSingle()
+      if (cardErr) throw cardErr
+      if (card) {
+        const c = card as { id: string; total_points: number }
+        const newPoints = Math.max(0, c.total_points - row.points)
+        const { error: updateErr } = await insforgeClient.database
+          .from('loyalty_cards')
+          .update({ total_points: newPoints })
+          .eq('id', row.card_id)
+        if (updateErr) throw updateErr
+      }
+    }
+
     const { error } = await insforgeClient.database
       .from('loyalty_transactions')
       .delete()
@@ -519,17 +542,24 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
     return (data as ServicePointsRow | null)?.loyalty_points ?? null
   }
 
-  async getCardByMemberCode(memberCode: string): Promise<import('@/domain/loyalty').LoyaltyCard | null> {
-    // Member codes are derived deterministically from the card UUID, so we
-    // fetch all cards and find the matching one client-side.
-    const { data, error } = await insforgeClient.database
-      .from('loyalty_cards')
-      .select(CARD_SELECT)
-      .order('created_at', { ascending: false })
-      .limit(2000)
-    if (error) throw error
-    const rows = (data ?? []) as LoyaltyCardRow[]
-    const match = rows.find(row => generateMemberCode(row.id) === memberCode.toUpperCase())
+  async getCardByMemberCode(memberCode: string): Promise<LoyaltyCard | null> {
+    const PAGE = 1000
+    let offset = 0
+    let match: LoyaltyCardRow | undefined
+
+    while (!match) {
+      const { data, error } = await insforgeClient.database
+        .from('loyalty_cards')
+        .select(CARD_SELECT)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + PAGE - 1)
+      if (error) throw error
+      if (!data || data.length === 0) break
+      match = (data as LoyaltyCardRow[]).find(row => generateMemberCode(row.id) === memberCode.toUpperCase())
+      if (data.length < PAGE) break
+      offset += PAGE
+    }
+
     if (!match) return null
     const completedCycles = await getCompletedCycles(match.id)
     return { ...mapToLoyaltyCard(match), completedCycles }
