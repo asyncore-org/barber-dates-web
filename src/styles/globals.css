@@ -60,6 +60,16 @@
   --font-display: 'Bebas Neue', 'Oswald', Impact, sans-serif;
   --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Available page height: 56px topbar + 16px pt-4 + 72px pb-[4.5rem] (mobile) */
+  --content-h: calc(100dvh - 144px);
+}
+
+/* Desktop: 56px topbar + 24px pt-6 + 24px pb-6 + 1px border */
+@media (min-width: 768px) {
+  :root {
+    --content-h: calc(100dvh - 105px);
+  }
 }
 
 /* ============ TAILWIND THEME BRIDGE ============ */
@@ -308,8 +318,8 @@ h3,
 }
 
 .btn.icon {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   flex-shrink: 0;
 }
@@ -368,11 +378,24 @@ h3,
   border: 1px solid var(--line-2);
   border-radius: 16px;
   width: 100%;
-  max-width: 440px;
+  max-width: clamp(300px, calc(100vw - 32px), 440px);
   box-shadow: var(--shadow-lg);
   animation: modalIn 0.2s ease-out;
-  max-height: 90vh;
+  max-height: 90dvh;
   overflow-y: auto;
+}
+
+@media (max-width: 480px) {
+  .modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .modal {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    max-height: 92dvh;
+    animation: modalUp 0.22s ease-out;
+  }
 }
 
 /* ============ SCROLLBAR ============ */

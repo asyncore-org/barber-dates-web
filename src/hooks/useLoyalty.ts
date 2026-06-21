@@ -281,6 +281,18 @@ export function useManualAdjustPoints() {
   })
 }
 
+/** Delete a single loyalty transaction by ID (owner-only, no balance change). */
+export function useDeleteTransaction() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (transactionId: string) =>
+      repositories.loyalty().deleteTransaction(transactionId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['loyalty', 'transactions'] })
+    },
+  })
+}
+
 /** Recent loyalty transactions for a client (used in admin panels). */
 export function useRecentTransactions(clientId: string | undefined, limit = 8) {
   return useQuery({

@@ -427,6 +427,14 @@ export class InsForgeLoyaltyRepository implements ILoyaltyRepository {
     if (error) throw error
   }
 
+  async deleteTransaction(transactionId: string): Promise<void> {
+    const { error } = await insforgeClient.database
+      .from('loyalty_transactions')
+      .delete()
+      .eq('id', transactionId)
+    if (error) throw error
+  }
+
   async redeemTierConfigReward(clientId: string, rewardId: string, cost: number, label: string): Promise<void> {
     const card = await getCardByClientId(clientId)
     if (!card) throw new Error('No loyalty card found for client')

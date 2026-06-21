@@ -76,6 +76,8 @@ export interface ILoyaltyRepository {
   getCardByMemberCode(memberCode: string): Promise<LoyaltyCard | null>
   /** Deletes all transaction history for a client's loyalty card (owner-only action). */
   clearLoyaltyHistory(clientId: string): Promise<void>
+  /** Deletes a single transaction by ID (owner-only, no balance adjustment). */
+  deleteTransaction(transactionId: string): Promise<void>
   /**
    * Redeems a tier config reward (ID comes from shop_config JSON, not the DB rewards table).
    * Deducts `cost` points from the card and marks the reward UUID as redeemed.
