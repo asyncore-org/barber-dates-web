@@ -9,6 +9,8 @@ export interface WeekAppt {
   service: string   // display name (matches Service.name)
   barberId: string
   color: 'led' | 'brick' | 'gold'
+  /** Actual price paid (after discount). Undefined if no discount was applied. */
+  finalPrice?: number
 }
 
 export interface RescheduleUpdate {

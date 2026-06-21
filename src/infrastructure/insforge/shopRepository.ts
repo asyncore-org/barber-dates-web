@@ -59,4 +59,20 @@ export class InsForgeShopRepository implements IShopRepository {
   async updateColorTheme(config: ColorThemeConfig): Promise<void> {
     await upsertConfigValue('color_theme', config)
   }
+
+  async uploadLogo(file: File): Promise<string> {
+    const MAX_BYTES = 2 * 1024 * 1024
+    if (file.size > MAX_BYTES) throw new Error('El logo no puede superar 2 MB')
+
+    const ext = file.name.split('.').pop() ?? 'png'
+    const path = `logo-${Date.now()}.${ext}`
+    const bucket = insforgeClient.storage.from('shop-logos')
+
+    const { data, error } = await bucket.upload(path, file)
+    if (error || !data) throw error ?? new Error('Upload failed')
+
+    const url = bucket.getPublicUrl(data.key)
+    await this.updateShopInfo({ logo_url: url })
+    return url
+  }
 }

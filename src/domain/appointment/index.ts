@@ -16,6 +16,8 @@ export interface Appointment {
   status: AppointmentStatus
   notes: string | null
   createdAt: string
+  /** Actual price paid after loyalty discount. null/undefined = no discount (use service.price). */
+  finalPrice?: number | null
 }
 
 export interface CreateAppointmentData {
@@ -25,6 +27,8 @@ export interface CreateAppointmentData {
   startTime: string
   endTime: string
   notes?: string
+  /** Price after loyalty discount. Omit if no discount applied. */
+  finalPrice?: number
 }
 
 /** Pure function — returns true if cancellation is still allowed (Art. 4 rule 2) */
@@ -46,6 +50,8 @@ export interface UpdateAppointmentData {
 
 export interface IAppointmentRepository {
   getForClient(clientId: string): Promise<Appointment[]>
+  /** Returns only completed + cancelled appointments for the client (used by lazy history). */
+  getHistoryForClient(clientId: string): Promise<Appointment[]>
   getForBarber(barberId: string): Promise<Appointment[]>
   getAll(): Promise<Appointment[]>
   create(data: CreateAppointmentData): Promise<Appointment>

@@ -11,6 +11,7 @@ const DashboardPage = lazy(() => import('@/pages/admin/DashboardPage'))
 const SettingsPage = lazy(() => import('@/pages/admin/SettingsPage'))
 const AdminPanelPage = lazy(() => import('@/pages/super-admin/AdminPanelPage'))
 const BarberPage = lazy(() => import('@/pages/barber/BarberPage'))
+const ClientsPage = lazy(() => import('@/pages/admin/ClientsPage'))
 
 const HOME: Record<string, string> = {
   admin: '/super-admin',
@@ -21,7 +22,7 @@ const HOME: Record<string, string> = {
 
 const KNOWN_PATHS = [
   '/calendar', '/appointments',
-  '/admin/dashboard', '/admin/settings',
+  '/admin/dashboard', '/admin/settings', '/admin/clients',
   '/super-admin', '/barber',
 ]
 
@@ -76,6 +77,14 @@ export default function App() {
           element={
             <AuthGuard role="owner">
               <AppLayout><SettingsPage /></AppLayout>
+            </AuthGuard>
+          }
+        />
+        <Route
+          path="/admin/clients"
+          element={
+            <AuthGuard role="owner">
+              <AppLayout><ClientsPage /></AppLayout>
             </AuthGuard>
           }
         />

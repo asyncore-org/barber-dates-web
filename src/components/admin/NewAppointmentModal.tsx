@@ -142,10 +142,10 @@ export function NewAppointmentModal({ onClose, onConfirm, schedule, errorMessage
 
         {/* Barber */}
         <div>
-          <div style={LABEL}>BARBERO</div>
+          <div style={LABEL}>EMPLEADO</div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button onClick={() => setBarberId('__any__')} style={barberBtnStyle('__any__')}>
-              Cualquier barbero
+              Cualquier empleado
             </button>
             {activeBarbers.map(b => (
               <button key={b.id} onClick={() => setBarberId(b.id)} style={barberBtnStyle(b.id)}>
@@ -206,7 +206,7 @@ export function NewAppointmentModal({ onClose, onConfirm, schedule, errorMessage
             <span><strong style={{ color: 'var(--fg-0)' }}>{email}</strong></span>
             <span>
               {selectedService.name} ·{' '}
-              {selectedBarber ? selectedBarber.fullName : 'Barbero disponible aleatorio'} ·{' '}
+              {selectedBarber ? selectedBarber.fullName : 'Empleado disponible'} ·{' '}
               {date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })} {slot}
             </span>
           </div>
@@ -238,7 +238,7 @@ export function NewAppointmentModal({ onClose, onConfirm, schedule, errorMessage
             fontSize: 15,
             letterSpacing: '0.06em',
             cursor: canConfirm ? 'pointer' : 'default',
-            boxShadow: canConfirm ? 'var(--glow-led)' : 'none',
+            boxShadow: 'none',
             transition: 'all 0.15s',
           }}
         >

@@ -17,6 +17,7 @@ interface AppointmentRow {
   status: string
   notes: string | null
   created_at: string
+  final_price: number | null
   profiles?: { full_name: string | null } | null
 }
 
@@ -42,14 +43,15 @@ function mapToAppointment(row: AppointmentRow): Appointment {
     status: row.status as AppointmentStatus,
     notes: row.notes,
     createdAt: row.created_at,
+    finalPrice: row.final_price ?? undefined,
   }
 }
 
 const SELECT_FIELDS =
-  'id, client_id, barber_id, service_id, start_time, end_time, status, notes, created_at'
+  'id, client_id, barber_id, service_id, start_time, end_time, status, notes, created_at, final_price'
 
 const SELECT_FIELDS_WITH_CLIENT =
-  'id, client_id, barber_id, service_id, start_time, end_time, status, notes, created_at, profiles(full_name)'
+  'id, client_id, barber_id, service_id, start_time, end_time, status, notes, created_at, final_price, profiles(full_name)'
 
 export class InsForgeAppointmentRepository implements IAppointmentRepository {
   async getForClient(clientId: string): Promise<Appointment[]> {
@@ -57,6 +59,17 @@ export class InsForgeAppointmentRepository implements IAppointmentRepository {
       .from('appointments')
       .select(SELECT_FIELDS)
       .eq('client_id', clientId)
+      .order('start_time', { ascending: false })
+    if (error) throw error
+    return ((data ?? []) as AppointmentRow[]).map(mapToAppointment)
+  }
+
+  async getHistoryForClient(clientId: string): Promise<Appointment[]> {
+    const { data, error } = await insforgeClient.database
+      .from('appointments')
+      .select(SELECT_FIELDS)
+      .eq('client_id', clientId)
+      .in('status', ['completed', 'cancelled'])
       .order('start_time', { ascending: false })
     if (error) throw error
     return ((data ?? []) as AppointmentRow[]).map(mapToAppointment)
@@ -91,6 +104,7 @@ export class InsForgeAppointmentRepository implements IAppointmentRepository {
         start_time: appt.startTime,
         end_time: appt.endTime,
         notes: appt.notes ?? null,
+        final_price: appt.finalPrice ?? null,
       })
       .select(SELECT_FIELDS)
       .single()

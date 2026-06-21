@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef, useSyncExternalStore } from 'reac
 import { Helmet } from 'react-helmet-async'
 import { useShopContext } from '@/context/ShopContext'
 import { Icon } from '@/components/ui'
-import { AgendaListView, NewAppointmentModal, RescheduleModal, ClientProfileModal } from '@/components/admin'
+import { AgendaListView, NewAppointmentModal, RescheduleModal, ClientProfileModal, AppointmentLoyaltyControls, AppointmentClientRewards } from '@/components/admin'
 import type { WeekAppt, RescheduleUpdate, NewAppointmentData } from '@/components/admin'
 import { useBarbers } from '@/hooks/useBarbers'
 import { useAllServices } from '@/hooks/useServices'
@@ -95,6 +95,11 @@ export default function DashboardPage() {
   const [newApptToast, setNewApptToast] = useState(false)
   const [rescheduleToast, setRescheduleToast] = useState(false)
   const [apptError, setApptError] = useState<string | null>(null)
+  const [calView, setCalView] = useState<'week' | 'month'>('week')
+  const [monthViewYear, setMonthViewYear] = useState(() => new Date().getFullYear())
+  const [monthViewMonth, setMonthViewMonth] = useState(() => new Date().getMonth())
+  const [selectedMonthDay, setSelectedMonthDay] = useState<Date | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const nowLineRef = useRef<HTMLDivElement>(null)
 
   const weekStart = useMemo(() => {
@@ -109,7 +114,7 @@ export default function DashboardPage() {
       .flatMap((a, i) => {
         const start = new Date(a.startTime)
         const end = new Date(a.endTime)
-        const dayDiff = Math.round((start.getTime() - weekStart.getTime()) / 86_400_000)
+        const dayDiff = Math.floor((start.getTime() - weekStart.getTime()) / 86_400_000)
         if (dayDiff < 0 || dayDiff > 6) return []
         const svc = services.find(s => s.id === a.serviceId)
         const barberIdx = barbers.findIndex(b => b.id === a.barberId)
@@ -124,9 +129,19 @@ export default function DashboardPage() {
           service: svc?.name ?? 'Servicio',
           barberId: a.barberId,
           color: APPT_COLORS[barberIdx >= 0 ? barberIdx % 3 : i % 3],
+          finalPrice: a.finalPrice ?? undefined,
         } satisfies WeekAppt]
       })
   }, [dbAppointments, weekStart, services, barbers])
+
+  const filteredAppointments = useMemo(() => {
+    if (!searchQuery.trim()) return appointments
+    const q = searchQuery.toLowerCase()
+    return appointments.filter(a =>
+      a.client.toLowerCase().includes(q) || a.service.toLowerCase().includes(q),
+    )
+  }, [appointments, searchQuery])
+
 
   const handleNewApptConfirm = async (data: NewAppointmentData) => {
     setApptError(null)
@@ -146,7 +161,7 @@ export default function DashboardPage() {
         ),
       )
       if (available.length === 0) {
-        setApptError('No hay barberos disponibles para ese horario.')
+        setApptError('No hay empleados disponibles para ese horario.')
         return
       }
       resolvedBarberId = available[Math.floor(Math.random() * available.length)].id
@@ -220,14 +235,75 @@ export default function DashboardPage() {
   const mobileDayDate = new Date(getWeekStart(new Date()))
   mobileDayDate.setDate(mobileDayDate.getDate() + mobileDayCol)
 
+  const todayRevenue = useMemo(() => {
+    const t = new Date()
+    const todayStr = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
+    return dbAppointments
+      .filter(a => {
+        if (a.status === 'cancelled' || a.status === 'no_show') return false
+        const d = new Date(a.startTime)
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` === todayStr
+      })
+      .reduce((sum, a) => sum + (a.finalPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0), 0)
+  }, [dbAppointments, services])
+
+  const weekRevenue = useMemo(() => {
+    return appointments.reduce((sum, a) => {
+      return sum + (a.finalPrice ?? services.find(s => s.name === a.service)?.price ?? 0)
+    }, 0)
+  }, [appointments, services])
+
   const metrics = [
     { label: 'Citas hoy', value: appointments.filter(a => a.day === todayCols).length, icon: 'calendar' as const, color: 'var(--led)' },
-    { label: 'Ingresos est.', value: '214€', icon: 'euro' as const, color: 'var(--gold)' },
-    { label: 'Barberos activos', value: activeBarbers.length, icon: 'users' as const, color: 'var(--brick-warm)' },
-    { label: 'Lista de espera', value: 3, icon: 'clock' as const, color: 'var(--fg-2)' },
+    { label: 'Ingresos hoy', value: `${todayRevenue}€`, icon: 'euro' as const, color: 'var(--gold)' },
+    { label: 'Empleados', value: activeBarbers.length, icon: 'users' as const, color: 'var(--brick-warm)' },
+    { label: 'Esta semana', value: `${weekRevenue}€`, icon: 'clock' as const, color: 'var(--led-soft)' },
   ]
 
-  const upcomingToday = appointments.filter(a => a.day === todayCols)
+  const monthDayApptsMap = useMemo(() => {
+    const map = new Map<string, WeekAppt[]>()
+    dbAppointments
+      .filter(a => a.status !== 'cancelled' && a.status !== 'no_show')
+      .forEach((a, i) => {
+        const d = new Date(a.startTime)
+        if (d.getFullYear() !== monthViewYear || d.getMonth() !== monthViewMonth) return
+        // Use local date components to avoid UTC offset shifting the date
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        const svc = services.find(s => s.id === a.serviceId)
+        const barberIdx = barbers.findIndex(b => b.id === a.barberId)
+        const appt: WeekAppt = {
+          id: a.id, day: 0,
+          startH: d.getHours(), startM: d.getMinutes(),
+          durationMin: Math.round((new Date(a.endTime).getTime() - d.getTime()) / 60_000),
+          client: a.clientName ?? `Cliente ${a.clientId.slice(0, 6)}`,
+          clientId: a.clientId,
+          service: svc?.name ?? 'Servicio',
+          barberId: a.barberId,
+          color: APPT_COLORS[barberIdx >= 0 ? barberIdx % 3 : i % 3],
+          finalPrice: a.finalPrice ?? undefined,
+        }
+        if (!map.has(key)) map.set(key, [])
+        map.get(key)!.push(appt)
+      })
+    return map
+  }, [dbAppointments, services, barbers, monthViewYear, monthViewMonth])
+
+  const monthViewDayAppts = useMemo(() => {
+    if (!selectedMonthDay) return []
+    const d = selectedMonthDay
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    return monthDayApptsMap.get(key) ?? []
+  }, [selectedMonthDay, monthDayApptsMap])
+
+  const nowMins = now.getHours() * 60 + now.getMinutes()
+  const upcomingToday = appointments
+    .filter(a => {
+      if (a.day !== todayCols) return false
+      if (weekOffset !== 0) return true
+      // Include appointments not yet finished (started but still active counts as upcoming)
+      const endMins = a.startH * 60 + a.startM + (a.durationMin ?? 60)
+      return endMins > nowMins
+    })
     .sort((a, b) => a.startH * 60 + a.startM - (b.startH * 60 + b.startM))
 
   const landscapeRows = useMemo(() => {
@@ -305,7 +381,7 @@ export default function DashboardPage() {
             padding: '0.875rem', minHeight: 48,
             border: 'none', background: 'var(--led)', color: '#fff',
             fontFamily: 'var(--font-ui)', fontSize: 14, fontWeight: 600,
-            cursor: 'pointer', boxShadow: 'var(--glow-led)',
+            cursor: 'pointer',
           }}
         >
           <Icon name="plus" size={16} />
@@ -315,12 +391,17 @@ export default function DashboardPage() {
         {/* Metrics grid */}
         <div className="grid grid-cols-2 gap-3">
           {metrics.map(m => (
-            <div key={m.label} style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 10, padding: '0.875rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
-                <Icon name={m.icon} size={13} />
-                <span style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{m.label}</span>
+            <div key={m.label} style={{
+              background: 'var(--bg-2)', border: '1px solid var(--line)',
+              borderLeft: `3px solid ${m.color}`,
+              borderRadius: 10, padding: '0.875rem 1rem',
+              display: 'flex', flexDirection: 'column', gap: '0.45rem',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 10, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, whiteSpace: 'nowrap' }}>{m.label}</span>
+                <div style={{ color: m.color }}><Icon name={m.icon} size={15} /></div>
               </div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: m.color }}>{m.value}</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 30, color: m.color, lineHeight: 1, letterSpacing: '-0.03em' }}>{m.value}</div>
             </div>
           ))}
         </div>
@@ -328,7 +409,7 @@ export default function DashboardPage() {
         {/* Barbers (mobile) */}
         <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '1rem' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)', marginBottom: '0.875rem' }}>
-            BARBEROS
+            EQUIPO
           </div>
           <div className="flex flex-col gap-2">
             {barbers.map(b => (
@@ -338,7 +419,7 @@ export default function DashboardPage() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{b.fullName}</div>
-                  <div style={{ fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>{b.role ?? 'Barbero'}</div>
+                  <div style={{ fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>{b.role ?? 'Empleado'}</div>
                 </div>
                 <div style={{
                   width: 8, height: 8, borderRadius: '50%',
@@ -352,35 +433,229 @@ export default function DashboardPage() {
       </div>
 
       {/* Desktop + landscape mobile: two-column layout */}
-      <div className={`${isLandscape ? 'flex flex-col gap-4' : 'hidden md:grid md:grid-cols-[1fr_360px]'} gap-6 items-start`}>
+      {/* TopBar = 56px content + 1px border = 57px. main pt-6=24px + pb-6=24px → offset = 105px.
+          overflow:hidden clips any sub-pixel rounding so no browser scrollbar appears. */}
+      <div
+        className={`${isLandscape ? 'flex flex-col gap-4' : 'hidden md:grid md:grid-cols-[1fr_360px]'} gap-6`}
+        style={!isLandscape ? { height: 'calc(100dvh - 105px)', alignItems: 'stretch', minHeight: 0, overflow: 'hidden' } : undefined}
+      >
 
         {/* Left: agenda semanal */}
-        <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden' }}>
-          {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', borderBottom: '1px solid var(--line)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button onClick={() => setWeekOffset(o => o - 1)} style={navBtn}><Icon name="chevronL" size={14} /></button>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, letterSpacing: '0.06em', color: 'var(--fg-0)' }}>
-                Semana del {weekStart.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
-              </span>
-              <button onClick={() => setWeekOffset(o => o + 1)} style={navBtn}><Icon name="chevronR" size={14} /></button>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button onClick={() => setWeekOffset(0)} style={{ ...navBtn, padding: '0.25rem 0.6rem', fontSize: 11, fontFamily: 'var(--font-ui)' }}>
-                Hoy
-              </button>
-              <button
-                onClick={() => setNewApptOpen(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.75rem', borderRadius: 6, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer', boxShadow: 'var(--glow-led)' }}
-              >
-                <Icon name="plus" size={13} />
-                Nueva cita
-              </button>
+        <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          {/* Header toolbar */}
+          <div style={{ borderBottom: '1px solid var(--line)', flexShrink: 0 }}>
+            {/* Row 1: navigation + actions */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', flexWrap: 'wrap' }}>
+              {/* Date navigation */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flex: '0 0 auto' }}>
+                <button onClick={() => calView === 'week' ? setWeekOffset(o => o - 1) : (() => { const d = new Date(monthViewYear, monthViewMonth - 1, 1); setMonthViewMonth(d.getMonth()); setMonthViewYear(d.getFullYear()) })()} style={navBtn}><Icon name="chevronL" size={13} /></button>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.04em', color: 'var(--fg-0)', minWidth: 130, textAlign: 'center' }}>
+                  {calView === 'week'
+                    ? (() => {
+                        const end = new Date(weekStart); end.setDate(end.getDate() + 6)
+                        return `${weekStart.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} — ${end.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`
+                      })()
+                    : new Date(monthViewYear, monthViewMonth, 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
+                  }
+                </span>
+                <button onClick={() => calView === 'week' ? setWeekOffset(o => o + 1) : (() => { const d = new Date(monthViewYear, monthViewMonth + 1, 1); setMonthViewMonth(d.getMonth()); setMonthViewYear(d.getFullYear()) })()} style={navBtn}><Icon name="chevronR" size={13} /></button>
+                <button onClick={() => { if (calView === 'week') setWeekOffset(0); else { const n = new Date(); setMonthViewMonth(n.getMonth()); setMonthViewYear(n.getFullYear()) } }} style={{ ...navBtn, padding: '0 0.625rem', fontSize: 11, fontFamily: 'var(--font-ui)', width: 'auto' }}>Hoy</button>
+              </div>
+
+              {/* Search */}
+              <div style={{ flex: 1, position: 'relative', minWidth: 180 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--fg-3)', pointerEvents: 'none' }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <input
+                  type="text"
+                  placeholder="Buscar cliente o servicio..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  style={{
+                    width: '100%', paddingLeft: 30, paddingRight: 10, height: 34,
+                    borderRadius: 7, border: '1px solid var(--line)', background: 'var(--bg-3)',
+                    color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 12,
+                    outline: 'none', boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              {/* View toggle + new appt */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '0 0 auto' }}>
+                <div style={{ display: 'flex', borderRadius: 7, border: '1px solid var(--line)', overflow: 'hidden' }}>
+                  {(['week', 'month'] as const).map((v, i) => (
+                    <button key={v} onClick={() => setCalView(v)} style={{
+                      padding: '0.3rem 0.75rem', border: 'none', cursor: 'pointer', fontSize: 12,
+                      fontFamily: 'var(--font-ui)', fontWeight: calView === v ? 700 : 400,
+                      background: calView === v ? 'var(--led)' : 'transparent',
+                      color: calView === v ? '#fff' : 'var(--fg-2)',
+                      borderRight: i === 0 ? '1px solid var(--line)' : 'none',
+                      transition: 'all 0.12s',
+                    }}>
+                      {v === 'week' ? 'Semana' : 'Mes'}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setNewApptOpen(true)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                    padding: '0.5rem 1.125rem', height: 36,
+                    borderRadius: 8, border: 'none',
+                    background: 'var(--led)', color: '#fff',
+                    fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 700,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap', letterSpacing: '0.01em',
+                  }}
+                >
+                  <Icon name="plus" size={14} />
+                  Nueva cita
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Grid body */}
-          {isLandscape ? (
+          {/* Month view */}
+          {calView === 'month' && !isLandscape && (() => {
+            const first = new Date(monthViewYear, monthViewMonth, 1)
+            const last = new Date(monthViewYear, monthViewMonth + 1, 0)
+            const startDow = (first.getDay() + 6) % 7
+            const cells: Array<number | null> = Array.from({ length: startDow }, () => null)
+            for (let d = 1; d <= last.getDate(); d++) cells.push(d)
+            // pad to full weeks
+            while (cells.length % 7 !== 0) cells.push(null)
+            const todayLocalStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+            const selLocalStr = selectedMonthDay
+              ? `${selectedMonthDay.getFullYear()}-${String(selectedMonthDay.getMonth() + 1).padStart(2, '0')}-${String(selectedMonthDay.getDate()).padStart(2, '0')}`
+              : null
+            return (
+              <div>
+                {/* Day-of-week header */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid var(--line)' }}>
+                  {DAYS_ES.map((d, i) => (
+                    <div key={d} style={{
+                      textAlign: 'center', padding: '0.5rem 0',
+                      fontSize: 10, fontFamily: 'var(--font-ui)', textTransform: 'uppercase',
+                      letterSpacing: '0.1em', fontWeight: 600,
+                      color: i >= 5 ? 'var(--gold)' : 'var(--fg-3)',
+                      borderRight: i < 6 ? '1px solid var(--line)' : 'none',
+                    }}>{d}</div>
+                  ))}
+                </div>
+                {/* Calendar grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+                  {cells.map((day, i) => {
+                    const col = i % 7
+                    const isWeekend = col >= 5
+                    if (day === null) {
+                      return (
+                        <div key={`e${i}`} style={{
+                          minHeight: 64,
+                          borderRight: col < 6 ? '1px solid var(--line)' : 'none',
+                          borderBottom: '1px solid var(--line)',
+                          background: isWeekend ? 'rgba(255,255,255,0.01)' : 'transparent',
+                        }} />
+                      )
+                    }
+                    const dateStr = `${monthViewYear}-${String(monthViewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                    const dayAppts = monthDayApptsMap.get(dateStr) ?? []
+                    const isToday = dateStr === todayLocalStr
+                    const isSelected = selLocalStr === dateStr
+                    return (
+                      <button
+                        key={day}
+                        onClick={() => setSelectedMonthDay(isSelected ? null : new Date(monthViewYear, monthViewMonth, day))}
+                        style={{
+                          minHeight: 64, padding: '6px 8px 6px 6px',
+                          border: 'none',
+                          borderRight: col < 6 ? '1px solid var(--line)' : 'none',
+                          borderBottom: '1px solid var(--line)',
+                          background: isSelected
+                            ? 'rgba(123,79,255,0.12)'
+                            : isWeekend ? 'rgba(255,255,255,0.015)' : 'transparent',
+                          boxShadow: isSelected ? 'inset 0 0 0 1.5px rgba(123,79,255,0.45)' : 'none',
+                          cursor: 'pointer', textAlign: 'right',
+                          display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
+                          transition: 'background 0.1s',
+                        }}
+                      >
+                        {/* Day number — circle for today */}
+                        <div style={{
+                          width: 26, height: 26,
+                          borderRadius: '50%',
+                          background: isToday ? 'var(--led)' : 'transparent',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontFamily: 'var(--font-display)',
+                          fontSize: 13, fontWeight: isToday ? 700 : isSelected ? 600 : 400,
+                          color: isToday ? '#fff' : isSelected ? 'var(--led-soft)' : isWeekend ? 'var(--fg-2)' : 'var(--fg-0)',
+                          lineHeight: 1, flexShrink: 0,
+                          boxShadow: 'none',
+                        }}>
+                          {day}
+                        </div>
+                        {/* Appointment indicators */}
+                        {dayAppts.length > 0 && (
+                          <div style={{ marginTop: 'auto', paddingTop: 4, display: 'flex', alignItems: 'center', gap: 3, alignSelf: 'flex-start' }}>
+                            {dayAppts.slice(0, 3).map((a, idx) => (
+                              <div key={idx} style={{ width: 6, height: 6, borderRadius: '50%', background: COLOR_MAP[a.color].border, flexShrink: 0 }} />
+                            ))}
+                            {dayAppts.length > 3 && (
+                              <span style={{ fontSize: 8, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', fontWeight: 600, lineHeight: 1 }}>+{dayAppts.length - 3}</span>
+                            )}
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+                {/* Selected day appointments */}
+                {selectedMonthDay && (
+                  <div style={{ borderTop: '1px solid var(--line)', padding: '0.875rem 1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.625rem' }}>
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.12em', color: 'var(--fg-3)', textTransform: 'uppercase' }}>
+                        {selectedMonthDay.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+                      </span>
+                      <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}>
+                        {monthViewDayAppts.length} {monthViewDayAppts.length === 1 ? 'cita' : 'citas'}
+                      </span>
+                    </div>
+                    {monthViewDayAppts.length === 0 ? (
+                      <div style={{ fontSize: 13, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', padding: '0.25rem 0' }}>Sin citas este día</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                        {monthViewDayAppts
+                          .slice()
+                          .sort((a, b) => a.startH * 60 + a.startM - (b.startH * 60 + b.startM))
+                          .map(a => {
+                            const c = COLOR_MAP[a.color]
+                            const svcFull = services.find(s => s.name === a.service)
+                            return (
+                              <button key={a.id} onClick={() => setSelectedAppt(a)} style={{
+                                display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                padding: '0.6rem 0.875rem 0.6rem 0.625rem',
+                                borderRadius: 8, cursor: 'pointer', textAlign: 'left',
+                                background: 'var(--bg-3)', border: '1px solid var(--line)',
+                                borderLeft: `3px solid ${c.border}`,
+                              }}>
+                                <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 11, color: c.text, minWidth: 36, fontWeight: 600 }}>
+                                  {a.startH.toString().padStart(2, '0')}:{a.startM.toString().padStart(2, '0')}
+                                </span>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', fontWeight: 600, color: 'var(--fg-0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.client}</div>
+                                  <div style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--fg-3)' }}>{a.service} · {a.durationMin} min{svcFull ? ` · ${svcFull.price}€` : ''}</div>
+                                </div>
+                              </button>
+                            )
+                          })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+
+          {/* Grid body (week view) */}
+          {(calView === 'week' || isLandscape) && isLandscape ? (
             /* Landscape mobile: 2 days (today + tomorrow), hours on X axis */
             <div style={{ overflowX: 'auto' }}>
               <div style={{ minWidth: 560 }}>
@@ -416,12 +691,17 @@ export default function DashboardPage() {
                           <div key={appt.id} onClick={() => setSelectedAppt(appt)} style={{
                             position: 'absolute', top: 4, bottom: 4,
                             left: `${leftPct}%`, width: `${widthPct}%`,
-                            background: c.bg, border: `1px solid ${c.border}`,
-                            borderRadius: 4, padding: '2px 4px',
+                            background: 'var(--bg-3)',
+                            borderTop: `2px solid ${c.border}`,
+                            borderLeft: '1px solid var(--line)',
+                            borderRight: '1px solid var(--line)',
+                            borderBottom: '1px solid var(--line)',
+                            borderRadius: '0 0 4px 4px',
+                            padding: '2px 4px',
                             cursor: 'pointer', overflow: 'hidden', zIndex: 4,
                             display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
                           }}>
-                            <div style={{ fontSize: 9, fontWeight: 700, color: c.text, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--fg-0)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {appt.startH.toString().padStart(2,'0')}:{appt.startM.toString().padStart(2,'0')} {appt.client}
                             </div>
                             {card && (
@@ -439,10 +719,10 @@ export default function DashboardPage() {
                 ))}
               </div>
             </div>
-          ) : (
+          ) : calView === 'week' ? (
             /* Portrait/desktop: 7-day grid */
-            <div style={{ overflowX: 'auto' }}>
-            <div style={{ maxHeight: 'calc(100dvh - 200px)', overflowY: 'auto', minWidth: 600 }}>
+            <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+            <div style={{ minWidth: 600 }}>
               {/* Day headers */}
               <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', borderBottom: '1px solid var(--line)', position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-2)' }}>
                 <div />
@@ -508,7 +788,7 @@ export default function DashboardPage() {
                       </div>
                     )}
 
-                    {appointments.filter(a => a.day === colIdx).map(appt => {
+                    {filteredAppointments.filter(a => a.day === colIdx).map(appt => {
                       const c = COLOR_MAP[appt.color]
                       const card = loyaltyCards?.get(appt.clientId)
                       const stampGoal = loyaltyConfig?.stampGoal ?? 10
@@ -521,23 +801,32 @@ export default function DashboardPage() {
                             position: 'absolute', left: 3, right: 3,
                             top: topPx(appt.startH, appt.startM),
                             height: blockH,
-                            background: c.bg, border: `1px solid ${c.border}`,
-                            borderRadius: 6, padding: '3px 6px',
+                            background: 'var(--bg-3)',
+                            borderLeft: `3px solid ${c.border}`,
+                            borderTop: '1px solid var(--line)',
+                            borderRight: '1px solid var(--line)',
+                            borderBottom: '1px solid var(--line)',
+                            borderRadius: '0 5px 5px 0',
+                            padding: '2px 5px 2px 6px',
                             cursor: 'pointer', overflow: 'hidden', zIndex: 4,
                             display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                            transition: 'background 0.1s',
                           }}
                         >
                           <div>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: c.text, fontFamily: 'var(--font-ui)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <div style={{ fontSize: 9, fontFamily: 'var(--font-mono, monospace)', color: c.text, fontWeight: 600, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {appt.startH.toString().padStart(2,'0')}:{appt.startM.toString().padStart(2,'0')}
+                            </div>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {appt.client}
                             </div>
-                            {blockH > 30 && (
-                              <div style={{ fontSize: 9, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {blockH > 38 && (
+                              <div style={{ fontSize: 9, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {appt.service}
                               </div>
                             )}
                           </div>
-                          {card && blockH >= 32 && (
+                          {card && blockH >= 42 && (
                             <LoyaltyProgressBar
                               points={card.points}
                               target={stampGoal}
@@ -552,71 +841,108 @@ export default function DashboardPage() {
               </div>
             </div>
             </div>
-          )}
+          ) : null}
         </div>
 
-        {/* Right column — hidden in landscape to keep the grid in full view */}
-        {!isLandscape && <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* Upcoming today — first */}
-          <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '1.25rem' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)', marginBottom: '0.875rem' }}>
-              HOY · PRÓXIMAS CITAS
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {upcomingToday.length === 0 && (
-                <div style={{ fontSize: 13, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}>Sin más citas hoy</div>
-              )}
-              {upcomingToday.slice(0, 5).map(a => (
-                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem', borderRadius: 8, background: 'var(--bg-3)', border: '1px solid var(--line)' }}>
-                  <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 13, color: 'var(--fg-0)', minWidth: 40 }}>
-                    {`${a.startH.toString().padStart(2,'0')}:${a.startM.toString().padStart(2,'0')}`}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{a.client}</div>
-                    <div style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>{a.service}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Metrics */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+        {/* Right column — hidden in landscape */}
+        {!isLandscape && <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflow: 'hidden', minHeight: 0 }}>
+          {/* Stats grid — fixed height, never scrolls */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.625rem', flexShrink: 0 }}>
             {metrics.map(m => (
-              <div key={m.label} style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 10, padding: '0.875rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
-                  <Icon name={m.icon} size={13} />
-                  <span style={{ fontSize: 10, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{m.label}</span>
+              <div key={m.label} style={{
+                background: 'var(--bg-2)',
+                border: '1px solid var(--line)',
+                borderLeft: `3px solid ${m.color}`,
+                borderRadius: 10,
+                padding: '0.875rem 1rem',
+                display: 'flex', flexDirection: 'column', gap: '0.5rem',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 10, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    {m.label}
+                  </span>
+                  <div style={{ color: m.color, flexShrink: 0 }}>
+                    <Icon name={m.icon} size={15} />
+                  </div>
                 </div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: m.color }}>{m.value}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 34, color: m.color, lineHeight: 1, letterSpacing: '-0.03em' }}>
+                  {m.value}
+                </div>
               </div>
             ))}
           </div>
 
-          {/* Barbers */}
-          <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '1.25rem' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)', marginBottom: '0.875rem' }}>
-              BARBEROS
+          {/* Today's upcoming appointments — scrolls internally */}
+          <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+            <div style={{ padding: '0.875rem 1rem 0.625rem', borderBottom: upcomingToday.length > 0 ? '1px solid var(--line)' : undefined, flexShrink: 0 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.14em', color: 'var(--fg-3)' }}>
+                HOY · PRÓXIMAS CITAS
+              </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {barbers.map(b => (
-                <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem', borderRadius: 8, background: 'var(--bg-3)', border: '1px solid var(--line)' }}>
-                  <div style={{ width: 34, height: 34, borderRadius: '50%', background: b.isActive ? 'var(--led)' : 'var(--bg-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, color: b.isActive ? '#fff' : 'var(--fg-3)' }}>
-                    {calcInitials(b.fullName)}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>{b.fullName}</div>
-                    <div style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>{b.role ?? 'Barbero'}</div>
-                  </div>
-                  <div style={{
-                    width: 8, height: 8, borderRadius: '50%',
-                    background: b.isActive ? 'var(--ok)' : 'var(--fg-3)',
-                    boxShadow: b.isActive ? '0 0 6px var(--ok)' : 'none',
-                  }} />
-                </div>
-              ))}
+            <div style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', flex: 1, minHeight: 0 }}>
+              {upcomingToday.length === 0 ? (
+                <div style={{ padding: '0.875rem 1rem', fontSize: 13, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)' }}>Sin más citas hoy</div>
+              ) : (
+                upcomingToday.slice(0, 20).map((a) => {
+                  const c = COLOR_MAP[a.color]
+                  return (
+                    <button key={a.id} onClick={() => setSelectedAppt(a)} style={{
+                      display: 'flex', alignItems: 'center', gap: '0.75rem',
+                      padding: '0.6rem 1rem', cursor: 'pointer',
+                      borderBottom: '1px solid var(--line)',
+                      background: 'transparent', border: 'none', textAlign: 'left',
+                      transition: 'background 0.1s', flexShrink: 0,
+                    }}>
+                      <div style={{ width: 3, height: 32, borderRadius: 2, flexShrink: 0, background: c.border }} />
+                      <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 12, color: 'var(--fg-0)', minWidth: 38, fontWeight: 600 }}>
+                        {`${a.startH.toString().padStart(2,'0')}:${a.startM.toString().padStart(2,'0')}`}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.client}</div>
+                        <div style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--fg-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.service}</div>
+                      </div>
+                    </button>
+                  )
+                })
+              )}
             </div>
           </div>
+
+          {/* Equipo — scrolls internally */}
+          <div style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+            <div style={{ padding: '0.875rem 1rem 0.625rem', borderBottom: '1px solid var(--line)', flexShrink: 0 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 11, letterSpacing: '0.14em', color: 'var(--fg-3)' }}>EQUIPO</div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', flex: 1, minHeight: 0 }}>
+              {barbers.map((b, i) => {
+                const todayApptCount = appointments.filter(a => a.day === todayCols && a.barberId === b.id).length
+                return (
+                  <div key={b.id} style={{
+                    display: 'flex', alignItems: 'center', gap: '0.75rem',
+                    padding: '0.625rem 1rem',
+                    borderBottom: i < barbers.length - 1 ? '1px solid var(--line)' : 'none',
+                  }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                      background: b.isActive ? 'rgba(123,79,255,0.22)' : 'var(--bg-4)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 700, fontSize: 11, color: b.isActive ? 'var(--led-soft)' : 'var(--fg-3)',
+                    }}>
+                      {calcInitials(b.fullName)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.fullName}</div>
+                      <div style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--fg-3)' }}>
+                        {b.isActive ? `${todayApptCount} citas hoy` : 'Inactivo'}
+                      </div>
+                    </div>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: b.isActive ? 'var(--ok)' : 'var(--fg-4)', boxShadow: b.isActive ? '0 0 6px var(--ok)' : 'none' }} />
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
         </div>}
       </div>
 
@@ -632,73 +958,127 @@ export default function DashboardPage() {
       )}
 
       {/* Appointment detail modal */}
-      {selectedAppt && (
-        <div
-          onClick={() => setSelectedAppt(null)}
-          style={{ position: 'fixed', inset: 0, background: 'var(--overlay)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
-        >
+      {selectedAppt && (() => {
+        const c = COLOR_MAP[selectedAppt.color]
+        const barberName = barbers.find(b => b.id === selectedAppt.barberId)?.fullName ?? '—'
+        const svcFull = services.find(s => s.name === selectedAppt.service)
+        const isPast = selectedApptFull ? new Date(selectedApptFull.endTime) < now : false
+        return (
           <div
-            onClick={e => e.stopPropagation()}
-            style={{ background: 'var(--bg-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '1.5rem', width: '100%', maxWidth: 360, boxShadow: 'var(--shadow-lg)' }}
+            onClick={() => setSelectedAppt(null)}
+            style={{ position: 'fixed', inset: 0, background: 'var(--overlay)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
           >
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)', marginBottom: '1rem' }}>
-              DETALLE DE CITA
-            </div>
-            {/* Cliente — clickable para abrir perfil */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
-              <span style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>Cliente</span>
-              <button
-                onClick={() => setProfileClientId(selectedAppt.clientId)}
-                style={{ fontSize: 13, color: 'var(--led)', fontFamily: 'var(--font-ui)', fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}
-              >
-                {selectedAppt.client}
-              </button>
-            </div>
-            {[
-              { label: 'Servicio', value: selectedAppt.service },
-              { label: 'Hora', value: `${selectedAppt.startH.toString().padStart(2,'0')}:${selectedAppt.startM.toString().padStart(2,'0')}` },
-              { label: 'Duración', value: `${selectedAppt.durationMin} min` },
-              { label: 'Barbero', value: barbers.find(b => b.id === selectedAppt.barberId)?.fullName ?? '—' },
-            ].map(({ label, value }) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
-                <span style={{ fontSize: 13, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)' }}>{label}</span>
-                <span style={{ fontSize: 13, color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontWeight: 500 }}>{value}</span>
-              </div>
-            ))}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{ background: 'var(--bg-2)', borderRadius: 16, width: '100%', maxWidth: 400, boxShadow: 'var(--shadow-lg)', border: '1px solid var(--line)', overflow: 'hidden' }}
+            >
+              {/* Color accent top bar */}
+              <div style={{ height: 3, background: c.border }} />
+
+              {/* Header */}
+              <div style={{ padding: '1.125rem 1.25rem 1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.875rem' }}>
+                  <div style={{ flex: 1 }}>
+                    {/* Time + duration */}
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.375rem' }}>
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: 'var(--fg-0)', lineHeight: 1, letterSpacing: '-0.02em' }}>
+                        {selectedAppt.startH.toString().padStart(2,'0')}:{selectedAppt.startM.toString().padStart(2,'0')}
+                      </span>
+                      <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--fg-3)', fontWeight: 400 }}>
+                        {selectedAppt.durationMin} min
+                      </span>
+                    </div>
+                    {/* Service */}
+                    <div style={{ fontFamily: 'var(--font-ui)', fontSize: 15, fontWeight: 700, color: 'var(--fg-0)', display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                      {selectedAppt.service}
+                      {svcFull && <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--fg-2)' }}>{svcFull.price}€</span>}
+                    </div>
+                  </div>
+                  <button onClick={() => setSelectedAppt(null)} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-3)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                  </button>
+                </div>
+
+                {/* Meta row: date + barber */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: 12, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', marginBottom: '0.75rem' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                    {new Date(selectedApptFull?.startTime ?? `2000-01-01T${selectedAppt.startH.toString().padStart(2,'0')}:${selectedAppt.startM.toString().padStart(2,'0')}`).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
+                  </span>
+                  <span style={{ color: 'var(--fg-4)' }}>·</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    {barberName}
+                  </span>
+                </div>
+
+                {/* Client button */}
                 <button
-                  onClick={() => setRescheduleAppt(selectedAppt)}
-                  style={{ flex: 1, padding: '0.75rem', minHeight: 44, borderRadius: 8, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: 'var(--glow-led)' }}
-                >
-                  Reprogramar
-                </button>
-                <button
-                  onClick={() => setSelectedAppt(null)}
-                  style={{ flex: 1, padding: '0.75rem', minHeight: 44, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}
-                >
-                  Cerrar
-                </button>
-              </div>
-              {selectedApptFull && new Date(selectedApptFull.endTime) < now && (
-                <button
-                  disabled={cancelWithDeduction.isPending}
-                  onClick={() => {
-                    if (!selectedApptFull) return
-                    cancelWithDeduction.mutate(
-                      { id: selectedApptFull.id, endTime: selectedApptFull.endTime, clientId: selectedApptFull.clientId },
-                      { onSuccess: () => setSelectedAppt(null) },
-                    )
+                  onClick={() => setProfileClientId(selectedAppt.clientId)}
+                  style={{
+                    width: '100%', padding: '0.625rem 0.875rem', borderRadius: 8,
+                    border: '1px solid var(--line)', background: 'var(--bg-3)',
+                    color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 600,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
                   }}
-                  style={{ width: '100%', padding: '0.75rem', minHeight: 44, borderRadius: 8, border: '1px solid var(--brick-warm)', background: 'rgba(139,58,31,0.12)', color: 'var(--brick-warm)', fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: cancelWithDeduction.isPending ? 0.6 : 1 }}
                 >
-                  Cancelar (no vino)
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--fg-2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                  <span style={{ flex: 1, textAlign: 'left' }}>{selectedAppt.client}</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--fg-3)" strokeWidth="2" strokeLinecap="round"><path d="m9 18 6-6-6-6"/></svg>
                 </button>
+              </div>
+
+              {/* Loyalty controls */}
+              {selectedApptFull && (
+                <div style={{ padding: '0.875rem 1.25rem', borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+                  <AppointmentLoyaltyControls
+                    appointmentId={selectedApptFull.id}
+                    clientId={selectedApptFull.clientId}
+                    serviceId={selectedApptFull.serviceId}
+                    endTime={selectedApptFull.endTime}
+                  />
+                  <div style={{ borderTop: '1px solid var(--line)', paddingTop: '0.875rem' }}>
+                    <AppointmentClientRewards clientId={selectedApptFull.clientId} />
+                  </div>
+                </div>
               )}
+
+              {/* Actions */}
+              <div style={{ padding: '0.875rem 1.25rem', borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    onClick={() => setRescheduleAppt(selectedAppt)}
+                    style={{ flex: 1, padding: '0.7rem', minHeight: 42, borderRadius: 8, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Reprogramar
+                  </button>
+                  <button
+                    onClick={() => setSelectedAppt(null)}
+                    style={{ flex: 1, padding: '0.7rem', minHeight: 42, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}
+                  >
+                    Cerrar
+                  </button>
+                </div>
+                {isPast && (
+                  <button
+                    disabled={cancelWithDeduction.isPending}
+                    onClick={() => {
+                      if (!selectedApptFull) return
+                      cancelWithDeduction.mutate(
+                        { id: selectedApptFull.id, endTime: selectedApptFull.endTime, clientId: selectedApptFull.clientId },
+                        { onSuccess: () => setSelectedAppt(null) },
+                      )
+                    }}
+                    style={{ width: '100%', padding: '0.7rem', minHeight: 42, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', fontSize: 13, fontWeight: 400, cursor: 'pointer', opacity: cancelWithDeduction.isPending ? 0.6 : 1 }}
+                  >
+                    Marcar ausencia
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {rescheduleAppt && (
         <RescheduleModal
@@ -720,6 +1100,7 @@ export default function DashboardPage() {
           />
         )
       })()}
+
     </>
   )
 }
@@ -727,6 +1108,7 @@ export default function DashboardPage() {
 function calcInitials(name: string): string {
   return name.trim().split(/\s+/).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '?'
 }
+
 
 const navBtn: React.CSSProperties = {
   display: 'flex', alignItems: 'center', justifyContent: 'center',

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { ConfirmDialog, Modal } from '@/components/ui'
+import { ConfirmDialog, Modal, InfoButton, Icon } from '@/components/ui'
+import type { InfoItem } from '@/components/ui'
 import { MonthCalendar } from '@/components/calendar'
 import { useAuth } from '@/hooks'
 import { useShopContext } from '@/context/ShopContext'
@@ -8,26 +9,25 @@ import { useAllServices, useCreateService, useUpdateService, useDeleteService, u
 import { useAllAppointments } from '@/hooks/useAppointments'
 import { useAllBarbers, useUpdateBarber, useDeleteBarber, useAddBarberByEmail } from '@/hooks/useBarbers'
 import { useWeeklySchedule, useScheduleBlocks, useMutateWeeklySchedule, useAddScheduleBlock, useDeleteScheduleBlock } from '@/hooks/useSchedule'
-import { useShopInfo, useBookingConfig, useLoyaltyConfig, useMutateShopInfo, useMutateBookingConfig } from '@/hooks/useShopConfig'
-import { useAllRewards, useCreateReward, useUpdateReward, useDeleteReward, useUpdateLoyaltyConfig } from '@/hooks/useLoyalty'
+import { useShopInfo, useBookingConfig, useMutateShopInfo, useMutateBookingConfig, useUploadLogo } from '@/hooks/useShopConfig'
 import { DEFAULT_WEEKLY_SCHEDULE } from '@/domain/schedule'
 import type { WeeklySchedule, DayKey } from '@/domain/schedule'
 import type { Service } from '@/domain/service'
 import type { Barber } from '@/domain/barber'
-import type { Reward } from '@/domain/loyalty'
+import type { LogoShape } from '@/domain/shop'
+import { shapeStyle } from '@/components/layout/Logo'
 import { AppearanceSection } from '@/components/appearance'
 
-type Section = 'servicios' | 'horarios' | 'barberos' | 'fidelizacion' | 'barberia' | 'apariencia'
+type Section = 'servicios' | 'horarios' | 'barberos' | 'barberia' | 'apariencia'
 
-const BARBER_ROLES = ['Barbero', 'Propietario'] as const
+const BARBER_ROLES = ['Empleado', 'Propietario'] as const
 
-const SECTIONS: { id: Section; label: string }[] = [
-  { id: 'servicios',    label: 'Servicios' },
-  { id: 'horarios',     label: 'Horarios' },
-  { id: 'barberos',     label: 'Barberos' },
-  { id: 'fidelizacion', label: 'Fidelización' },
-  { id: 'barberia',     label: 'Barbería' },
-  { id: 'apariencia',   label: 'Apariencia' },
+const SECTIONS: { id: Section; label: string; adminOnly?: boolean }[] = [
+  { id: 'servicios',  label: 'Servicios'  },
+  { id: 'horarios',   label: 'Horarios'   },
+  { id: 'barberos',   label: 'Equipo'     },
+  { id: 'barberia',   label: 'Negocio'    },
+  { id: 'apariencia', label: 'Apariencia', adminOnly: true },
 ]
 
 const DAY_KEYS: { key: DayKey; name: string }[] = [
@@ -52,10 +52,13 @@ function toISODate(d: Date): string {
   return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-')
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
+function SectionTitle({ children, infoTitle, infoItems }: { children: React.ReactNode; infoTitle?: string; infoItems?: InfoItem[] }) {
   return (
-    <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)', marginBottom: '1rem' }}>
-      {children}
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', color: 'var(--fg-3)' }}>
+        {children}
+      </div>
+      {infoTitle && infoItems && <InfoButton title={infoTitle} items={infoItems} />}
     </div>
   )
 }
@@ -83,19 +86,21 @@ function DirtyGuardDialog({ onSave, onDiscard, onCancel }: { onSave: () => void;
 function SaveBtn({ onClick, loading, isDirty }: { onClick: () => void; loading?: boolean; isDirty?: boolean }) {
   const disabled = loading || isDirty === false
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: disabled ? 'default' : 'pointer', opacity: loading ? 0.7 : isDirty === false ? 0.4 : 1 }}
-    >
-      {loading ? 'Guardando…' : 'Guardar'}
-    </button>
+    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        style={{ padding: '0.5rem 1.25rem', minHeight: 40, borderRadius: 8, border: 'none', background: 'var(--led)', color: '#fff', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: disabled ? 'default' : 'pointer', opacity: loading ? 0.7 : isDirty === false ? 0.4 : 1 }}
+      >
+        {loading ? 'Guardando…' : 'Guardar'}
+      </button>
+    </div>
   )
 }
 
 export default function SettingsPage() {
   const { user } = useAuth()
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = user?.role === 'admin' || user?.role === 'owner'
   const visibleSections = isAdmin ? SECTIONS : SECTIONS.filter(s => s.id !== 'apariencia')
   const { name: shopName, allowBarberChoice } = useShopContext()
   const [section, setSection] = useState<Section>('servicios')
@@ -108,9 +113,6 @@ export default function SettingsPage() {
   const { data: blocks = [] } = useScheduleBlocks()
   const { data: shopInfo } = useShopInfo()
   const { data: bookingConfig } = useBookingConfig()
-  const { data: rewardsData = [] } = useAllRewards()
-  const { data: loyaltyConfig } = useLoyaltyConfig()
-
   // ── Mutation hooks ──────────────────────────────────────────────────────────
   const { data: allAppointments = [] } = useAllAppointments()
   const createService    = useCreateService()
@@ -126,11 +128,6 @@ export default function SettingsPage() {
   const deleteBlock      = useDeleteScheduleBlock()
   const mutateShopInfo   = useMutateShopInfo()
   const mutateBooking    = useMutateBookingConfig()
-  const createReward       = useCreateReward()
-  const updateRewardMut    = useUpdateReward()
-  const deleteReward       = useDeleteReward()
-  const updateLoyaltyConfig = useUpdateLoyaltyConfig()
-
   // ── Services local state ────────────────────────────────────────────────────
   const [serviceEdits, setServiceEdits] = useState<Record<string, Partial<Service>>>({})
   const services = servicesData.map(svc => ({ ...svc, ...serviceEdits[svc.id] }))
@@ -163,22 +160,106 @@ export default function SettingsPage() {
   const [closureBarberIds, setClosureBarberIds] = useState<string[]>([])
 
   // ── Shop info local state ───────────────────────────────────────────────────
-  type ShopFields = { name: string; phone: string; email: string; instagram: string; address: string; description: string }
+  type ShopFields = { name: string; phone: string; email: string; instagram: string; address: string; description: string; opening_hours: string }
   const [shopEdits, setShopEdits] = useState<Partial<ShopFields>>({})
   const localShop: ShopFields = {
-    name:        shopEdits.name        ?? shopInfo?.name        ?? '',
-    phone:       shopEdits.phone       ?? shopInfo?.phone       ?? '',
-    email:       shopEdits.email       ?? shopInfo?.email       ?? '',
-    instagram:   shopEdits.instagram   ?? shopInfo?.instagram   ?? '',
-    address:     shopEdits.address     ?? shopInfo?.address     ?? '',
-    description: shopEdits.description ?? shopInfo?.description ?? '',
+    name:          shopEdits.name          ?? shopInfo?.name          ?? '',
+    phone:         shopEdits.phone         ?? shopInfo?.phone         ?? '',
+    email:         shopEdits.email         ?? shopInfo?.email         ?? '',
+    instagram:     shopEdits.instagram     ?? shopInfo?.instagram     ?? '',
+    address:       shopEdits.address       ?? shopInfo?.address       ?? '',
+    description:   shopEdits.description   ?? shopInfo?.description   ?? '',
+    opening_hours: shopEdits.opening_hours ?? shopInfo?.opening_hours ?? '',
   }
+
+  // ── Logo upload + adjustment state ─────────────────────────────────────────
+  const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null)
+  const [logoPreviewUrl, setLogoPreviewUrl]   = useState<string | null>(null)
+  const [logoError, setLogoError]             = useState<string | null>(null)
+  const [pendingShape, setPendingShape]       = useState<LogoShape | undefined>(undefined)
+  const [logoTab, setLogoTab]               = useState<'info' | 'logo'>('info')
+  const [logoScale, setLogoScale]             = useState<number>(1)
+  const [logoOffsetX, setLogoOffsetX]         = useState<number>(0)
+  const [logoOffsetY, setLogoOffsetY]         = useState<number>(0)
+  const [isDragging, setIsDragging]           = useState(false)
+  const dragRef = useRef<{ x: number; y: number; ox: number; oy: number }>({ x: 0, y: 0, ox: 0, oy: 0 })
+  const logoPreviewRef                        = useRef<HTMLDivElement>(null)
+  const logoInputRef                          = useRef<HTMLInputElement>(null)
+  const uploadLogo                            = useUploadLogo()
+  const logoInitialized                       = useRef(false)
+
+  // Sync adjustment fields from DB on first load
+  useEffect(() => {
+    if (shopInfo && !logoInitialized.current) {
+      logoInitialized.current = true
+      setLogoScale(shopInfo.logo_scale ?? 1)
+      setLogoOffsetX(shopInfo.logo_offset_x ?? 0)
+      setLogoOffsetY(shopInfo.logo_offset_y ?? 0)
+    }
+  }, [shopInfo])
+
+  // Drag event listeners
+  useEffect(() => {
+    if (!isDragging) return
+    const onMove = (e: MouseEvent) => {
+      const rect = logoPreviewRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const dx = (e.clientX - dragRef.current.x) / rect.width * 100
+      const dy = (e.clientY - dragRef.current.y) / rect.height * 100
+      setLogoOffsetX(Math.max(-60, Math.min(60, dragRef.current.ox + dx)))
+      setLogoOffsetY(Math.max(-60, Math.min(60, dragRef.current.oy + dy)))
+    }
+    const onUp = () => setIsDragging(false)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+  }, [isDragging])
+
+  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) { setLogoError('La imagen no puede superar 2 MB'); return }
+    setLogoError(null)
+    setPendingLogoFile(file)
+    if (logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl)
+    setLogoPreviewUrl(URL.createObjectURL(file))
+  }
+
+  const handleSaveLogo = async () => {
+    setLogoError(null)
+    try {
+      if (pendingLogoFile) {
+        await uploadLogo.mutateAsync(pendingLogoFile)
+        setPendingLogoFile(null)
+        if (logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl)
+        setLogoPreviewUrl(null)
+        if (logoInputRef.current) logoInputRef.current.value = ''
+      }
+      await mutateShopInfo.mutateAsync({
+        logo_shape:    pendingShape ?? shopInfo?.logo_shape ?? 'hexagon',
+        logo_scale:    logoScale,
+        logo_offset_x: logoOffsetX,
+        logo_offset_y: logoOffsetY,
+      })
+    } catch (e) {
+      setLogoError(e instanceof Error ? e.message : 'Error al guardar el logo')
+    }
+  }
+
+  const handleRemoveLogo = () => {
+    mutateShopInfo.mutate({ logo_url: undefined }, {
+      onError: () => setLogoError('No se pudo eliminar el logo'),
+    })
+  }
+
+  const handleDragStart = (e: React.MouseEvent) => {
+    e.preventDefault()
+    dragRef.current = { x: e.clientX, y: e.clientY, ox: logoOffsetX, oy: logoOffsetY }
+    setIsDragging(true)
+  }
+
   const [pendingMaxDays, setPendingMaxDays] = useState<string | null>(null)
   const localMaxDays = pendingMaxDays ?? String(bookingConfig?.maxAdvanceDays ?? 14)
-
-  // ── Rewards local state ─────────────────────────────────────────────────────
-  const [editingRewardId, setEditingRewardId] = useState<string | null>(null)
-  const [rewardEdits, setRewardEdits] = useState<Record<string, { label: string; cost: number }>>({})
 
   // ── Section errors ───────────────────────────────────────────────────────────
   const [sectionError, setSectionError] = useState<Partial<Record<Section, string>>>({})
@@ -230,13 +311,13 @@ export default function SettingsPage() {
     const edits = barberEdits[b.id] ?? {}
     updateBarber.mutate({ id: b.id, data: { fullName: edits.fullName ?? b.fullName, role: edits.role ?? b.role ?? undefined, phone: edits.phone ?? b.phone ?? undefined, email: edits.email ?? b.email ?? undefined, bio: edits.bio ?? b.bio ?? undefined, breakStart: edits.breakStart !== undefined ? edits.breakStart : b.breakStart, breakEnd: edits.breakEnd !== undefined ? edits.breakEnd : b.breakEnd } }, {
       onSuccess: () => { setBarberEdits(e => { const copy = { ...e }; delete copy[b.id]; return copy }); setEditingBarberId(null); clearSecError('barberos') },
-      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('barberos', 'No se pudo guardar el barbero. Revisa tu conexión.') },
+      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('barberos', 'No se pudo guardar el empleado. Revisa tu conexión.') },
     })
   }
 
   const handleToggleBarberActive = (b: Barber) => {
     updateBarber.mutate({ id: b.id, data: { isActive: !b.isActive } }, {
-      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('barberos', 'No se pudo actualizar el estado del barbero. Revisa tu conexión.') },
+      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('barberos', 'No se pudo actualizar el estado del empleado. Revisa tu conexión.') },
     })
   }
 
@@ -258,7 +339,7 @@ export default function SettingsPage() {
         const msg = e instanceof Error ? e.message : null
         setBarberCreateError(msg === 'Email no registrado'
           ? 'No se encontró ninguna cuenta con ese email. El usuario debe registrarse primero.'
-          : 'No se pudo dar de alta al barbero. Comprueba tu conexión e inténtalo de nuevo.')
+          : 'No se pudo añadir al empleado. Comprueba tu conexión e inténtalo de nuevo.')
       },
     })
   }
@@ -345,40 +426,21 @@ export default function SettingsPage() {
     })
   }
 
-  // ── Handlers: rewards ────────────────────────────────────────────────────────
-  const handleSaveReward = (r: Reward) => {
-    const edits = rewardEdits[r.id]
-    updateRewardMut.mutate({ id: r.id, data: { label: edits?.label ?? r.label, cost: edits?.cost ?? r.cost } }, {
-      onSuccess: () => {
-        setRewardEdits(e => { const copy = { ...e }; delete copy[r.id]; return copy })
-        setEditingRewardId(null)
-        clearSecError('fidelizacion')
-      },
-      onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('fidelizacion', 'No se pudo guardar la recompensa. Revisa tu conexión.') },
-    })
-  }
-
-  const handleAddReward = () => {
-    createReward.mutate({ label: 'Nueva recompensa', cost: 50 })
-  }
-
   // ── Dirty state ──────────────────────────────────────────────────────────────
   const sectionDirty: Record<Section, boolean> = {
-    servicios:    Object.keys(serviceEdits).length > 0,
-    horarios:     pendingSchedule !== null || pendingMaxDays !== null,
-    barberos:     Object.keys(barberEdits).length > 0,
-    fidelizacion: Object.keys(rewardEdits).length > 0,
-    barberia:     Object.keys(shopEdits).length > 0,
-    apariencia:   false, // AppearanceSection manages its own confirm dialog
+    servicios:  Object.keys(serviceEdits).length > 0,
+    horarios:   pendingSchedule !== null || pendingMaxDays !== null,
+    barberos:   Object.keys(barberEdits).length > 0,
+    barberia:   Object.keys(shopEdits).length > 0,
+    apariencia: false,
   }
   const anyDirty = Object.values(sectionDirty).some(Boolean)
 
   const discardSection = (sec: Section) => {
-    if (sec === 'servicios')    setServiceEdits({})
-    if (sec === 'horarios')     { setPendingSchedule(null); setPendingMaxDays(null) }
-    if (sec === 'barberos')     setBarberEdits({})
-    if (sec === 'fidelizacion') setRewardEdits({})
-    if (sec === 'barberia')     setShopEdits({})
+    if (sec === 'servicios') setServiceEdits({})
+    if (sec === 'horarios')  { setPendingSchedule(null); setPendingMaxDays(null) }
+    if (sec === 'barberos')  setBarberEdits({})
+    if (sec === 'barberia')  setShopEdits({})
   }
 
   const saveSection = (sec: Section) => {
@@ -434,7 +496,7 @@ export default function SettingsPage() {
               key={s.id}
               onClick={() => handleSectionChange(s.id)}
               style={{
-                display: 'flex', alignItems: 'center', gap: 5,
+                display: 'flex', alignItems: 'center', gap: 6,
                 padding: '0.5rem 1rem', borderRadius: 20, border: 'none', minHeight: 40,
                 background: section === s.id ? '#C8A44E' : 'var(--bg-3)',
                 color: section === s.id ? '#000' : 'var(--fg-2)',
@@ -444,9 +506,6 @@ export default function SettingsPage() {
               }}
             >
               {s.label}
-              {s.id === 'apariencia' && (
-                <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', padding: '1px 5px', borderRadius: 4, background: 'rgba(200,164,78,0.2)', color: section === s.id ? '#7a5a00' : '#c8a44e', flexShrink: 0 }}>ADMIN</span>
-              )}
               {sectionDirty[s.id] && (
                 <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: section === s.id ? '#000' : 'var(--led)', flexShrink: 0 }} />
               )}
@@ -465,11 +524,8 @@ export default function SettingsPage() {
           {visibleSections.map(s => (
             <button key={s.id} onClick={() => handleSectionChange(s.id)} style={sidebarBtn(s.id)}>
               <span style={{ flex: 1 }}>{s.label}</span>
-              {s.id === 'apariencia' && (
-                <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', padding: '1px 5px', borderRadius: 4, background: 'rgba(200,164,78,0.2)', color: '#c8a44e', flexShrink: 0 }}>ADMIN</span>
-              )}
               {sectionDirty[s.id] && (
-                <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--led)', flexShrink: 0 }} />
+                <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: section === s.id ? 'var(--gold)' : 'var(--led)', flexShrink: 0 }} />
               )}
             </button>
           ))}
@@ -484,7 +540,15 @@ export default function SettingsPage() {
           {/* === SERVICIOS === */}
           {section === 'servicios' && (
             <div>
-              <SectionTitle>SERVICIOS</SectionTitle>
+              <SectionTitle
+                infoTitle="GUÍA — SERVICIOS"
+                infoItems={[
+                  { icon: '✂️', label: 'Lista de servicios', description: 'Aquí gestionas todos los servicios disponibles para reservar: nombre, precio, duración y puntos de fidelización que otorga.' },
+                  { icon: '➕', label: 'Añadir servicio', description: 'Pulsa "Nuevo servicio" para crear uno. Rellena el nombre, precio, duración y los puntos de fidelización que recibirá el cliente.' },
+                  { icon: '✏️', label: 'Editar / eliminar', description: 'Haz clic en un servicio para editarlo. Puedes desactivarlo temporalmente sin eliminarlo (no aparecerá al reservar).' },
+                  { icon: '⭐', label: 'Puntos de fidelización', description: 'Los puntos asignados a cada servicio se añaden a la tarjeta del cliente cuando se completa la cita.' },
+                ]}
+              >SERVICIOS</SectionTitle>
 
               {/* Desktop table */}
               <div className="hidden md:block" style={{ overflowX: 'auto' }}>
@@ -607,7 +671,14 @@ export default function SettingsPage() {
           {/* === HORARIOS === */}
           {section === 'horarios' && (
             <div>
-              <SectionTitle>HORARIOS</SectionTitle>
+              <SectionTitle
+                infoTitle="GUÍA — HORARIOS"
+                infoItems={[
+                  { icon: '🕐', label: 'Horario semanal', description: 'Activa o desactiva cada día de la semana y establece la hora de apertura y cierre.' },
+                  { icon: '🚫', label: 'Cierres especiales', description: 'Añade días concretos que estarán cerrados (festivos, vacaciones) o bloquea franjas horarias específicas.' },
+                  { icon: '💾', label: 'Guardar cambios', description: 'Los cambios en el horario se aplican a la disponibilidad de citas de inmediato tras guardar.' },
+                ]}
+              >HORARIOS</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
                 {DAY_KEYS.map(({ key, name }) => {
                   const d = localSchedule[key]
@@ -638,7 +709,7 @@ export default function SettingsPage() {
                       </div>
                       {d.open && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', paddingLeft: 2 }}>
-                          <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', marginRight: 2 }}>Barberos:</span>
+                          <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', marginRight: 2 }}>Empleados:</span>
                           {activeBarbers.map(b => {
                             const on = d.barberIds.includes(b.id)
                             return (
@@ -680,7 +751,14 @@ export default function SettingsPage() {
                 )}
               </div>
 
-              <SectionTitle>CIERRES ESPECIALES</SectionTitle>
+              <SectionTitle
+                infoTitle="GUÍA — CIERRES ESPECIALES"
+                infoItems={[
+                  { icon: '📅', label: 'Día completo cerrado', description: 'Bloquea un día completo: no aparecerá como disponible al reservar. Ideal para festivos o vacaciones.' },
+                  { icon: '⏳', label: 'Franja horaria bloqueada', description: 'Bloquea un rango de horas dentro de un día normal. Los clientes no podrán reservar en esa franja.' },
+                  { icon: '🔁', label: 'Bloqueos recurrentes', description: 'Los bloqueos recurrentes se repiten cada semana. Útil para reuniones fijas o mantenimiento semanal.' },
+                ]}
+              >CIERRES ESPECIALES</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {blocks.filter(b => !b.isRecurring).map(b => {
                   const barberName = b.barberId ? (barbersData.find(br => br.id === b.barberId)?.fullName ?? b.barberId) : null
@@ -698,8 +776,9 @@ export default function SettingsPage() {
                       </div>
                       <button
                         onClick={() => deleteBlock.mutate(b.id)}
-                        style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', minWidth: 32, minHeight: 32, borderRadius: 4, fontSize: 14, flexShrink: 0 }}
-                      >✕</button>
+                        title="Eliminar cierre"
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', minWidth: 32, minHeight: 32, borderRadius: 4, flexShrink: 0 }}
+                      ><Icon name="trash" size={15} /></button>
                     </div>
                   )
                 })}
@@ -736,7 +815,7 @@ export default function SettingsPage() {
                     </div>
                     {!closureTotal && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', marginRight: 2 }}>Barberos bloqueados:</span>
+                        <span style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', marginRight: 2 }}>Empleados bloqueados:</span>
                         {activeBarbers.map(b => {
                           const on = closureBarberIds.includes(b.id)
                           return (
@@ -767,10 +846,18 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {/* === BARBEROS === */}
+          {/* === EQUIPO === */}
           {section === 'barberos' && (
             <div>
-              <SectionTitle>BARBEROS</SectionTitle>
+              <SectionTitle
+                infoTitle="GUÍA — EQUIPO"
+                infoItems={[
+                  { icon: '👤', label: 'Lista del equipo', description: 'Aquí gestionas todos los miembros del equipo: nombre, rol, teléfono y descanso.' },
+                  { icon: '➕', label: 'Añadir empleado', description: 'Introduce el email de un usuario registrado para añadirlo al equipo.' },
+                  { icon: '⏸️', label: 'Descanso diario', description: 'Define la hora de inicio y fin del descanso. Esos huecos no estarán disponibles.' },
+                  { icon: '🗑️', label: 'Dar de baja', description: 'Al dar de baja a un empleado se desactiva su acceso. Las citas existentes no se cancelan.' },
+                ]}
+              >EQUIPO</SectionTitle>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                 {barbersData.map(b => {
                   const edits = getBarberEdit(b.id)
@@ -783,7 +870,7 @@ export default function SettingsPage() {
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 14, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500, lineHeight: 1.2 }}>{displayName}</div>
-                          <div style={{ fontSize: 11, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', marginTop: 1 }}>{edits.role ?? b.role ?? 'Barbero'}</div>
+                          <div style={{ fontSize: 11, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', marginTop: 1 }}>{edits.role ?? b.role ?? 'Empleado'}</div>
                         </div>
                         <button
                           onClick={() => handleToggleBarberActive(b)}
@@ -797,7 +884,7 @@ export default function SettingsPage() {
                         >
                           Editar
                         </button>
-                        <button onClick={() => setDeleteBarberTarget(b)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', minWidth: 32, minHeight: 32, borderRadius: 4, fontSize: 14, flexShrink: 0 }}>✕</button>
+                        <button onClick={() => setDeleteBarberTarget(b)} title="Dar de baja empleado" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', minWidth: 32, minHeight: 32, borderRadius: 4, flexShrink: 0 }}><Icon name="trash" size={15} /></button>
                       </div>
 
                       {editingBarberId === b.id && (
@@ -831,7 +918,7 @@ export default function SettingsPage() {
                             <div>
                               <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Rol</label>
                               {(() => {
-                                const currentRole = String(edits.role ?? b.role ?? 'Barbero')
+                                const currentRole = String(edits.role ?? b.role ?? 'Empleado')
                                 const options = BARBER_ROLES.includes(currentRole as typeof BARBER_ROLES[number])
                                   ? BARBER_ROLES
                                   : ([...BARBER_ROLES, currentRole] as readonly string[])
@@ -859,9 +946,9 @@ export default function SettingsPage() {
 
                 {showBarberForm && (
                   <div style={{ background: 'var(--bg-3)', borderRadius: 10, border: '1px dashed var(--line)', padding: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <div style={{ fontSize: 13, color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontWeight: 500 }}>Dar de alta barbero</div>
+                    <div style={{ fontSize: 13, color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontWeight: 500 }}>Añadir empleado</div>
                     <div style={{ fontSize: 12, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', lineHeight: 1.5 }}>
-                      El usuario debe tener cuenta registrada. Si su rol es Cliente, se elevará automáticamente a Barbero.
+                      El usuario debe tener cuenta registrada. Se añadirá automáticamente al equipo.
                     </div>
                     <div>
                       <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Email del usuario *</label>
@@ -900,11 +987,11 @@ export default function SettingsPage() {
                 {!showBarberForm && (
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                     <button onClick={() => { setShowBarberForm(true); setBarberCreateError(null) }} style={{ padding: '0.5rem 0.875rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>
-                      + Añadir barbero
+                      + Añadir empleado
                     </button>
                     {user?.email && !barbersData.some(b => b.email === user.email) && (
                       <button onClick={handleAddSelfAsBarber} style={{ padding: '0.5rem 0.875rem', minHeight: 40, borderRadius: 8, border: '1px dashed var(--led-soft)', background: 'rgba(123,79,255,0.07)', color: 'var(--led-soft)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>
-                        + Añadirme como barbero
+                        + Añadirme al equipo
                       </button>
                     )}
                   </div>
@@ -912,18 +999,26 @@ export default function SettingsPage() {
               </div>
 
               <div style={{ height: 1, background: 'var(--line)', margin: '1.5rem 0' }} />
-              <SectionTitle>OPCIONES DE RESERVA</SectionTitle>
+              <SectionTitle
+                infoTitle="GUÍA — OPCIONES DE RESERVA"
+                infoItems={[
+                  { icon: '📆', label: 'Días de antelación', description: 'Máximo de días con los que un cliente puede reservar con anticipación (ej. 14 días = reserva 2 semanas antes).' },
+                  { icon: '💈', label: 'Elección de empleado', description: 'Activa esta opción para que el cliente pueda elegir su empleado preferido al reservar.' },
+                  { icon: '⏱️', label: 'Intervalo de slots', description: 'Cada cuántos minutos aparecen huecos disponibles en el calendario de citas.' },
+                  { icon: '🔧', label: 'Buffer entre citas', description: 'Tiempo de preparación entre una cita y la siguiente (en minutos).' },
+                ]}
+              >OPCIONES DE RESERVA</SectionTitle>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
                 <div>
-                  <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>Permitir elegir barbero</div>
+                  <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)', fontWeight: 500 }}>Permitir elegir empleado</div>
                   <div style={{ fontSize: 11, color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', marginTop: 2 }}>
-                    {allowBarberChoice ? 'Los clientes pueden seleccionar barbero al reservar' : 'El sistema asignará barbero automáticamente'}
+                    {allowBarberChoice ? 'Los clientes pueden seleccionar empleado al reservar' : 'El sistema asignará empleado automáticamente'}
                   </div>
                 </div>
                 <button
                   onClick={handleToggleAllowBarber}
                   disabled={mutateBooking.isPending}
-                  style={{ width: 44, height: 26, borderRadius: 13, border: 'none', cursor: mutateBooking.isPending ? 'default' : 'pointer', flexShrink: 0, background: allowBarberChoice ? 'var(--led)' : 'var(--bg-4)', position: 'relative', transition: 'background 0.2s', boxShadow: allowBarberChoice ? 'var(--glow-led)' : 'none', opacity: mutateBooking.isPending ? 0.6 : 1 }}
+                  style={{ width: 44, height: 26, borderRadius: 13, border: 'none', cursor: mutateBooking.isPending ? 'default' : 'pointer', flexShrink: 0, background: allowBarberChoice ? 'var(--led)' : 'var(--bg-4)', position: 'relative', transition: 'background 0.2s', boxShadow: 'none', opacity: mutateBooking.isPending ? 0.6 : 1 }}
                   aria-label="Toggle allow barber choice"
                 >
                   <span style={{ position: 'absolute', top: 3, left: allowBarberChoice ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', display: 'block', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
@@ -935,120 +1030,16 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {/* === FIDELIZACIÓN === */}
-          {section === 'fidelizacion' && (
-            <div>
-              <SectionTitle>MODO DE CANJEO</SectionTitle>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                {(['one_time', 'repeatable'] as const).map(mode => {
-                  const active = (loyaltyConfig?.rewardMode ?? 'one_time') === mode
-                  return (
-                    <button
-                      key={mode}
-                      onClick={() => updateLoyaltyConfig.mutate({ rewardMode: mode })}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '0.75rem',
-                        padding: '0.75rem 1rem', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
-                        border: `1px solid ${active ? 'var(--led)' : 'var(--line)'}`,
-                        background: active ? 'color-mix(in srgb, var(--led) 10%, transparent)' : 'var(--bg-3)',
-                      }}
-                    >
-                      <div style={{
-                        width: 14, height: 14, borderRadius: '50%', flexShrink: 0,
-                        border: `2px solid ${active ? 'var(--led)' : 'var(--fg-3)'}`,
-                        background: active ? 'var(--led)' : 'transparent',
-                      }} />
-                      <div>
-                        <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', fontWeight: 600, color: active ? 'var(--fg-0)' : 'var(--fg-1)', marginBottom: 2 }}>
-                          {mode === 'one_time' ? 'Una sola vez por cliente' : 'Repetible (si acumula de nuevo)'}
-                        </div>
-                        <div style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--fg-3)' }}>
-                          {mode === 'one_time'
-                            ? 'Cada premio solo puede canjearse una vez, independientemente de los puntos.'
-                            : 'El cliente puede volver a canjear si acumula suficientes puntos de nuevo.'}
-                        </div>
-                      </div>
-                    </button>
-                  )
-                })}
-                {(loyaltyConfig?.rewardMode ?? 'one_time') === 'repeatable' && (
-                  <div style={{ marginTop: '0.5rem', padding: '0.875rem', borderRadius: 8, background: 'var(--bg-3)', border: '1px solid var(--gold)' }}>
-                    <div style={{ fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--gold)', fontWeight: 600, marginBottom: '0.5rem' }}>
-                      SQL requerido en InsForge
-                    </div>
-                    <div style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)', marginBottom: '0.5rem' }}>
-                      Para permitir múltiples canjeos del mismo premio, ejecuta esto en el SQL Editor de InsForge:
-                    </div>
-                    <pre style={{ margin: 0, padding: '0.5rem', background: 'var(--bg-1)', borderRadius: 6, fontSize: 11, color: 'var(--fg-1)', fontFamily: 'var(--font-mono, monospace)', overflowX: 'auto', whiteSpace: 'pre-wrap' }}>
-{`ALTER TABLE redeemed_rewards
-DROP CONSTRAINT IF EXISTS
-  redeemed_rewards_card_id_reward_id_key;`}
-                    </pre>
-                  </div>
-                )}
-              </div>
-              <SectionTitle>RECOMPENSAS</SectionTitle>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {rewardsData.map(r => (
-                  editingRewardId === r.id ? (
-                    <div key={r.id} style={{ background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--led)', padding: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px', gap: '0.5rem' }}>
-                        <div>
-                          <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Nombre</label>
-                          <input
-                            value={rewardEdits[r.id]?.label ?? r.label}
-                            onChange={e => setRewardEdits(ed => ({ ...ed, [r.id]: { label: e.target.value, cost: ed[r.id]?.cost ?? r.cost } }))}
-                            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none' }}
-                          />
-                        </div>
-                        <div>
-                          <label style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', display: 'block', marginBottom: 3 }}>Puntos</label>
-                          <input
-                            type="number"
-                            value={rewardEdits[r.id]?.cost ?? r.cost}
-                            onChange={e => setRewardEdits(ed => ({ ...ed, [r.id]: { label: ed[r.id]?.label ?? r.label, cost: Number(e.target.value) } }))}
-                            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-4)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.4rem 0.5rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none', textAlign: 'center' }}
-                          />
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <SaveBtn onClick={() => handleSaveReward(r)} loading={updateRewardMut.isPending} isDirty={!!rewardEdits[r.id]} />
-                        <button
-                          onClick={() => { setEditingRewardId(null); setRewardEdits(e => { const c = { ...e }; delete c[r.id]; return c }) }}
-                          style={{ padding: '0.5rem 1rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}
-                        >
-                          Cancelar
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0.75rem', background: 'var(--bg-3)', borderRadius: 8, border: '1px solid var(--line)' }}>
-                      <div style={{ flex: 1, fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-0)' }}>{r.label}</div>
-                      <span style={{ fontSize: 12, color: 'var(--gold)', fontFamily: 'var(--font-ui)', flexShrink: 0 }}>{r.cost} pts</span>
-                      <button
-                        onClick={() => setEditingRewardId(r.id)}
-                        style={{ padding: '0.3rem 0.6rem', minHeight: 32, borderRadius: 6, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-2)', fontFamily: 'var(--font-ui)', fontSize: 12, cursor: 'pointer', flexShrink: 0 }}
-                      >
-                        Editar
-                      </button>
-                      <button onClick={() => deleteReward.mutate(r.id, { onError: (e) => { if (import.meta.env.DEV) console.error(e); setSecError('fidelizacion', 'No se pudo eliminar la recompensa. Revisa tu conexión.') } })} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 16, minWidth: 32, minHeight: 32, flexShrink: 0 }}>✕</button>
-                    </div>
-                  )
-                ))}
-              </div>
-              <button onClick={handleAddReward} style={{ marginTop: '0.75rem', padding: '0.5rem 0.875rem', minHeight: 40, borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--fg-1)', fontFamily: 'var(--font-ui)', fontSize: 13, cursor: 'pointer' }}>
-                + Añadir recompensa
-              </button>
-              {sectionError.fidelizacion && (
-                <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', marginTop: 8, marginBottom: 0 }}>{sectionError.fidelizacion}</p>
-              )}
-            </div>
-          )}
-
           {/* === APARIENCIA === */}
           {section === 'apariencia' && isAdmin && (
             <div>
-              <SectionTitle>APARIENCIA</SectionTitle>
+              <SectionTitle
+                infoTitle="GUÍA — APARIENCIA"
+                infoItems={[
+                  { icon: '🎨', label: 'Tema de colores', description: 'Selecciona el tema visual de la aplicación: claro, oscuro o un color de acento personalizado.' },
+                  { icon: '🖼️', label: 'Logo', description: 'Sube una imagen o diseña un logo con formas geométricas. Usa el zoom y la posición para ajustarlo.' },
+                ]}
+              >APARIENCIA</SectionTitle>
               <AppearanceSection />
             </div>
           )}
@@ -1056,30 +1047,236 @@ DROP CONSTRAINT IF EXISTS
           {/* === BARBERÍA === */}
           {section === 'barberia' && (
             <div>
-              <SectionTitle>DATOS DE LA BARBERÍA</SectionTitle>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
-                {([
-                  { key: 'name' as const, label: 'Nombre' },
-                  { key: 'phone' as const, label: 'Teléfono' },
-                  { key: 'email' as const, label: 'Email' },
-                  { key: 'instagram' as const, label: 'Instagram' },
-                  { key: 'address' as const, label: 'Dirección' },
-                ]).map(({ key, label }) => (
-                  <div key={key} className="flex flex-col gap-1 md:grid md:grid-cols-[160px_1fr] md:items-center md:gap-3">
-                    <label style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>{label}</label>
-                    <input value={localShop[key]} onChange={e => setShopEdits(s => ({ ...s, [key]: e.target.value }))}
-                      style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.5rem 0.6rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' }} />
-                  </div>
+              <SectionTitle
+                infoTitle="GUÍA — NEGOCIO"
+                infoItems={[
+                  { icon: '🏪', label: 'Nombre del negocio', description: 'El nombre que aparece en el título de la web, en los emails y en la cabecera de la app.' },
+                  { icon: '📝', label: 'Descripción', description: 'Texto descriptivo del negocio. Aparece en la página de reservas.' },
+                  { icon: '📍', label: 'Dirección', description: 'Dirección física de la barbería. Se muestra en la página de inicio.' },
+                  { icon: '📞', label: 'Teléfono', description: 'Número de contacto visible para los clientes.' },
+                ]}
+              >NEGOCIO</SectionTitle>
+
+              {/* ── Tabs ── */}
+              <div style={{ display: 'flex', gap: 4, marginBottom: '1.5rem', background: 'var(--bg-3)', borderRadius: 10, padding: 4 }}>
+                {(['info', 'logo'] as const).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setLogoTab(tab)}
+                    style={{
+                      flex: 1, padding: '0.5rem 1rem', borderRadius: 7, border: 'none',
+                      background: logoTab === tab ? 'var(--bg-0)' : 'transparent',
+                      color: logoTab === tab ? 'var(--fg-0)' : 'var(--fg-3)',
+                      fontFamily: 'var(--font-ui)', fontSize: 13,
+                      fontWeight: logoTab === tab ? 600 : 400,
+                      cursor: 'pointer', transition: 'all 0.15s',
+                      boxShadow: logoTab === tab ? '0 1px 3px rgba(0,0,0,0.25)' : 'none',
+                    }}
+                  >
+                    {tab === 'info' ? 'Información' : 'Logo'}
+                  </button>
                 ))}
-                <div className="flex flex-col gap-1 md:grid md:grid-cols-[160px_1fr] md:items-start md:gap-3">
-                  <label style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)', paddingTop: 6 }}>Descripción</label>
-                  <textarea value={localShop.description} onChange={e => setShopEdits(s => ({ ...s, description: e.target.value }))} rows={3}
-                    style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.5rem 0.6rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, resize: 'vertical', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
-                </div>
               </div>
-              <SaveBtn onClick={handleSaveShopInfo} loading={mutateShopInfo.isPending} isDirty={Object.keys(shopEdits).length > 0} />
-              {sectionError.barberia && (
-                <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', marginTop: 6, marginBottom: 0 }}>{sectionError.barberia}</p>
+
+              {/* ── Tab: Información ── */}
+              {logoTab === 'info' && (
+                <div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
+                    {([
+                      { key: 'name' as const, label: 'Nombre' },
+                      { key: 'phone' as const, label: 'Teléfono' },
+                      { key: 'email' as const, label: 'Email' },
+                      { key: 'instagram' as const, label: 'Instagram' },
+                      { key: 'address' as const, label: 'Dirección' },
+                      { key: 'opening_hours' as const, label: 'Horario' },
+                    ]).map(({ key, label }) => (
+                      <div key={key} className="flex flex-col gap-1 md:grid md:grid-cols-[160px_1fr] md:items-center md:gap-3">
+                        <label style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)' }}>{label}</label>
+                        <input value={localShop[key]} onChange={e => setShopEdits(s => ({ ...s, [key]: e.target.value }))}
+                          style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.5rem 0.6rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+                      </div>
+                    ))}
+                    <div className="flex flex-col gap-1 md:grid md:grid-cols-[160px_1fr] md:items-start md:gap-3">
+                      <label style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--fg-2)', paddingTop: 6 }}>Descripción</label>
+                      <textarea value={localShop.description} onChange={e => setShopEdits(s => ({ ...s, description: e.target.value }))} rows={3}
+                        style={{ background: 'var(--bg-3)', border: '1px solid var(--line)', borderRadius: 6, padding: '0.5rem 0.6rem', color: 'var(--fg-0)', fontFamily: 'var(--font-ui)', fontSize: 13, resize: 'vertical', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+                    </div>
+                  </div>
+                  <SaveBtn onClick={handleSaveShopInfo} loading={mutateShopInfo.isPending} isDirty={Object.keys(shopEdits).length > 0} />
+                  {sectionError.barberia && (
+                    <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', marginTop: 6, marginBottom: 0 }}>{sectionError.barberia}</p>
+                  )}
+                </div>
+              )}
+
+              {/* ── Tab: Logo ── */}
+              {logoTab === 'logo' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+                  {/* Fila: preview + controles */}
+                  <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
+
+                    {/* Preview compacto */}
+                    {(() => {
+                      const displayUrl = logoPreviewUrl ?? shopInfo?.logo_url
+                      const activeShape = pendingShape ?? shopInfo?.logo_shape ?? 'hexagon'
+                      const PREVIEW = 120
+                      const sStyle = shapeStyle(activeShape, PREVIEW)
+                      const w = (sStyle.width as number | undefined) ?? PREVIEW
+                      const h = (sStyle.height as number | undefined) ?? PREVIEW
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                          <div
+                            ref={logoPreviewRef}
+                            onMouseDown={displayUrl ? handleDragStart : undefined}
+                            style={{
+                              width: w, height: h, position: 'relative', overflow: 'hidden',
+                              background: 'var(--bg-3)', border: '1px solid var(--line)',
+                              cursor: displayUrl ? (isDragging ? 'grabbing' : 'grab') : 'default',
+                              userSelect: 'none', ...sStyle,
+                            }}
+                          >
+                            {displayUrl ? (
+                              <img src={displayUrl} alt="preview" draggable={false} style={{
+                                position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+                                transform: `scale(${logoScale}) translate(${logoOffsetX / logoScale}%, ${logoOffsetY / logoScale}%)`,
+                                transformOrigin: 'center', pointerEvents: 'none',
+                              }} />
+                            ) : (
+                              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--fg-4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                                </svg>
+                                <span style={{ fontFamily: 'var(--font-ui)', fontSize: 9, color: 'var(--fg-4)' }}>Sin imagen</span>
+                              </div>
+                            )}
+                          </div>
+                          {displayUrl && (
+                            <span style={{ fontFamily: 'var(--font-ui)', fontSize: 9, color: 'var(--fg-4)', letterSpacing: '0.02em' }}>
+                              Arrastra para mover
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })()}
+
+                    {/* Controles */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {/* Zoom */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--fg-2)' }}>Zoom</span>
+                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--gold)', fontWeight: 600 }}>{logoScale.toFixed(1)}×</span>
+                        </div>
+                        <input type="range" min={0.5} max={3} step={0.05} value={logoScale}
+                          onChange={e => setLogoScale(Number(e.target.value))}
+                          style={{ width: '100%', accentColor: 'var(--gold)', cursor: 'pointer' }} />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
+                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 9, color: 'var(--fg-4)' }}>0.5×</span>
+                          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 9, color: 'var(--fg-4)' }}>3×</span>
+                        </div>
+                      </div>
+                      {/* Botones imagen */}
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <button onClick={() => logoInputRef.current?.click()} style={{ fontSize: 12, fontFamily: 'var(--font-ui)', padding: '0.4rem 0.8rem', borderRadius: 6, background: 'var(--bg-3)', border: '1px solid var(--line)', color: 'var(--fg-0)', cursor: 'pointer' }}>
+                          {pendingLogoFile ? 'Cambiar imagen' : 'Seleccionar imagen'}
+                        </button>
+                        {shopInfo?.logo_url && (
+                          <button onClick={handleRemoveLogo} style={{ fontSize: 12, fontFamily: 'var(--font-ui)', padding: '0.4rem 0.8rem', borderRadius: 6, background: 'transparent', border: '1px solid var(--danger)', color: 'var(--danger)', cursor: 'pointer' }}>
+                            Eliminar
+                          </button>
+                        )}
+                      </div>
+                      {pendingLogoFile && (
+                        <p style={{ fontSize: 11, color: 'var(--fg-3)', fontFamily: 'var(--font-ui)', margin: 0 }}>
+                          {pendingLogoFile.name}
+                        </p>
+                      )}
+                      <p style={{ fontSize: 11, color: 'var(--fg-4)', fontFamily: 'var(--font-ui)', margin: 0 }}>PNG, JPG o WEBP · máximo 2 MB</p>
+                    </div>
+                  </div>
+
+                  {/* Separador */}
+                  <div style={{ height: 1, background: 'var(--line)' }} />
+
+                  {/* Formas — grid fijo 6×2 */}
+                  <div>
+                    <p style={{ fontSize: 10, fontFamily: 'var(--font-ui)', color: 'var(--fg-4)', marginBottom: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600 }}>Forma</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6 }}>
+                      {([
+                        { shape: 'hexagon'   as LogoShape, label: 'Hexágono'   },
+                        { shape: 'circle'    as LogoShape, label: 'Círculo'    },
+                        { shape: 'square'    as LogoShape, label: 'Cuadrado'   },
+                        { shape: 'rounded'   as LogoShape, label: 'Redondeado' },
+                        { shape: 'squircle'  as LogoShape, label: 'Squircle'   },
+                        { shape: 'pentagon'  as LogoShape, label: 'Pentágono'  },
+                        { shape: 'rectangle' as LogoShape, label: 'Rectángulo' },
+                        { shape: 'oval'      as LogoShape, label: 'Óvalo'      },
+                        { shape: 'diamond'   as LogoShape, label: 'Rombo'      },
+                        { shape: 'shield'    as LogoShape, label: 'Escudo'     },
+                        { shape: 'triangle'  as LogoShape, label: 'Triángulo'  },
+                        { shape: 'badge'     as LogoShape, label: 'Badge'      },
+                      ]).map(({ shape, label }) => {
+                        const active = (pendingShape ?? shopInfo?.logo_shape ?? 'hexagon') === shape
+                        const THUMB = 36
+                        const s = shapeStyle(shape, THUMB)
+                        const tw = (s.width as number | undefined) ?? THUMB
+                        const th = (s.height as number | undefined) ?? THUMB
+                        return (
+                          <button
+                            key={shape}
+                            onClick={() => setPendingShape(shape)}
+                            title={label}
+                            style={{
+                              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                              background: active ? 'rgba(201,162,74,0.07)' : 'transparent',
+                              border: `1.5px solid ${active ? 'var(--gold)' : 'var(--line)'}`,
+                              borderRadius: 8, cursor: 'pointer', padding: '8px 4px',
+                              transition: 'all 0.12s',
+                            }}
+                          >
+                            <div style={{
+                              width: tw, height: th, flexShrink: 0,
+                              background: active
+                                ? 'linear-gradient(135deg, rgba(201,162,74,0.6), rgba(201,162,74,0.3))'
+                                : 'var(--bg-3)',
+                              border: `1px solid ${active ? 'rgba(201,162,74,0.5)' : 'var(--line)'}`,
+                              transition: 'all 0.12s', ...s,
+                            }} />
+                            <span style={{
+                              fontSize: 8, fontFamily: 'var(--font-ui)',
+                              color: active ? 'var(--gold)' : 'var(--fg-4)',
+                              letterSpacing: '0.02em', textAlign: 'center',
+                              fontWeight: active ? 600 : 400, lineHeight: 1.2,
+                            }}>
+                              {label}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Guardar — derecha */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10 }}>
+                    {logoError && <p style={{ color: 'var(--danger)', fontSize: 12, fontFamily: 'var(--font-ui)', margin: 0 }}>{logoError}</p>}
+                    <button
+                      onClick={handleSaveLogo}
+                      disabled={uploadLogo.isPending || mutateShopInfo.isPending}
+                      style={{
+                        fontSize: 13, fontFamily: 'var(--font-ui)', fontWeight: 600,
+                        padding: '0.5rem 1.25rem', minHeight: 40, borderRadius: 8, border: 'none',
+                        background: 'var(--gold)', color: '#000',
+                        cursor: (uploadLogo.isPending || mutateShopInfo.isPending) ? 'not-allowed' : 'pointer',
+                        opacity: (uploadLogo.isPending || mutateShopInfo.isPending) ? 0.7 : 1,
+                      }}
+                    >
+                      {(uploadLogo.isPending || mutateShopInfo.isPending) ? 'Guardando…' : 'Guardar logo'}
+                    </button>
+                  </div>
+
+                  <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/webp" aria-label="Subir imagen de logo" style={{ display: 'none' }} onChange={handleLogoFileChange} />
+                </div>
               )}
             </div>
           )}
@@ -1111,7 +1308,7 @@ DROP CONSTRAINT IF EXISTS
 
       {deleteBarberTarget && (
         <ConfirmDialog
-          title="Dar de baja a barbero"
+          title="Dar de baja a empleado"
           message={`¿Dar de baja a ${deleteBarberTarget.fullName}? Quedará inactivo y no aparecerá en el sistema de reservas. Sus citas existentes no se verán afectadas.`}
           confirmLabel="Dar de baja"
           danger

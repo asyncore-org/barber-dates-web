@@ -68,6 +68,7 @@ domain/ no importa NADA externo
 5. Los servicios tienen duración fija que determina los slots disponibles.
 6. Sesión **cliente**: persistente indefinida.
 7. Sesión **admin**: máximo **15 días** desde el login (`ADMIN_SESSION_MAX_DAYS = 15`). Forzar logout si supera. Timestamp en localStorage (`admin_login_time`).
+8. Las recompensas de tipo `price` y `percentage` reducen el precio de la cita al reservar (mínimo 0€). El precio final se guarda en `appointments.final_price` y es la cifra que usan las estadísticas de ingresos (no `services.price`). Las de tipo `gift` no afectan al precio.
 
 ---
 
@@ -77,16 +78,21 @@ domain/ no importa NADA externo
 barbers           id, full_name, role, bio, avatar_url, phone, email, specialty_ids(JSONB), is_active
 profiles          id→auth.users, full_name, phone, avatar_url, role('client'|'admin')
 services          id, name, description, duration_minutes, price, loyalty_points, is_active, sort_order
-appointments      id, client_id→profiles, barber_id→barbers, service_id→services, start_time, end_time, status, notes
+appointments      id, client_id→profiles, barber_id→barbers, service_id→services, start_time, end_time, status, notes, final_price
                   status: 'confirmed' | 'completed' | 'cancelled' | 'no_show'
+                  final_price: NUMERIC(10,2) NULL — precio real pagado tras descuento; NULL = sin descuento (usar services.price)
 schedule_blocks   id, barber_id→barbers (NULL=todos), block_date, start_time, end_time, day_of_week, reason, is_recurring
 shop_config       id, key (unique), value(JSONB)
                   keys: shop_info, schedule, booking, loyalty
+                  loyalty.simpleColor: string — color de la tarjeta en modo simple
+                  loyalty.simpleRewardMeta: { [rewardId]: { rewardType: 'price'|'percentage'|'gift', rewardValue?: number } }
+                  loyalty.tiers[].rewards[].rewardType / .rewardValue — igual que simpleRewardMeta
 loyalty_cards     id, client_id→profiles (unique), total_points, total_visits
 loyalty_transactions  id, card_id→loyalty_cards, appointment_id→appointments, points, type, description
                   type: 'earned' | 'redeemed' | 'bonus' | 'adjustment'
 rewards           id, label, cost, is_active, sort_order
 redeemed_rewards  id, card_id→loyalty_cards, reward_id→rewards, redeemed_at
+                  reward_id='__cycle_complete__' es un centinela que marca el cierre de un ciclo
 ```
 
 ### RLS (Row Level Security) — obligatorio en todas las tablas
